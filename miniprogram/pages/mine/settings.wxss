@@ -1,0 +1,4 @@
+.page { padding: 24rpx; }
+.section-title { font-size: 30rpx; font-weight: 700; margin-bottom: 12rpx; }
+.desc { font-size: 26rpx; line-height: 1.8; color: #555; white-space: pre-line; margin-top: 12rpx; }
+.page .btn-ghost { margin-top: 30rpx; }

@@ -1,0 +1,162 @@
+.guide-page {
+  padding: 24rpx 24rpx 72rpx;
+}
+
+.hero-card {
+  padding: 42rpx 34rpx;
+  border-radius: 40rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #0C7A4B 0%, #2FBE77 58%, #A7E7C5 100%);
+  box-shadow: 0 22rpx 60rpx rgba(47, 190, 119, 0.22);
+}
+
+.eyebrow {
+  font-size: 23rpx;
+  opacity: 0.86;
+  font-weight: 700;
+}
+
+.hero-title {
+  margin-top: 18rpx;
+  font-size: 42rpx;
+  line-height: 1.28;
+  font-weight: 900;
+  letter-spacing: 1rpx;
+}
+
+.hero-desc {
+  margin-top: 22rpx;
+  font-size: 27rpx;
+  line-height: 1.75;
+  opacity: 0.94;
+}
+
+.section-title {
+  margin-bottom: 22rpx;
+  color: #15211B;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.steps {
+  display: grid;
+  gap: 18rpx;
+}
+
+.step-card {
+  display: flex;
+  gap: 18rpx;
+  padding: 22rpx;
+  border-radius: 28rpx;
+  background: #F6FBF8;
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 50%;
+  color: #0C7A4B;
+  background: #EAFBF2;
+  text-align: center;
+  line-height: 58rpx;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-title {
+  color: #15211B;
+  font-size: 27rpx;
+  font-weight: 800;
+}
+
+.step-desc {
+  margin-top: 8rpx;
+  color: #6A7B72;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.value-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+  margin: 24rpx 0;
+}
+
+.value-card {
+  padding: 26rpx 22rpx;
+  border-radius: 30rpx;
+  background: #fff;
+  box-shadow: 0 12rpx 40rpx rgba(21, 158, 99, 0.06);
+}
+
+.value-title {
+  color: #0C7A4B;
+  font-size: 27rpx;
+  font-weight: 900;
+}
+
+.value-desc {
+  margin-top: 12rpx;
+  color: #46564e;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+
+.rule-card {
+  margin-top: 0;
+}
+
+.rule-item {
+  position: relative;
+  padding-left: 28rpx;
+  color: #46564e;
+  font-size: 25rpx;
+  line-height: 1.7;
+}
+
+.rule-item + .rule-item {
+  margin-top: 14rpx;
+}
+
+.rule-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18rpx;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #2FBE77;
+}
+
+.closing-card {
+  margin-top: 24rpx;
+  padding: 30rpx 28rpx;
+  border-radius: 34rpx;
+  background: #FFF9ED;
+}
+
+.closing-title {
+  color: #8A5A12;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.closing-desc {
+  margin-top: 12rpx;
+  color: #9A7642;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.guide-cta {
+  margin-top: 28rpx;
+}

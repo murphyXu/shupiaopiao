@@ -1,0 +1,20 @@
+<view class="page result-page">
+  <view class="icon {{passed ? 'ok' : 'fail'}}">{{passed ? '✓' : '✗'}}</view>
+  <view class="result-title">{{passed ? '已加入漂流池' : '检测未通过'}}</view>
+  <view class="result-sub muted">{{passed ? '系统检测全部通过，无需人工审核' : '请根据原因修改后重试'}}</view>
+
+  <view class="card checks" wx:if="{{passed}}">
+    <view wx:for="{{checks}}" wx:key="name" class="check-item">✓ {{item.name}}</view>
+    <view class="hero-coin mini">
+      <view class="hero-label">预获得公益积分（收货后到账）</view>
+      <view class="hero-num">+{{coinValue}}</view>
+    </view>
+  </view>
+
+  <view class="card" wx:else>
+    <view wx:for="{{reasons}}" wx:key="code" class="reason">· {{item.message}}</view>
+    <view class="btn-line" bindtap="appeal" style="margin-top:24rpx">提交申诉</view>
+  </view>
+
+  <view class="btn-primary" bindtap="goNext">{{passed ? '查看漂流广场' : '返回修改'}}</view>
+</view>

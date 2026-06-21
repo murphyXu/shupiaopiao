@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="card">
+    <view class="label">处理备注</view>
+    <textarea
+      maxlength="200"
+      value="{{remark}}"
+      bindinput="inputRemark"
+      placeholder="填写本次处理说明，处理后会进入历史记录"
+    />
+  </view>
+
+  <view wx:for="{{list}}" wx:key="_id" class="card dispute-card">
+    <view class="dispute-order">订单 {{item.orderId}}</view>
+    <view class="dispute-reason">{{item.reason}}</view>
+    <view class="muted">{{item.createdAt}}</view>
+    <view wx:if="{{item.images && item.images.length}}" class="evidence">
+      <image wx:for="{{item.images}}" wx:key="idx" wx:for-item="img" src="{{img}}" mode="aspectFill" bindtap="preview" data-src="{{img}}" />
+      <view class="muted">证据截图（点击放大）</view>
+    </view>
+    <button size="mini" data-id="{{item._id}}" data-action="COMPLETE" bindtap="resolve">确认完成</button>
+    <button size="mini" data-id="{{item._id}}" data-action="REFUND_CLOSE" bindtap="resolve">释放积分并关闭</button>
+    <button size="mini" data-id="{{item._id}}" data-action="GIVER_FAULT_FIRST" bindtap="resolve">赠书方首次责任</button>
+    <button size="mini" data-id="{{item._id}}" data-action="GIVER_FAULT_FIRST_WITH_COMP" bindtap="resolve">赠书方首次责任（含补偿）</button>
+    <button size="mini" data-id="{{item._id}}" data-action="GIVER_FAULT_REPEAT" bindtap="resolve">赠书方重复责任</button>
+    <button size="mini" data-id="{{item._id}}" data-action="INVALID" bindtap="resolve">无效申诉</button>
+  </view>
+  <view wx:if="{{!list.length}}" class="empty">暂无待处理申诉</view>
+
+  <view class="card history-card">
+    <view class="label">处理历史</view>
+    <view wx:for="{{history}}" wx:key="_id" class="history-item">
+      <view>订单 {{item.orderId}} · {{item.action}}</view>
+      <view class="muted">{{item.resolvedAt}}</view>
+      <view wx:if="{{item.remark}}" class="muted">备注：{{item.remark}}</view>
+    </view>
+    <view wx:if="{{!history.length}}" class="muted">暂无处理历史</view>
+  </view>
+</view>

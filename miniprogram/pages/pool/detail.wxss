@@ -1,0 +1,93 @@
+.images {
+  height: 520rpx;
+  border-radius: 30rpx;
+  overflow: hidden;
+  background: #fff;
+  margin-bottom: 24rpx;
+}
+
+.shot-frame {
+  width: 100%;
+  height: 520rpx;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-img {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+}
+
+.title {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #15211B;
+}
+
+.author {
+  font-size: 24rpx;
+  margin-top: 6rpx;
+}
+
+.row-meta {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
+.issue-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.issue-pill {
+  margin: 0;
+}
+
+.coin.big {
+  font-size: 32rpx;
+  padding: 12rpx 24rpx;
+}
+
+.giver {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.giver-name {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.page {
+  padding-bottom: 160rpx;
+}
+
+.fixed-actions {
+  position: fixed;
+  left: 44rpx;
+  right: 44rpx;
+  bottom: 48rpx;
+  display: grid;
+  grid-template-columns: 220rpx 1fr;
+  gap: 18rpx;
+}
+
+.fixed-actions .btn-ghost,
+.fixed-actions .btn-primary {
+  padding: 26rpx 12rpx;
+  border-radius: 30rpx;
+  font-size: 28rpx;
+}
+
+.want-btn.active {
+  background: #2FBE77;
+  color: #fff;
+}

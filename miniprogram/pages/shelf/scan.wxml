@@ -1,0 +1,59 @@
+<view class="page">
+  <view wx:if="{{lookupStatus === 'loading'}}" class="card status-card">正在识别 ISBN {{scannedIsbn}}...</view>
+
+  <view wx:if="{{lookupStatus === 'not_found'}}" class="card status-card">
+    <view class="title">未识别该图书</view>
+    <view class="muted">{{lookupError}}</view>
+    <view class="muted">ISBN {{scannedIsbn}}</view>
+    <view class="btn-primary" bindtap="doScan">重新扫码</view>
+    <view class="btn-ghost" bindtap="manualAdd">手动补录</view>
+  </view>
+
+  <view wx:if="{{book}}" class="result card">
+    <view class="label">识别结果</view>
+    <view class="row">
+      <image class="book-cover-sm" src="{{book.cover}}" mode="aspectFill" binderror="onCoverError" data-single="book" data-isbn="{{book.isbn}}" />
+      <view class="info">
+        <view class="title">{{book.title}}</view>
+        <view class="muted">{{book.author}}</view>
+      </view>
+    </view>
+
+    <view class="meta-grid">
+      <view class="meta-row"><text>ISBN</text><text>{{book.isbn}}</text></view>
+      <view class="meta-row"><text>出版社</text><text>{{book.publisher || '未记录'}}</text></view>
+      <view class="meta-row"><text>出版时间</text><text>{{book.pubDate || '未记录'}}</text></view>
+      <view class="meta-row"><text>定价</text><text>{{book.listPrice || '未记录'}}</text></view>
+      <view class="meta-row"><text>图书分类</text><text>{{book.category || '未记录'}}</text></view>
+    </view>
+
+    <view class="label">阅读状态</view>
+    <view class="chips">
+      <view wx:for="{{categories}}" wx:key="key" class="chip {{category === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectCategory">{{item.label}}</view>
+    </view>
+
+    <view class="label">书籍分类</view>
+    <view class="chips">
+      <view wx:for="{{bookClasses}}" wx:key="key" class="chip {{bookClass === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectBookClass">{{item.label}}</view>
+    </view>
+
+    <view class="label">书架位置</view>
+    <view class="chips">
+      <view wx:for="{{shelfLocations}}" wx:key="key" class="chip {{shelfLocationKey === item.key ? 'active' : ''}}" data-key="{{item.key}}" data-label="{{item.label}}" bindtap="selectShelfLocation">{{item.label}}</view>
+    </view>
+
+    <view class="continuous-row" bindtap="toggleContinuousScan">
+      <view class="switch-dot {{continuousScan ? 'active' : ''}}"></view>
+      <view>
+        <view class="continuous-title">批量连续扫码</view>
+        <view class="muted">先确认本页选项，之后自动加入书架后继续扫下一本</view>
+      </view>
+    </view>
+    <view wx:if="{{batchMessage}}" class="batch-message">{{batchMessage}}</view>
+
+    <view wx:if="{{!shelfId}}" class="btn-primary" bindtap="addToShelf">{{continuousScan ? '加入并开始批量扫码' : '加入书架'}}</view>
+    <view wx:else class="btn-primary added-btn">已加入书架</view>
+    <view wx:if="{{shelfId}}" class="btn-ghost" style="margin-top:16rpx" bindtap="scanNext">继续扫码下一本</view>
+    <view class="btn-ghost" style="margin-top:16rpx" bindtap="goPublish">发起漂流</view>
+  </view>
+</view>

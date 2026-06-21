@@ -1,0 +1,66 @@
+<view class="page">
+  <view wx:if="{{book}}" class="card row">
+    <image class="book-cover-sm" src="{{book.cover}}" mode="aspectFill" />
+    <view class="info">
+      <view class="title">{{book.title}}</view>
+      <view class="muted">{{book.author}}</view>
+    </view>
+    <view wx:if="{{shelfBooks.length > 1}}" class="change-book" bindtap="clearSelectedBook">更换</view>
+  </view>
+
+  <view wx:else class="card">
+    <view class="label">选择要赠出的书</view>
+    <view wx:if="{{loadingShelfBooks}}" class="muted">正在读取你的书架...</view>
+    <view wx:elif="{{shelfBooks.length}}" class="book-picker">
+      <view wx:for="{{shelfBooks}}" wx:key="id" class="book-option" data-book-id="{{item.bookId}}" bindtap="selectBook">
+        <image class="picker-cover" src="{{item.book.cover}}" mode="aspectFit" />
+        <view class="picker-info">
+          <view class="picker-title">{{item.book.title}}</view>
+          <view class="muted">{{item.book.author}}</view>
+          <view class="picker-meta">{{item.displayCategory || item.book.category || '未分类'}} · {{item.shelfLocationName || '默认书架'}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-box">
+      <view>书架里还没有可赠出的书</view>
+      <view class="btn-ghost small" bindtap="goAddBook">先添加书籍</view>
+    </view>
+  </view>
+
+  <view class="card {{!book ? 'disabled-card' : ''}}">
+    <view class="label">品相档位</view>
+    <view class="chips condition-chips">
+      <view wx:for="{{conditions}}" wx:key="key" class="chip {{condition === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectCondition">{{item.label}}</view>
+    </view>
+    <view class="sub-label">品相描述</view>
+    <view class="chips issue-chips">
+      <view wx:for="{{conditionIssueOptions}}" wx:key="key" class="chip {{item.selected ? 'active' : ''}}" data-key="{{item.key}}" bindtap="toggleConditionIssue">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">公益积分</view>
+    <view wx:if="{{hasListPrice}}" class="price-line">
+      <text>图书定价：¥{{listPrice}}</text>
+      <text>系统流转积分值：{{coinValue}} 积分</text>
+    </view>
+    <view wx:else class="price-warning">图书定价缺失，暂不能发起漂流。请先重新扫码或编辑补齐定价。</view>
+    <view class="coin-hint">由系统根据图书定价和品相统一计算，用户不能自行定价。</view>
+  </view>
+
+  <view class="card">
+    <view class="label">漂流身份</view>
+    <view class="identity-row">
+      <view class="identity-option {{!isAnonymous ? 'active' : ''}}" data-anonymous="0" bindtap="toggleAnonymous">
+        <view class="identity-title">昵称漂流</view>
+        <view class="identity-desc">领取方可看到你的昵称</view>
+      </view>
+      <view class="identity-option {{isAnonymous ? 'active' : ''}}" data-anonymous="1" bindtap="toggleAnonymous">
+        <view class="identity-title">匿名漂流</view>
+        <view class="identity-desc">对外显示为匿名书友</view>
+      </view>
+    </view>
+  </view>
+
+  <button class="btn-primary publish-submit" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">提交上漂</button>
+</view>

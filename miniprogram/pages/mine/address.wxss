@@ -1,0 +1,5 @@
+.page { padding: 24rpx 24rpx 120rpx; }
+.row-top { display: flex; justify-content: space-between; align-items: center; }
+.name { font-weight: 600; }
+.actions { margin-top: 12rpx; display: flex; gap: 30rpx; color: #2FBE77; font-size: 26rpx; }
+.add-btn { position: fixed; left: 24rpx; right: 24rpx; bottom: 40rpx; }

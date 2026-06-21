@@ -1,0 +1,126 @@
+<view class="page page-tab shelf-page" style="padding-top: {{navPaddingTop}}px;">
+  <view class="page-header shelf-header">
+    <view wx:if="{{!editingShelfName}}" class="title-row">
+      <view class="page-title shelf-title">{{shelfName}}</view>
+      <view wx:if="{{!shareMode && loggedIn}}" class="header-action edit-name" bindtap="startEditShelfName">编辑名称</view>
+    </view>
+    <view wx:else class="shelf-name-editor">
+      <input value="{{shelfNameInput}}" maxlength="12" bindinput="onShelfNameInput" placeholder="最多12个字" />
+      <view class="mini-save" bindtap="saveShelfName">保存</view>
+    </view>
+    <view class="capacity-row">
+      <view class="page-sub capacity-line">{{shareMode ? '好友分享给你的藏书' : (loggedIn ? '剩余可收藏 ' + dashboard.remainingCapacity + ' 本' : '登录后查看剩余容量')}}</view>
+      <view wx:if="{{loggedIn && !shareMode}}" class="quota-action" bindtap="goRedeemCapacity">兑换额度</view>
+    </view>
+  </view>
+
+  <view wx:if="{{shareMode}}" class="share-exit card" bindtap="exitShareMode">
+    <view>
+      <view class="share-exit-title">正在查看分享书架</view>
+      <view class="muted">返回小程序后可切回自己的书架内容</view>
+    </view>
+    <view class="share-exit-btn">回到我的书架</view>
+  </view>
+
+  <view class="stat-row" bindtap="goDashboard">
+    <view class="stat-card">
+      <text class="num">{{dashboard.totalBooks}}</text>
+      <text class="label">藏书</text>
+    </view>
+    <view class="stat-card">
+      <text class="num">{{dashboard.monthNew}}</text>
+      <text class="label">本月新增</text>
+    </view>
+    <view class="stat-card">
+      <text class="num">¥{{dashboard.totalValue}}</text>
+      <text class="label">定价合计</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loggedIn || shareMode}}" class="shelf-search">
+    <input value="{{searchKeyword}}" placeholder="搜索书名、作者、ISBN、出版社" bindinput="onShelfSearchInput" />
+    <view wx:if="{{searchKeyword}}" class="search-clear" bindtap="clearShelfSearch">清除</view>
+  </view>
+
+  <view class="primary-tabs">
+    <view wx:for="{{primaryTabs}}" wx:key="key" class="primary-tab {{activePrimary === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="switchPrimary">{{item.label}}</view>
+  </view>
+
+  <scroll-view class="secondary-scroll" scroll-x>
+    <view class="secondary-tabs">
+      <view wx:for="{{secondaryTabs}}" wx:key="key" class="secondary-tab {{activeSecondary === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="switchSecondary">{{item.label}}</view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{shelfEntries.length}}" class="grid-2">
+    <block wx:for="{{shelfEntries}}" wx:key="id">
+      <block wx:if="{{item.type === 'series'}}">
+        <view class="book-card series-card" data-key="{{item.seriesKey}}" bindtap="toggleSeries">
+          <view class="book-cover-frame series-cover-stack">
+            <view class="series-stack-card stack-back"></view>
+            <view class="series-stack-card stack-mid"></view>
+            <image class="book-cover series-cover" src="{{item.cover}}" mode="aspectFit" />
+            <view class="series-count-badge">{{item.count}}本</view>
+          </view>
+          <view class="book-title">{{item.seriesTitle}}</view>
+          <view class="muted book-author">{{item.seriesTypeLabel}} · {{item.count}} 本</view>
+          <view class="book-meta">
+            <text>{{item.collapsed ? '点击展开' : '点击收起'}}</text>
+            <text>多本合辑</text>
+          </view>
+        </view>
+        <block wx:if="{{!item.collapsed}}" wx:for="{{item.books}}" wx:for-item="bookItem" wx:key="id">
+          <view class="book-card" data-id="{{bookItem.id}}" data-book-id="{{bookItem.bookId}}" bindtap="goDetail">
+            <view class="book-cover-frame">
+              <image class="book-cover" src="{{bookItem.book.cover}}" mode="aspectFit" />
+            </view>
+            <view class="book-title">{{bookItem.book.title}}</view>
+            <view class="muted book-author">{{bookItem.book.author}}</view>
+            <view class="book-meta">
+              <text>{{bookItem.readingStatusLabel}}</text>
+              <text>{{bookItem.bookClassLabel}}</text>
+            </view>
+            <view class="location-line">{{bookItem.shelfLocationName}}</view>
+          </view>
+        </block>
+      </block>
+
+      <view wx:else class="book-card" data-id="{{item.id}}" data-book-id="{{item.bookId}}" bindtap="goDetail">
+        <view class="book-cover-frame">
+          <image class="book-cover" src="{{item.book.cover}}" mode="aspectFit" />
+        </view>
+        <view class="book-title">{{item.book.title}}</view>
+        <view class="muted book-author">{{item.book.author}}</view>
+        <view class="book-meta">
+          <text>{{item.readingStatusLabel}}</text>
+          <text>{{item.bookClassLabel}}</text>
+        </view>
+        <view class="location-line">{{item.shelfLocationName}}</view>
+        <view wx:if="{{item.book.publisher || item.book.pubDate || item.book.listPrice}}" class="book-extra">
+          <text wx:if="{{item.book.publisher}}">{{item.book.publisher}}</text>
+          <text wx:if="{{item.book.pubDate}}">{{item.book.pubDate}}</text>
+          <text wx:if="{{item.book.listPrice}}">定价 {{item.book.listPrice}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+  <view wx:else class="empty">
+    <block wx:if="{{shareMode}}">这个分组暂时没有书</block>
+    <block wx:elif="{{searchKeyword}}">没找到这本在架书，换个书名、作者或 ISBN 试试</block>
+    <block wx:elif="{{loggedIn}}">书架空空如也，扫码添加第一本书吧</block>
+    <block wx:else>
+      <text>登录后可管理个人书架</text>
+      <view class="guest-login-btn" bindtap="goLogin">微信一键登录</view>
+    </block>
+  </view>
+
+  <view wx:if="{{loggedIn && !shareMode}}" class="add-book-entry" bindtap="showAddMenu">
+    <text class="add-icon">＋</text>
+    <text class="add-text">添加</text>
+  </view>
+
+  <view wx:if="{{showBackTop}}" class="back-top-entry" bindtap="scrollToTop">
+    <text>↑</text>
+    <text>顶部</text>
+  </view>
+</view>

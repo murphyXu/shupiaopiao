@@ -1,0 +1,67 @@
+<view class="page page-tab" style="padding-top: {{navPaddingTop}}px;">
+  <block wx:if="{{loggedIn}}">
+    <view class="user-row card-flat">
+      <image wx:if="{{user.avatar}}" class="user-avatar" src="{{user.avatar}}" mode="aspectFill" />
+      <view wx:else class="avatar-circle"></view>
+      <view class="info">
+        <view class="name-line">
+          <view class="name">{{user.nickname || '书漂用户'}}</view>
+          <view class="edit-profile" bindtap="goProfile">编辑资料</view>
+        </view>
+        <view class="muted sub">信用积分 {{user.creditScore}} · 公益积分 {{user.coinBalance}}</view>
+      </view>
+    </view>
+
+    <view class="mine-stat-row">
+      <view class="mine-stat-card public-points-card" hover-class="mine-stat-card-hover" bindtap="goWallet">
+        <view class="stat-num">{{user.coinBalance}}</view>
+        <view class="stat-label">公益积分</view>
+        <view class="stat-tip">站内流转</view>
+      </view>
+      <view class="mine-stat-card credit-stat-card" hover-class="mine-stat-card-hover" bindtap="goCredit">
+        <view class="stat-num">{{user.creditScore}}</view>
+        <view class="stat-label">信用积分</view>
+        <view class="stat-tip">查看明细</view>
+      </view>
+    </view>
+
+    <view class="card menu-list">
+      <view class="menu-item" bindtap="goGiven">
+        <view>
+          <view>我的漂流（赠出）</view>
+          <view class="menu-sub given-summary">待发货 {{driftSummary.pendingShip}} · 24h内到期 {{driftSummary.expiringSoon}} · 申诉 {{driftSummary.disputingGiven}} · 待评价 {{driftSummary.toReviewGiven}}</view>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goReceived">
+        <view>
+          <view>我的漂流（领取）</view>
+          <view class="menu-sub received-summary">待确认 {{driftSummary.toConfirm}} · 申诉 {{driftSummary.disputingReceived}} · 待评价 {{driftSummary.toReviewReceived}}</view>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goWallet">公益积分明细<text class="menu-arrow">›</text></view>
+      <view class="menu-item" bindtap="goCredit">信用积分明细<text class="menu-arrow">›</text></view>
+      <view wx:if="{{user.isAdmin}}" class="menu-item" bindtap="goDisputes">申诉处理<text class="menu-arrow">›</text></view>
+      <view class="menu-item" bindtap="goSettings">隐私政策 / 设置<text class="menu-arrow">›</text></view>
+    </view>
+
+    <view class="card invite-block">
+      <view class="invite-head">
+        <view class="invite-title">邀请书友共建</view>
+        <button class="invite-share-btn" open-type="share">邀请</button>
+      </view>
+      <view class="invite-desc">被邀请书友完成登录并产生有效书架或漂流互动后，系统按规则发放公益积分共建奖励，每日和累计均有上限。</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="guest-card">
+      <image class="brand-logo" src="/assets/brand/logo.png" mode="aspectFit" />
+      <view class="guest-title">登录书漂漂</view>
+      <view class="guest-desc">浏览漂流广场无需登录；接漂、上书、管理书架时再登录即可</view>
+      <button class="btn-primary guest-btn" bindtap="goLogin">微信一键登录</button>
+      <view class="menu-item guest-link" bindtap="goSettings">隐私政策 / 用户协议<text class="menu-arrow">›</text></view>
+    </view>
+  </block>
+</view>

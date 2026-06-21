@@ -1,0 +1,46 @@
+.page { padding: 24rpx; padding-bottom: 160rpx; }
+.intro-card { background: linear-gradient(135deg, #ffffff, #f2fff8); }
+.title { font-size: 34rpx; font-weight: 700; color: #15211B; margin-bottom: 8rpx; }
+.form-card { padding-bottom: 12rpx; }
+.label { font-size: 24rpx; color: #7b8a82; margin: 24rpx 0 8rpx; font-weight: 600; }
+.form-card .label:first-child { margin-top: 0; }
+.form-control {
+  width: 100%;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  border: 1rpx solid #dbe7df;
+  border-radius: 20rpx;
+  background: #f8fbf9;
+  padding: 18rpx 22rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+.row-fields { display: flex; gap: 18rpx; }
+.field { flex: 1; min-width: 0; }
+.chips { margin-top: 12rpx; }
+.custom-location {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+  margin-top: 4rpx;
+}
+.custom-location input { flex: 1; }
+.mini-btn {
+  flex-shrink: 0;
+  height: 68rpx;
+  line-height: 68rpx;
+  padding: 0 24rpx;
+  border-radius: 22rpx;
+  background: #2FBE77;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+.save-btn {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(28rpx + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+.save-btn.disabled { background: #9aa8a0; box-shadow: none; }

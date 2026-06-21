@@ -1,0 +1,7 @@
+.page { padding: 24rpx; }
+.score-card { text-align: center; padding: 50rpx; }
+.num { font-size: 80rpx; font-weight: 800; color: #2FBE77; }
+.log-item .row { display: flex; justify-content: space-between; }
+.delta.plus { color: #0C7A4B; font-weight: 600; }
+.delta.minus { color: #ff4d4f; font-weight: 600; }
+.time { font-size: 22rpx; margin-top: 6rpx; }

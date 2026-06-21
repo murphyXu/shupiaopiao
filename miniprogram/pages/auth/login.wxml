@@ -1,0 +1,25 @@
+<view class="login-page" style="padding-top: {{navPaddingTop}}px;">
+  <view class="logo-area">
+    <image class="brand-logo" src="/assets/brand/logo.png" mode="aspectFit" />
+    <text class="title">书漂漂</text>
+    <text class="subtitle">童书阅读与漂流信息展示</text>
+  </view>
+
+  <view class="card features">
+    <view class="feature-item">浏览童书漂流与书单推荐</view>
+    <view class="feature-item">查看适龄分级与图书信息</view>
+    <view class="feature-item">登录后可管理个人阅读书目</view>
+  </view>
+
+  <view class="agreement" bindtap="toggleAgree">
+    <checkbox checked="{{agreed}}" color="#2FBE77" />
+    <text>我已阅读并同意</text>
+    <text class="link" catchtap="goPrivacy">《隐私政策》</text>
+    <text>和</text>
+    <text class="link" catchtap="goTerms">《用户协议》</text>
+  </view>
+
+  <button class="btn-primary login-btn" bindtap="handleLogin" disabled="{{!agreed || loading}}" loading="{{loading}}">
+    微信一键登录
+  </button>
+</view>

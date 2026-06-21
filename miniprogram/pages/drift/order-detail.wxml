@@ -1,0 +1,22 @@
+<view class="page" wx:if="{{detail}}">
+  <view class="card row">
+    <image class="book-cover-sm" src="{{detail.order.book.cover}}" mode="aspectFill" />
+    <view class="info"><view class="title">{{detail.order.book.title}}</view><view class="badge">{{statusMap[detail.order.status]}}</view></view>
+  </view>
+  <view class="card">
+    <view>系统流转积分值：{{detail.order.coinValue}}</view>
+    <view wx:if="{{detail.order.shipDeadlineAt}}" class="muted">最晚寄出：{{detail.order.shipDeadlineAt}}</view>
+    <view wx:if="{{detail.order.autoCompleteAt}}" class="muted">预计自动完成：{{detail.order.autoCompleteAt}}</view>
+    <view wx:if="{{detail.order.expressCompany}}">{{detail.order.expressCompany}} {{detail.order.trackingNo}}</view>
+  </view>
+  <view wx:if="{{detail.order.addressSnapshot}}" class="card"><view class="label">寄送地址</view><view>{{detail.order.addressSnapshot.name}} {{detail.order.addressSnapshot.phone}}</view><view>{{detail.order.addressSnapshot.region}} {{detail.order.addressSnapshot.detail}}</view></view>
+  <view class="note-box">物流采用快递到付，平台不收取任何费用。接漂占用的公益积分在完成后记录扣除。</view>
+  <view wx:if="{{detail.fallback}}" class="note-box">当前云函数版本未提供完整详情接口，已展示基础信息；请上传最新 api 云函数后查看完整寄送地址和处理动作。</view>
+  <button wx:if="{{detail.actions.canShip && detail.order.addressSnapshot}}" class="btn-primary" bindtap="copyShippingInfo">复制收件信息</button>
+  <button wx:if="{{detail.actions.canCancel}}" class="btn-ghost" bindtap="cancel">{{detail.role === 'giver' ? '取消漂流' : '取消接漂'}}</button>
+  <button wx:if="{{detail.actions.canConfirm}}" class="btn-accent" bindtap="confirm">确认收到图书</button>
+  <button wx:if="{{detail.actions.canDispute}}" class="btn-ghost" bindtap="dispute">发起申诉</button>
+  <view wx:if="{{detail.actions.disputeRestricted}}" class="note-box">申诉功能暂时受限，请先完成当前漂流记录。</view>
+  <button wx:if="{{detail.actions.canAddToShelf}}" class="btn-primary" bindtap="addToShelf">一键加入书架</button>
+  <button wx:if="{{detail.actions.canReview}}" class="btn-ghost" bindtap="review">去评价</button>
+</view>

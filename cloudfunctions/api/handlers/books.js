@@ -1,0 +1,98 @@
+const { ok, fail } = require('../lib/utils');
+const { db, _, formatBook, getBookById, requireUser } = require('../lib/db');
+const { normalizeIsbn, isValidIsbn } = require('../lib/bookCatalog');
+const { resolveByIsbn, searchBooks } = require('../lib/bookLookup');
+
+const SCAN_LOOKUP_LIMIT = 300;
+
+async function formatBookWithPrice(book) {
+  const list = await formatBooksWithPrices([book]);
+  return list[0];
+}
+
+async function formatBooksWithPrices(books = []) {
+  const formatted = books.map(formatBook);
+  const isbns = formatted.filter((book) => !book.listPrice && book.isbn).map((book) => book.isbn);
+  if (!isbns.length) return formatted;
+  const { data: prices } = await db.collection('pricing_cache').where({ isbn: db.command.in(isbns) }).get();
+  const priceMap = {};
+  prices.forEach((item) => { priceMap[item.isbn] = item; });
+  return formatted.map((book) => {
+    if (book.listPrice) return book;
+    const cached = priceMap[book.isbn];
+    if (!cached || !cached.medianPrice) return book;
+    return { ...book, listPrice: `¥${cached.medianPrice}`, listPriceSource: 'pricing_cache' };
+  });
+}
+
+async function enforceScanLookupLimit(openid, source) {
+  if (source !== 'scan') return null;
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '请先登录后扫码录入');
+  const used = Number(user.scanLookupCount) || 0;
+  if (used >= SCAN_LOOKUP_LIMIT) {
+    return fail(429, '扫码次数已达上限，请使用手动添加');
+  }
+  await db.collection('users').doc(user._id).update({
+    data: {
+      scanLookupCount: _.inc(1),
+      scanLookupLastAt: new Date().toISOString(),
+    },
+  });
+  return null;
+}
+
+async function byIsbn(data, openid = '') {
+  const payload = typeof data === 'object' && data !== null ? data : { isbn: data };
+  const clean = normalizeIsbn(payload.isbn);
+  if (!isValidIsbn(clean)) return fail(400, 'ISBN 无效');
+  const limitError = await enforceScanLookupLimit(openid, payload.source);
+  if (limitError) return limitError;
+
+  const book = await resolveByIsbn(db, clean);
+  if (!book || book.lookupStatus === 'manual_needed') {
+    return fail(404, '未识别该 ISBN，可手动补录', book || { isbn: clean, lookupStatus: 'manual_needed' });
+  }
+  return ok(await formatBookWithPrice(book));
+}
+
+async function search(data) {
+  const keyword = (data.keyword || '').trim();
+  const page = Number(data.page) || 1;
+  const size = Number(data.size) || 20;
+  if (!keyword) return ok({ list: [], total: 0, page, size });
+
+  const isbnLike = normalizeIsbn(keyword);
+  if (isbnLike.length >= 10 && isbnLike.length <= 13) {
+    const isbnRes = await byIsbn({ isbn: isbnLike });
+    if (isbnRes.code === 0) {
+      return ok({ list: [isbnRes.data], total: 1, page, size });
+    }
+  }
+
+  const merged = await searchBooks(db, keyword, size);
+  const pageItems = merged.slice((page - 1) * size, page * size);
+  const list = await formatBooksWithPrices(pageItems);
+  return ok({ list, total: merged.length, page, size });
+}
+
+async function detail(data) {
+  if (!data.id) return fail(400, '缺少 bookId');
+  const book = await getBookById(data.id);
+  if (!book) return fail(404, '图书不存在');
+  return ok(await formatBookWithPrice(book));
+}
+
+async function updateCover(data) {
+  const isbn = normalizeIsbn(data.isbn);
+  const cover = data.cover || '';
+  if (!isbn || !cover.startsWith('cloud://')) return fail(400, '参数无效');
+
+  const { data: rows } = await db.collection('books').where({ isbn }).limit(1).get();
+  if (!rows.length) return fail(404, '图书不存在');
+
+  await db.collection('books').doc(rows[0]._id).update({ data: { cover } });
+  return ok({ isbn, cover });
+}
+
+module.exports = { byIsbn, search, detail, updateCover };

@@ -1,0 +1,4 @@
+.page { padding: 24rpx; }
+.order-card .row { display: flex; gap: 16rpx; margin-top: 12rpx; }
+.btn-accent.small, .btn-ghost.small { margin-top: 16rpx; padding: 14rpx; font-size: 26rpx; }
+.logistics { margin-top: 12rpx; font-size: 24rpx; color: #2FBE77; }

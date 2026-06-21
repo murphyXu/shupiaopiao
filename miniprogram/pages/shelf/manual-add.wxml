@@ -1,0 +1,54 @@
+<view class="page">
+  <view class="card intro-card">
+    <view class="title">手动添加一本书</view>
+    <view class="muted">只需要书名和作者即可入库；ISBN、出版社、定价可以后续再补。</view>
+  </view>
+
+  <view class="card form-card">
+    <view class="label">书名 *</view>
+    <input class="form-control" placeholder="如：三国演义" value="{{title}}" bindinput="onTitle" focus="{{!title}}" />
+
+    <view class="label">作者 *</view>
+    <input class="form-control" placeholder="如：罗贯中" value="{{author}}" bindinput="onAuthor" />
+
+    <view class="label">ISBN（选填）</view>
+    <input class="form-control" type="text" placeholder="扫码失败时可先空着" value="{{isbn}}" bindinput="onIsbn" />
+
+    <view class="row-fields">
+      <view class="field">
+        <view class="label">出版社（选填）</view>
+        <input class="form-control" placeholder="可选" value="{{publisher}}" bindinput="onPublisher" />
+      </view>
+      <view class="field">
+        <view class="label">出版年</view>
+        <input class="form-control" placeholder="如：2020" value="{{pubDate}}" bindinput="onPubDate" />
+      </view>
+    </view>
+
+    <view class="label">定价（选填）</view>
+    <input class="form-control" placeholder="如：59.00" value="{{listPrice}}" bindinput="onListPrice" />
+  </view>
+
+  <view class="card">
+    <view class="label">阅读状态</view>
+    <view class="chips">
+      <view wx:for="{{categories}}" wx:key="key" class="chip {{category === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectCategory">{{item.label}}</view>
+    </view>
+
+    <view class="label">书籍分类</view>
+    <view class="chips">
+      <view wx:for="{{bookClasses}}" wx:key="key" class="chip {{bookClass === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectBookClass">{{item.label}}</view>
+    </view>
+
+    <view class="label">书架位置</view>
+    <view class="chips">
+      <view wx:for="{{shelfLocations}}" wx:key="key" class="chip {{shelfLocationKey === item.key ? 'active' : ''}}" data-key="{{item.key}}" data-label="{{item.label}}" bindtap="selectShelfLocation">{{item.label}}</view>
+    </view>
+    <view class="custom-location">
+      <input class="form-control" placeholder="自定义位置，如：客厅左侧书架" value="{{customLocationName}}" bindinput="onCustomLocation" />
+      <view class="mini-btn" bindtap="useCustomLocation">使用</view>
+    </view>
+  </view>
+
+  <view class="btn-primary save-btn {{saving ? 'disabled' : ''}}" bindtap="save">{{saving ? '保存中...' : '保存并加入书架'}}</view>
+</view>

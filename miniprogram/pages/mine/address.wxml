@@ -1,0 +1,15 @@
+<view class="page">
+  <view wx:for="{{list}}" wx:key="id" class="card addr-item" data-id="{{item.id}}" bindtap="onSelect">
+    <view class="row-top">
+      <text class="name">{{item.name}} {{item.phone}}</text>
+      <text wx:if="{{item.isDefault}}" class="badge">默认</text>
+    </view>
+    <view class="muted">{{item.region}} {{item.detail}}</view>
+    <view class="actions" wx:if="{{!selectMode}}">
+      <text data-id="{{item.id}}" catchtap="edit">编辑</text>
+      <text data-id="{{item.id}}" catchtap="remove">删除</text>
+    </view>
+  </view>
+  <view wx:if="{{!list.length}}" class="empty">暂无地址</view>
+  <view class="btn-primary add-btn" bindtap="add">新增地址</view>
+</view>

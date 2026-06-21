@@ -1,0 +1,21 @@
+<view class="page">
+  <view wx:for="{{orders}}" wx:key="id" class="card order-card">
+    <view class="header">
+      <text class="badge status">{{statusMap[item.status]}}</text>
+    </view>
+    <view class="row">
+      <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
+      <view class="info">
+        <view class="title">{{item.book.title}}</view>
+        <view class="muted">赠书方：{{item.giverNickname}}</view>
+        <view wx:if="{{item.conditionIssueLabels && item.conditionIssueLabels.length}}" class="muted">品相：{{item.conditionLabel}} · {{item.conditionIssueText}}</view>
+        <view wx:else class="muted">品相：{{item.conditionLabel}}</view>
+      </view>
+    </view>
+    <view wx:if="{{item.trackingNo}}" class="logistics" data-no="{{item.trackingNo}}" data-company="{{item.expressCompany}}" bindtap="viewLogistics">查看物流 ›</view>
+    <view wx:if="{{item.status === 'SHIPPED'}}" class="btn-accent small" data-id="{{item.id}}" bindtap="confirm">确认收货</view>
+    <view wx:if="{{item.status === 'DONE'}}" class="btn-ghost small" data-id="{{item.id}}" bindtap="review">去评价</view>
+    <view class="btn-ghost small" data-id="{{item.id}}" bindtap="viewDetail">查看详情</view>
+  </view>
+  <view wx:if="{{!orders.length}}" class="empty">暂无领取记录</view>
+</view>

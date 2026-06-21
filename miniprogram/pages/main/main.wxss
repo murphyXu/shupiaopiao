@@ -1,0 +1,12 @@
+.main-entry {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f8f5;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #9aa8a0;
+}

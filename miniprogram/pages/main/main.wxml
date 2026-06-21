@@ -1,0 +1,3 @@
+<view class="main-entry">
+  <text class="loading-text">加载中…</text>
+</view>

@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="书漂漂 Logo">
+  <!-- 书漂漂 Logo (方案2D)：翻开的书页坐落在一条圆弧水线上，书与漂流融为整体 -->
+  <!-- viewBox 100→512 等比放大：坐标×5.12 -->
+  <path d="M256 174 Q195 133 154 154 L154 287 Q200 266 256 307"
+        stroke="#159E63" stroke-width="33" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M256 174 Q317 133 358 154 L358 287 Q312 266 256 307"
+        stroke="#34C77B" stroke-width="33" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M123 328 Q256 440 389 328"
+        stroke="#2FBE77" stroke-width="36" stroke-linecap="round" fill="none"/>
+</svg>

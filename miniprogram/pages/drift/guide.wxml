@@ -1,0 +1,59 @@
+<view class="page guide-page">
+  <view class="hero-card">
+    <view class="eyebrow">书漂漂 · 漂流玩法</view>
+    <view class="hero-title">让一本书，去遇见下一个人</view>
+    <view class="hero-desc">读完的书，不必停在书架上。把它送上漂流，它会带着你的阅读痕迹，抵达另一个需要它的人。</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">一次温柔的传递</view>
+    <view class="steps">
+      <view class="step-card">
+        <view class="step-num">01</view>
+        <view class="step-content">
+          <view class="step-title">把书放入漂流池</view>
+          <view class="step-desc">选一本愿意分享的书，让它从你的书架出发。</view>
+        </view>
+      </view>
+      <view class="step-card">
+        <view class="step-num">02</view>
+        <view class="step-content">
+          <view class="step-title">等待有缘人申请接漂</view>
+          <view class="step-desc">也许是正在寻找它的孩子，也许是刚好需要它的大人。</view>
+        </view>
+      </view>
+      <view class="step-card">
+        <view class="step-num">03</view>
+        <view class="step-content">
+          <view class="step-title">寄出后完成一次温柔传递</view>
+          <view class="step-desc">书继续被阅读，你的分享也被认真接住。</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="value-grid">
+    <view class="value-card">
+      <view class="value-title">给接漂的人</view>
+      <view class="value-desc">少一点负担，多一本好书。一本合适的书，可能刚好打开一段新的好奇心。</view>
+    </view>
+    <view class="value-card">
+      <view class="value-title">给赠书的人</view>
+      <view class="value-desc">让闲置变成被需要，让分享被看见。书被再次翻开，也是一种很具体的快乐。</view>
+    </view>
+  </view>
+
+  <view class="card rule-card">
+    <view class="section-title">几条简单约定</view>
+    <view class="rule-item">接漂时会先占用公益积分，完成前不会直接结算。</view>
+    <view class="rule-item">还未寄出前，发货前可取消，让书回到可漂流状态。</view>
+    <view class="rule-item">对方确认收书或到期自动完成后，公益积分完成后结算。</view>
+  </view>
+
+  <view class="closing-card">
+    <view class="closing-title">把一本书送出去，也把一份善意留在路上。</view>
+    <view class="closing-desc">如果书架上有一本已经读完的书，可以让它去见见新的读者。</view>
+  </view>
+
+  <view class="btn-primary guide-cta" bindtap="goPool">去看看正在漂流的书</view>
+</view>

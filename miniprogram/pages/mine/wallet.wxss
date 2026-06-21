@@ -1,0 +1,32 @@
+.balance-card {
+  margin-bottom: 32rpx;
+}
+
+.tx-item .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.desc {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #15211B;
+}
+
+.amount.plus {
+  color: #0C7A4B;
+  font-weight: 700;
+  font-size: 30rpx;
+}
+
+.amount.minus {
+  color: #ff4d4f;
+  font-weight: 700;
+  font-size: 30rpx;
+}
+
+.time {
+  font-size: 22rpx;
+  margin-top: 6rpx;
+}

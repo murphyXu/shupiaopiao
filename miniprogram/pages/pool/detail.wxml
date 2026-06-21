@@ -1,0 +1,33 @@
+<view class="page" wx:if="{{item}}">
+  <view class="shot-frame">
+    <image src="{{item.book.cover}}" mode="aspectFit" class="slide-img" />
+  </view>
+
+  <view class="card">
+    <view class="title">{{item.book.title}}</view>
+    <view class="muted author">{{item.book.author}}</view>
+    <view class="row-meta">
+      <text class="coin big">流转积分 {{item.coinValue}}</text>
+      <text class="pill">{{item.conditionLabel}}</text>
+    </view>
+    <view wx:if="{{item.conditionIssueLabels && item.conditionIssueLabels.length}}" class="issue-row">
+      <text wx:for="{{item.conditionIssueLabels}}" wx:key="*this" class="pill issue-pill">{{item}}</text>
+    </view>
+    <view class="report-link" bindtap="reportItem">举报</view>
+  </view>
+
+  <view class="card giver">
+    <view class="avatar-circle sm"></view>
+    <view>
+      <view class="giver-name">{{item.giver.nickname}}</view>
+      <view class="muted">信用积分 {{item.giver.creditScore}}</view>
+    </view>
+  </view>
+
+  <view class="tip">运费采用快递到付，由接漂方与快递公司线下结算，平台不收取任何费用。</view>
+
+  <view class="fixed-actions">
+    <view class="btn-ghost want-btn {{item.wanted ? 'active' : ''}}" bindtap="toggleWant">{{item.wanted ? '已想要' : '想要接漂'}}</view>
+    <view class="btn-primary claim-btn" bindtap="goClaim">申请接漂</view>
+  </view>
+</view>

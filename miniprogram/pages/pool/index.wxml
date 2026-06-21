@@ -1,0 +1,63 @@
+<view class="page page-tab" style="padding-top: {{navPaddingTop}}px;">
+  <view class="page-header">
+    <view class="pool-title-row">
+      <view class="page-title">漂流广场</view>
+      <view class="guide-entry" bindtap="goGuide">玩法介绍</view>
+    </view>
+    <view class="pool-point-row">
+      <view class="page-sub pool-point-line">{{loggedIn ? '剩余可用公益积分 ' + stats.availableCoin : '登录后查看可用公益积分'}}</view>
+      <view class="earn-point-action" bindtap="showEarnPointGuide">获得积分</view>
+    </view>
+  </view>
+
+  <view class="stat-row">
+    <view class="stat-card" hover-class="pool-stat-card-hover" data-target="given" bindtap="goStatTarget">
+      <text class="num">{{stats.givenCount}}</text>
+      <text class="label">我赠出</text>
+    </view>
+    <view class="stat-card" hover-class="pool-stat-card-hover" data-target="received" bindtap="goStatTarget">
+      <text class="num">{{stats.receivedCount}}</text>
+      <text class="label">我接漂</text>
+    </view>
+    <view class="stat-card" hover-class="pool-stat-card-hover" data-target="want" bindtap="goStatTarget">
+      <text class="num">{{stats.wantCount}}</text>
+      <text class="label">我想漂</text>
+    </view>
+  </view>
+
+  <view class="pool-search-box">
+    <input placeholder="搜索书名 · 作者 · ISBN" value="{{keyword}}" bindinput="onInput" bindconfirm="loadList" />
+  </view>
+
+  <view class="primary-tabs">
+    <view wx:for="{{filterModes}}" wx:key="key" class="primary-tab {{activeFilterMode === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="filterMode">{{item.label}}</view>
+  </view>
+
+  <scroll-view scroll-x class="filter-scroll">
+    <view class="secondary-tabs">
+      <view wx:for="{{secondaryTabs}}" wx:key="key" class="secondary-tab {{activeFilterKey === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="filterSecondary">{{item.label}}</view>
+    </view>
+  </scroll-view>
+
+  <view id="pool-list" class="grid-2 pool-grid">
+    <view wx:for="{{list}}" wx:key="id" class="pool-card" data-id="{{item.id}}" bindtap="goDetail">
+      <view class="cover-frame">
+        <image class="book-cover" src="{{item.book.cover}}" mode="aspectFit" />
+      </view>
+      <view class="book-title">{{item.book.title}}</view>
+      <view class="row-meta">
+        <text class="coin">流转积分 {{item.coinValue}}</text>
+        <text class="pill">{{item.categoryLabel}}</text>
+      </view>
+      <view class="apply-action" data-id="{{item.id}}" catchtap="goApply">
+        申请接漂
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{!list.length}}" class="empty">漂流池暂无图书，来做第一个赠书人吧</view>
+
+  <view class="pool-publish-entry" bindtap="goPublish">
+    <text class="publish-icon">＋</text>
+    <text class="publish-text">上漂赠书</text>
+  </view>
+</view>

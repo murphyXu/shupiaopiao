@@ -1,0 +1,24 @@
+<view class="page wants-page">
+  <view class="page-header">
+    <view class="page-title">想要接漂</view>
+    <view class="page-sub">公益积分暂不足时，可以先把想接漂的书放在这里</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty">正在加载...</view>
+
+  <view wx:elif="{{list.length}}" class="grid-2 wants-grid">
+    <view wx:for="{{list}}" wx:key="id" class="pool-card" data-id="{{item.id}}" bindtap="goDetail">
+      <view class="cover-frame">
+        <image class="book-cover" src="{{item.book.cover}}" mode="aspectFit" />
+      </view>
+      <view class="book-title">{{item.book.title}}</view>
+      <view class="row-meta">
+        <text class="coin">流转积分 {{item.coinValue}}</text>
+        <text class="pill">{{item.categoryLabel}}</text>
+      </view>
+      <view class="want-action active" data-id="{{item.id}}" catchtap="toggleWant">取消想要</view>
+    </view>
+  </view>
+
+  <view wx:else class="empty">还没有想要接漂的书</view>
+</view>

@@ -1,0 +1,66 @@
+.wants-page {
+  padding-top: 24rpx;
+}
+
+.wants-grid {
+  margin-top: 8rpx;
+}
+
+.pool-card {
+  background: #fff;
+  border: 1rpx solid #eef3ef;
+  border-radius: 36rpx;
+  padding: 20rpx;
+  box-shadow: 0 12rpx 40rpx rgba(21, 158, 99, 0.06);
+}
+
+.cover-frame {
+  width: 100%;
+  height: 260rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cover-frame .book-cover {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.book-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  margin-top: 12rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12rpx;
+}
+
+.want-action {
+  margin-top: 14rpx;
+  height: 54rpx;
+  line-height: 54rpx;
+  border-radius: 28rpx;
+  text-align: center;
+  color: #159E63;
+  background: #fff;
+  border: 1rpx solid #2FBE77;
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.want-action.active {
+  color: #fff;
+  background: #2FBE77;
+}

@@ -1,0 +1,5 @@
+.page { padding: 24rpx; }
+.row { display: flex; gap: 20rpx; align-items: center; }
+.address-card { min-height: 100rpx; }
+.wx-address-btn { margin: -8rpx 0 24rpx; }
+.balance { display: flex; justify-content: space-between; align-items: center; }

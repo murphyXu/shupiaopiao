@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="card stat-card">
+    <view class="big-num">{{dashboard.totalBooks}}</view>
+    <view class="muted">藏书总量</view>
+  </view>
+  <view class="card stat-card">
+    <view class="big-num">{{dashboard.monthNew}}</view>
+    <view class="muted">本月新增</view>
+  </view>
+  <view class="card stat-card">
+    <view class="big-num">{{dashboard.totalValue}}</view>
+    <view class="muted">定价合计（元）</view>
+  </view>
+  <view class="card stat-card">
+    <view class="big-num">{{dashboard.remainingCapacity}}</view>
+    <view class="muted">剩余可收藏 / 上限 {{dashboard.shelfLimit}}</view>
+  </view>
+  <view class="note-box">定价合计按图书基础信息里的定价字段加总；缺失定价的书不计入。</view>
+</view>

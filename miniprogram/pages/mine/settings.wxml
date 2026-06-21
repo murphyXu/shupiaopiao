@@ -1,0 +1,24 @@
+<view class="page">
+  <view class="card section">
+    <view class="section-title">关于书漂漂</view>
+    <view class="muted">版本 1.0.0 MVP</view>
+    <view class="desc">书漂漂 = 你的个人纸质书管家 + 闲置书循环社区。公益积分仅用于站内公益借阅流转，不具备现金属性。</view>
+  </view>
+
+  <view class="card section">
+    <view class="section-title">用户协议</view>
+    <view class="desc">1. 图书漂流以免费赠送、公益循环为目的，平台不介入资金交易。\n2. 运费采用快递到付，由接漂方与快递公司线下结算。\n3. 上漂需通过系统自动检测，不得提交虚假信息。\n4. 违约、弃件将影响信用积分并限制接漂。</view>
+  </view>
+
+  <view class="card section">
+    <view class="section-title">积分规则</view>
+    <view class="desc">公益积分用于站内图书漂流流转，不具备现金属性，不可提现、转让或交易。\n\n获得公益积分：首次有效上漂可获得上漂奖励，每位用户仅奖励一次；邀请书友完成有效书籍录入或参与漂流活动后，邀请人可获得 2 公益积分，累计最高 10 公益积分；完成赠书等共建行为也可能获得页面提示的公益积分奖励。\n\n使用公益积分：申请接漂时会先占用相应公益积分，完成收货后再记录扣除；取消漂流后会退回已获得的上漂奖励。\n\n信用积分用于记录漂流履约情况。按时寄出、确认收货、完成漂流有助于保持良好信用；无故取消、超时未寄、弃件或经核实违约会影响信用积分，并可能限制后续接漂。\n\n已接漂未收货达到上限时，需要先完成在途漂流，再申请新的漂流图书。</view>
+  </view>
+
+  <view class="card section">
+    <view class="section-title">隐私政策</view>
+    <view class="desc">我们仅收集微信登录信息、昵称头像、收货地址等必要信息。收货地址仅用于领取漂流图书、接漂图书寄送、到付物流沟通和漂流履约，不会展示给无关用户或第三方。</view>
+  </view>
+
+  <view class="btn-ghost" bindtap="logout">退出登录</view>
+</view>

@@ -1,0 +1,65 @@
+<view class="page" wx:if="{{item}}">
+  <view class="cover-card">
+    <view class="cover-frame">
+      <image class="cover" src="{{item.book.cover}}" mode="aspectFit" binderror="onCoverError" data-single="item.book" data-isbn="{{item.book.isbn}}" />
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="title">{{item.book.title}}</view>
+    <view class="muted author">{{item.book.author}}</view>
+    <view wx:if="{{item.book.versionLabel}}" class="version-tip">{{item.book.versionLabel}}</view>
+    <view class="summary">{{item.book.summary || '暂无简介'}}</view>
+  </view>
+
+  <view class="card info-card">
+    <view class="section-title">基础信息</view>
+    <view class="info-grid">
+      <view class="info-row"><text>ISBN</text><text>{{item.book.isbn || '未记录'}}</text></view>
+      <view class="info-row"><text>出版社</text><text>{{item.book.publisher || '未记录'}}</text></view>
+      <view class="info-row"><text>出版时间</text><text>{{item.book.pubDate || '未记录'}}</text></view>
+      <view class="info-row"><text>定价</text><text>{{item.book.listPrice || '未记录'}}</text></view>
+      <view class="info-row"><text>图书分类</text><text>{{item.displayCategory || item.book.category || item.bookClassLabel}}</text></view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">书架信息</view>
+    <view class="current-meta">
+      <text>{{item.readingStatusLabel}}</text>
+      <text>{{item.displayCategory || item.sourceCategory || item.book.category || item.bookClassLabel}}</text>
+      <text>{{item.shelfLocationName}}</text>
+    </view>
+
+    <view class="label">阅读状态</view>
+    <view class="chips">
+      <view wx:for="{{categories}}" wx:for-item="cat" wx:key="key" class="chip {{item.readingStatus === cat.key ? 'active' : ''}}" data-key="{{cat.key}}" bindtap="changeReadingStatus">{{cat.label}}</view>
+    </view>
+
+    <view class="label">书籍分类</view>
+    <view class="chips">
+      <view wx:for="{{bookClasses}}" wx:for-item="bookClass" wx:key="key" class="chip {{item.bookClass === bookClass.key ? 'active' : ''}}" data-key="{{bookClass.key}}" bindtap="changeBookClass">{{bookClass.label}}</view>
+    </view>
+
+    <view class="label">书架位置</view>
+    <view class="chips">
+      <view wx:for="{{shelfLocations}}" wx:for-item="location" wx:key="key" class="chip {{item.shelfLocationKey === location.key ? 'active' : ''}}" data-key="{{location.key}}" data-label="{{location.label}}" bindtap="changeLocation">{{location.label}}</view>
+    </view>
+    <view class="custom-location">
+      <input placeholder="自定义位置，如：客厅左侧书架" value="{{customLocationName}}" bindinput="onCustomLocation" />
+      <view class="mini-btn" bindtap="saveCustomLocation">保存</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">评分</view>
+    <view class="stars">
+      <text wx:for="{{stars}}" wx:for-item="star" wx:key="*this" class="star {{item.rating >= star ? 'on' : ''}}" data-rating="{{star}}" bindtap="setRating">★</text>
+    </view>
+  </view>
+
+  <view wx:if="{{item.activeDrift}}" class="btn-primary action-btn drift-status-btn">{{item.activeDrift.status === 'IN_POOL' ? '待领取' : item.activeDrift.statusLabel}}</view>
+  <view wx:else class="btn-primary action-btn" bindtap="goPublish">发起漂流</view>
+  <view wx:if="{{item.activeDrift && item.activeDrift.canCancel}}" class="btn-ghost action-btn" bindtap="cancelOpenDrift">取消漂流</view>
+  <view class="btn-ghost action-btn" bindtap="removeBook">从书架移除</view>
+</view>

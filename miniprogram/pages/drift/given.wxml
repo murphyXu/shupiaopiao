@@ -1,0 +1,32 @@
+<view class="page">
+  <view wx:if="{{pendingShipCount}}" class="reminder-card">
+    <view class="reminder-title">有 {{pendingShipCount}} 本书已被领取</view>
+    <view class="reminder-sub">请确认漂流出去并及时寄出，录入快递单号后领取方可查看进展。</view>
+  </view>
+
+  <view wx:for="{{orders}}" wx:key="id" class="card order-card">
+    <view class="header">
+      <text class="badge status">{{statusMap[item.status]}}</text>
+    </view>
+    <view class="row">
+      <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
+      <view class="info">
+        <view class="title">{{item.book.title}}</view>
+        <view wx:if="{{item.receiverNickname}}" class="muted">领书方：{{item.receiverNickname}}</view>
+        <view wx:else class="muted">{{statusMap[item.status] || item.status}}</view>
+        <view wx:if="{{item.conditionIssueLabels && item.conditionIssueLabels.length}}" class="muted">品相：{{item.conditionLabel}} · {{item.conditionIssueText}}</view>
+        <view wx:else class="muted">品相：{{item.conditionLabel}}</view>
+      </view>
+    </view>
+    <view class="progress-box">
+      <view class="progress-text">{{item.progressText}}</view>
+      <view wx:if="{{item.progressHint}}" class="progress-hint">{{item.progressHint}}</view>
+    </view>
+    <view wx:if="{{item.status === 'PENDING_SHIP'}}" class="order-action primary" data-id="{{item.id}}" bindtap="ship">录入快递单号（到付件）</view>
+    <view wx:if="{{item.receiverId}}" class="order-action secondary" data-id="{{item.id}}" bindtap="copyShippingInfo">查看寄送信息</view>
+    <view wx:if="{{item.status === 'PENDING_SHIP' && item.receiverId}}" class="order-action danger" data-id="{{item.id}}" bindtap="cancel">取消漂流</view>
+    <view wx:if="{{item.canCancelOpen}}" class="order-action danger" data-drift-id="{{item.driftId}}" bindtap="cancelOpenDrift">取消漂流</view>
+    <view wx:if="{{item.trackingNo}}" class="logistics" data-no="{{item.trackingNo}}" data-company="{{item.expressCompany}}" bindtap="viewLogistics">物流：{{item.expressCompany}} {{item.trackingNo}} ›</view>
+  </view>
+  <view wx:if="{{!orders.length}}" class="empty">暂无赠出记录</view>
+</view>

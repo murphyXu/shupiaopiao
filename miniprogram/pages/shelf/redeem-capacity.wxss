@@ -1,0 +1,76 @@
+.quota-card {
+  margin-top: 24rpx;
+}
+
+.quota-title {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #15211B;
+}
+
+.quota-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+  margin-top: 28rpx;
+}
+
+.quota-grid > view {
+  background: #EAFBF2;
+  border-radius: 24rpx;
+  padding: 20rpx 10rpx;
+  text-align: center;
+}
+
+.quota-num {
+  font-size: 38rpx;
+  font-weight: 800;
+  color: #0C7A4B;
+}
+
+.label {
+  font-size: 26rpx;
+  color: #7b8a82;
+  margin-bottom: 12rpx;
+  font-weight: 700;
+}
+
+.count-input-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  border: 1rpx solid #dbe7df;
+  border-radius: 24rpx;
+  padding: 0 22rpx;
+  height: 88rpx;
+  box-sizing: border-box;
+}
+
+.count-input-row input {
+  flex: 1;
+  height: 88rpx;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #15211B;
+}
+
+.quick-row {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 18rpx;
+}
+
+.quick-chip {
+  padding: 10rpx 24rpx;
+  border-radius: 22rpx;
+  background: #EAFBF2;
+  color: #0C7A4B;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.cost-line {
+  margin-top: 18rpx;
+  font-size: 24rpx;
+  color: #46564e;
+}

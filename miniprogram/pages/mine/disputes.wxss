@@ -1,0 +1,32 @@
+button{margin:16rpx 12rpx 0 0}
+
+.dispute-card { display: flex; flex-direction: column; gap: 14rpx; }
+.dispute-order { color: #46564e; font-size: 26rpx; }
+.dispute-reason { font-size: 30rpx; color: #15211B; }
+
+.evidence { margin-top: 8rpx; }
+.evidence image { width: 180rpx; height: 180rpx; border-radius: 12rpx; margin-right: 12rpx; object-fit: cover; }
+
+textarea {
+  width: 100%;
+  min-height: 140rpx;
+  margin-top: 12rpx;
+  padding: 16rpx;
+  box-sizing: border-box;
+  background: #F7FAF8;
+  border-radius: 16rpx;
+  color: #15211B;
+}
+
+.history-card {
+  margin-top: 24rpx;
+}
+
+.history-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #EEF2EF;
+}
+
+.history-item:last-child {
+  border-bottom: 0;
+}

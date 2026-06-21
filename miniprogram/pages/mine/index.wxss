@@ -1,0 +1,193 @@
+.card-flat {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0 0 24rpx;
+  margin-bottom: 8rpx;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.user-row .avatar-circle {
+  width: 104rpx;
+  height: 104rpx;
+}
+
+.user-avatar {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name-line {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.name {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #15211B;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-profile {
+  flex-shrink: 0;
+  color: #0C7A4B;
+  background: #EAFBF2;
+  border-radius: 18rpx;
+  padding: 6rpx 14rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.sub {
+  font-size: 24rpx;
+  margin-top: 6rpx;
+}
+
+.mine-stat-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18rpx;
+  margin-bottom: 28rpx;
+}
+
+.mine-stat-card {
+  min-width: 0;
+  border: 0;
+  border-radius: 30rpx;
+  padding: 36rpx 20rpx;
+  background: #EAFBF2;
+  color: #0C7A4B;
+  text-align: center;
+  line-height: 1.35;
+  box-shadow: 0 10rpx 28rpx rgba(21, 158, 99, 0.08);
+  box-sizing: border-box;
+}
+
+.mine-stat-card::after {
+  border: none;
+}
+
+.mine-stat-card-hover {
+  opacity: 0.86;
+  transform: scale(0.98);
+}
+
+.stat-num {
+  font-size: 52rpx;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.5rpx;
+}
+
+.stat-label {
+  margin-top: 10rpx;
+  color: #159E63;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.stat-tip {
+  margin-top: 6rpx;
+  color: #7b8a82;
+  font-size: 19rpx;
+}
+
+.menu-sub {
+  margin-top: 8rpx;
+  color: #7b8a82;
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.invite-block {
+  margin-top: 24rpx;
+  padding: 28rpx 28rpx;
+}
+
+.invite-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.invite-title {
+  color: #15211B;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.invite-share-btn {
+  flex-shrink: 0;
+  margin: 0;
+  height: 56rpx;
+  line-height: 56rpx;
+  padding: 0 30rpx;
+  border-radius: 28rpx;
+  background: #2FBE77;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.invite-share-btn::after {
+  border: none;
+}
+
+.invite-desc {
+  margin-top: 16rpx;
+  color: #7b8a82;
+  font-size: 23rpx;
+  line-height: 1.6;
+}
+
+.guest-card {
+  text-align: center;
+  padding: 48rpx 0 24rpx;
+}
+
+.guest-card .brand-logo {
+  width: 120rpx;
+  height: 120rpx;
+  margin: 0 auto 24rpx;
+}
+
+.guest-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #15211B;
+}
+
+.guest-desc {
+  font-size: 26rpx;
+  color: #9aa8a0;
+  line-height: 1.6;
+  margin: 16rpx 32rpx 40rpx;
+}
+
+.guest-btn {
+  margin: 0 32rpx;
+}
+
+.guest-link {
+  margin-top: 32rpx;
+  padding: 24rpx 0;
+  font-size: 28rpx;
+  color: #46564e;
+}

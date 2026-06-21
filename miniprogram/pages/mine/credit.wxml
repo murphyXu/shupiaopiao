@@ -1,0 +1,14 @@
+<view class="page">
+  <view class="score-card card">
+    <view class="num">{{score}}</view>
+    <view class="muted">当前信用积分</view>
+  </view>
+
+  <view wx:for="{{logs}}" wx:key="id" class="card log-item">
+    <view class="row">
+      <view>{{item.reason}}</view>
+      <view class="delta {{item.delta > 0 ? 'plus' : 'minus'}}">{{item.delta > 0 ? '+' : ''}}{{item.delta}}</view>
+    </view>
+    <view class="muted time">{{item.createdAt}}</view>
+  </view>
+</view>

@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="书漂漂 App Icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34C77B"/>
+      <stop offset="1" stop-color="#159E63"/>
+    </linearGradient>
+  </defs>
+  <!-- iOS 圆角方底 + 白色 2D logo -->
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <path d="M256 179 Q195 138 154 159 L154 287 Q200 266 256 307"
+        stroke="#FFFFFF" stroke-width="31" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M256 179 Q317 138 358 159 L358 287 Q312 266 256 307"
+        stroke="#D9F8E7" stroke-width="31" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M128 333 Q256 435 384 333"
+        stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" fill="none"/>
+</svg>

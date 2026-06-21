@@ -1,0 +1,63 @@
+.page { padding: 24rpx; }
+.result .row { display: flex; gap: 20rpx; margin-bottom: 20rpx; }
+.result .book-cover-sm { background: transparent; }
+.info { flex: 1; }
+.title { font-size: 30rpx; font-weight: 600; }
+.chips { margin: 16rpx 0; }
+.meta-grid {
+  border-top: 1rpx solid #eef3ef;
+  border-bottom: 1rpx solid #eef3ef;
+  padding: 16rpx 0;
+  margin: 8rpx 0 20rpx;
+}
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+}
+.meta-row text:first-child { color: #7b8a82; flex-shrink: 0; }
+.meta-row text:last-child { color: #15211B; text-align: right; }
+.status-card { text-align: center; }
+.status-card .btn-primary { margin-top: 24rpx; }
+.status-card .btn-ghost { margin-top: 16rpx; }
+.continuous-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  background: #f6fbf8;
+  border-radius: 28rpx;
+  padding: 20rpx 24rpx;
+  margin: 8rpx 0 24rpx;
+}
+.switch-dot {
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  border: 4rpx solid #c9d8d0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.switch-dot.active {
+  border-color: #2FBE77;
+  background: #2FBE77;
+  box-shadow: inset 0 0 0 8rpx #fff;
+}
+.continuous-title {
+  font-size: 28rpx;
+  color: #15211B;
+  font-weight: 700;
+}
+.batch-message {
+  margin: -8rpx 0 20rpx;
+  color: #0C7A4B;
+  background: #EAFBF2;
+  border-radius: 22rpx;
+  padding: 12rpx 18rpx;
+  font-size: 24rpx;
+}
+.added-btn {
+  background: #9aa8a0;
+  box-shadow: none;
+}

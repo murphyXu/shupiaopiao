@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="search-bar card">
+    <input placeholder="搜书名 / 作者 / ISBN" value="{{keyword}}" bindinput="onInput" bindconfirm="doSearch" />
+    <view class="btn-primary search-btn" bindtap="doSearch">搜索</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="card loading-card">
+    <view class="loading-title">正在翻找书页</view>
+    <view class="quote">“{{loadingQuote}}”</view>
+    <view class="muted">先查你的离线书库，未命中时补充可用版本。</view>
+  </view>
+
+  <view wx:if="{{books.length && !loading}}" class="result-head">
+    <view>找到 {{books.length}} 个版本</view>
+    <view class="muted">请选择与你手上最接近的一本</view>
+  </view>
+
+  <view wx:if="{{books.length}}" class="search-grid">
+    <view wx:for="{{books}}" wx:key="id" class="card result-item" data-book="{{item}}" bindtap="selectBook">
+      <image class="book-cover-sm" src="{{item.cover}}" mode="aspectFit" binderror="onCoverError" data-index="{{index}}" data-list-key="books" data-isbn="{{item.isbn}}" />
+      <view class="info">
+        <view class="title">{{item.title}}</view>
+        <view class="muted author">{{item.author}}</view>
+        <view wx:if="{{item.versionLabel}}" class="version-tip">{{item.versionLabel}}</view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{searched && !books.length && !loading}}" class="empty">
+    <view class="empty-title">暂时没找到匹配版本</view>
+    <view class="empty-desc">可以先手动添加，后续扫码或搜索到同 ISBN 时会复用离线书库。</view>
+    <view class="btn-ghost manual-btn" bindtap="manualAdd">手动添加《{{keyword}}》</view>
+  </view>
+</view>

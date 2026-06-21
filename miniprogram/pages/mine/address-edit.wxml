@@ -1,0 +1,22 @@
+<view class="page">
+  <view class="card">
+    <view class="label">收货人</view>
+    <input placeholder="姓名" value="{{name}}" bindinput="onName" />
+  </view>
+  <view class="card">
+    <view class="label">手机号</view>
+    <input type="number" placeholder="手机号" value="{{phone}}" bindinput="onPhone" />
+  </view>
+  <view class="card">
+    <view class="label">省市区</view>
+    <input placeholder="如：上海市浦东新区" value="{{region}}" bindinput="onRegion" />
+  </view>
+  <view class="card">
+    <view class="label">详细地址</view>
+    <textarea placeholder="街道门牌号" value="{{detail}}" bindinput="onDetail" />
+  </view>
+  <view class="card">
+    <switch checked="{{isDefault}}" bindchange="onDefault" color="#2FBE77" /> 设为默认地址
+  </view>
+  <view class="btn-primary" bindtap="save">保存</view>
+</view>

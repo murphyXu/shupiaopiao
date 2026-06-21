@@ -1,0 +1,77 @@
+{
+  "pages": [
+    "pages/pool/index",
+    "pages/shelf/index",
+    "pages/mine/index",
+    "pages/main/main",
+    "pages/booklist/index",
+    "pages/auth/login",
+    "pages/auth/profile",
+    "pages/shelf/scan",
+    "pages/shelf/search",
+    "pages/shelf/manual-add",
+    "pages/shelf/dashboard",
+    "pages/shelf/redeem-capacity",
+    "pages/book/detail",
+    "pages/book/catalog",
+    "pages/drift/publish",
+    "pages/drift/check-result",
+    "pages/drift/guide",
+    "pages/pool/detail",
+    "pages/pool/wants",
+    "pages/drift/claim",
+    "pages/drift/given",
+    "pages/drift/received",
+    "pages/drift/review",
+    "pages/drift/order-detail",
+    "pages/drift/ship",
+    "pages/drift/dispute",
+    "pages/booklist/detail",
+    "pages/mine/wallet",
+    "pages/mine/address",
+    "pages/mine/address-edit",
+    "pages/mine/credit",
+    "pages/mine/logistics",
+    "pages/mine/disputes",
+    "pages/mine/settings"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "书漂漂",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f4f8f5",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#b3c0b8",
+    "selectedColor": "#2FBE77",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/pool/index",
+        "text": "漂流",
+        "iconPath": "assets/icons/pool.png",
+        "selectedIconPath": "assets/icons/pool-active.png"
+      },
+      {
+        "pagePath": "pages/shelf/index",
+        "text": "书架",
+        "iconPath": "assets/icons/shelf.png",
+        "selectedIconPath": "assets/icons/shelf-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "assets/icons/mine.png",
+        "selectedIconPath": "assets/icons/mine-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "requiredPrivateInfos": [
+    "chooseAddress"
+  ],
+  "style": "v2"
+}

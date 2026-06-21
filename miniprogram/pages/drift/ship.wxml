@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="card">
+    <view class="label">承运商</view>
+    <picker range="{{expressCompanies}}" value="{{expressIndex}}" bindchange="selectExpress">
+      <view class="picker-line">{{expressCompanies[expressIndex]}} ›</view>
+    </picker>
+    <view class="label field-label">运单号</view>
+    <input maxlength="32" value="{{trackingNo}}" bindinput="inputTracking" placeholder="请输入运单号" />
+  </view>
+  <view class="note-box">请寄送快递到付件，平台不收取物流费用。物流状态以承运商实际查询结果为准。</view>
+  <button class="btn-primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">确认已寄出</button>
+</view>

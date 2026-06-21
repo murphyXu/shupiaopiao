@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="card">
+    <view class="title">承运商：{{expressCompany}}</view>
+    <view>运单号：{{trackingNo}}</view>
+  </view>
+  <view class="note-box">物流状态以承运商实际查询结果为准，平台仅记录用户填写的信息。</view>
+</view>

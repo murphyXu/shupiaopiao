@@ -1,0 +1,5 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "书单推荐",
+  "enablePullDownRefresh": true
+}

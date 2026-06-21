@@ -1,0 +1,21 @@
+<view class="page" wx:if="{{book}}">
+  <view class="cover-frame">
+    <image class="cover" src="{{book.cover}}" mode="aspectFit" binderror="onCoverError" data-single="book" data-isbn="{{book.isbn}}" />
+  </view>
+  <view class="card">
+    <view class="title">{{book.title}}</view>
+    <view class="muted author">{{book.author}}</view>
+    <view wx:if="{{book.category}}" class="tag">{{book.category}}</view>
+    <view wx:if="{{book.ageRange}}" class="tag mint">{{book.ageRange}} 岁</view>
+    <view class="summary">{{book.summary || '暂无简介'}}</view>
+  </view>
+  <view class="card info-card">
+    <view class="section-title">基础信息</view>
+    <view class="info-row"><text>ISBN</text><text>{{book.isbn || '未记录'}}</text></view>
+    <view class="info-row"><text>出版社</text><text>{{book.publisher || '未记录'}}</text></view>
+    <view class="info-row"><text>出版时间</text><text>{{book.pubDate || '未记录'}}</text></view>
+    <view class="info-row"><text>定价</text><text>{{book.listPrice || '未记录'}}</text></view>
+  </view>
+  <view class="btn-primary" bindtap="addWant">加入想读</view>
+  <view class="btn-ghost" bindtap="findDrift">去漂流找同款</view>
+</view>

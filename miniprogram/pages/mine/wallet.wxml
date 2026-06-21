@@ -1,0 +1,21 @@
+<view class="page">
+  <view class="hero-coin balance-card">
+    <view class="hero-label">可用公益积分</view>
+    <view class="hero-num">{{available}}</view>
+    <view class="muted">占用中 {{frozen}} · 总记录值 {{balance}}</view>
+  </view>
+
+  <view wx:for="{{transactions}}" wx:key="id" class="card tx-item">
+    <view class="row">
+      <view>
+        <view class="desc">{{item.description || item.type}}</view>
+        <view class="muted time">{{item.createdAt}}</view>
+      </view>
+      <view>
+        <view class="amount {{item.balanceDelta > 0 ? 'plus' : 'minus'}}">余额 {{item.balanceDelta > 0 ? '+' : ''}}{{item.balanceDelta}}</view>
+        <view wx:if="{{item.frozenDelta}}" class="muted">占用 {{item.frozenDelta > 0 ? '+' : ''}}{{item.frozenDelta}}</view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{!transactions.length}}" class="empty">暂无收支记录</view>
+</view>

@@ -1,0 +1,33 @@
+<view class="page" wx:if="{{item}}">
+  <view class="card row">
+    <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
+    <view class="info">
+      <view class="title">{{item.book.title}}</view>
+      <text class="badge">流转积分 {{item.coinValue}}</text>
+    </view>
+  </view>
+
+  <view class="card address-card" bindtap="selectAddress">
+    <view class="label">收货地址</view>
+    <view wx:if="{{address}}">
+      <view>{{address.name}} {{address.phone}}</view>
+      <view class="muted">{{address.region}} {{address.detail}}</view>
+    </view>
+    <view wx:else class="muted">点击选择 / 新增地址 ›</view>
+  </view>
+  <view class="btn-ghost wx-address-btn" bindtap="chooseWxAddress">读取微信地址</view>
+
+  <view class="note-box">
+    运费说明：赠书方将寄出「快递到付」件，运费由你在收件时付给快递员，平台不收取任何费用。
+  </view>
+
+  <view class="card balance">
+    <text>可用公益积分</text>
+    <text class="badge">{{available}}</text>
+    <text class="muted">占用中 {{frozen}}</text>
+  </view>
+
+  <view class="note-box">申请成功后将占用 {{item.coinValue}} 公益积分，完成接漂时才从总记录值中扣除；同时未收货最多 2 单，请先完成在途漂流。</view>
+
+  <view class="btn-accent" bindtap="confirm">确认申请</view>
+</view>

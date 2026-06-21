@@ -1,0 +1,6 @@
+.page { padding: 24rpx; }
+.title { font-size: 30rpx; font-weight: 600; }
+.timeline { margin: 30rpx 0; padding-left: 20rpx; }
+.trace-item { display: flex; gap: 20rpx; margin-bottom: 30rpx; position: relative; }
+.dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: #2FBE77; margin-top: 8rpx; flex-shrink: 0; }
+.status-text { font-weight: 600; }
