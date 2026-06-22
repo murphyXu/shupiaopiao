@@ -2,6 +2,7 @@ const { isLoggedIn, requireLogin } = require('../../utils/util');
 const safeAreaBehavior = require('../../behaviors/safe-area');
 const { setTabBarIndex } = require('../../utils/tab-bar');
 const api = require('../../utils/api');
+const { trackPageView, track } = require('../../utils/track');
 
 Page({
   behaviors: [safeAreaBehavior],
@@ -23,6 +24,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 2);
+    trackPageView('mine/index');
     const loggedIn = isLoggedIn();
     if (!loggedIn) {
       this.setData({ loggedIn: false, user: {} });
@@ -114,6 +116,7 @@ Page({
 
   onShareAppMessage() {
     const user = wx.getStorageSync('userInfo') || {};
+    track('invite_share', { from: 'mine' });
     return {
       title: '来书漂漂一起让书流动起来',
       path: `/pages/shelf/index?inviterId=${user.id || ''}`,

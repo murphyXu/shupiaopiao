@@ -417,3 +417,14 @@
   font-size: 28rpx;
   line-height: 1;
 }
+
+.guest-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.guest-empty-text {
+  display: block;
+  margin-bottom: 24rpx;
+}

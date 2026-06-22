@@ -12,15 +12,15 @@
 
   <view class="stat-row">
     <view class="stat-card" hover-class="pool-stat-card-hover" data-target="given" bindtap="goStatTarget">
-      <text class="num">{{stats.givenCount}}</text>
+      <text class="num">{{loggedIn ? stats.givenCount : '--'}}</text>
       <text class="label">我赠出</text>
     </view>
     <view class="stat-card" hover-class="pool-stat-card-hover" data-target="received" bindtap="goStatTarget">
-      <text class="num">{{stats.receivedCount}}</text>
+      <text class="num">{{loggedIn ? stats.receivedCount : '--'}}</text>
       <text class="label">我接漂</text>
     </view>
     <view class="stat-card" hover-class="pool-stat-card-hover" data-target="want" bindtap="goStatTarget">
-      <text class="num">{{stats.wantCount}}</text>
+      <text class="num">{{loggedIn ? stats.wantCount : '--'}}</text>
       <text class="label">我想漂</text>
     </view>
   </view>

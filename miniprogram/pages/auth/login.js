@@ -3,7 +3,21 @@ const safeAreaBehavior = require('../../behaviors/safe-area');
 
 Page({
   behaviors: [safeAreaBehavior],
-  data: { agreed: false, loading: false },
+  data: { agreed: false, loading: false, canGoBack: false },
+
+  onLoad() {
+    const pages = getCurrentPages();
+    this.setData({ canGoBack: pages.length > 1 });
+  },
+
+  skipLogin() {
+    const pages = getCurrentPages();
+    if (pages.length > 1) {
+      wx.navigateBack();
+      return;
+    }
+    wx.switchTab({ url: '/pages/pool/index' });
+  },
 
   toggleAgree() {
     this.setData({ agreed: !this.data.agreed });
@@ -19,7 +33,7 @@ Page({
 
   handleLogin() {
     if (!this.data.agreed) {
-      wx.showToast({ title: '请先同意协议', icon: 'none' });
+      wx.showToast({ title: '请先阅读并同意隐私政策与用户协议', icon: 'none' });
       return;
     }
     if (this.data.loading) return;

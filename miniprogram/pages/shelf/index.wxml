@@ -109,8 +109,10 @@
     <block wx:elif="{{searchKeyword}}">没找到这本在架书，换个书名、作者或 ISBN 试试</block>
     <block wx:elif="{{loggedIn}}">书架空空如也，扫码添加第一本书吧</block>
     <block wx:else>
-      <text>登录后可管理个人书架</text>
-      <view class="guest-login-btn" bindtap="goLogin">微信一键登录</view>
+      <view class="guest-empty">
+        <text class="guest-empty-text">登录后可管理个人书架</text>
+        <view class="guest-login-btn" bindtap="goLogin">微信一键登录</view>
+      </view>
     </block>
   </view>
 

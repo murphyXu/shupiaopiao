@@ -2,6 +2,7 @@
   "timeout": 20,
   "memorySize": 256,
   "triggers": [
-    { "name": "driftMaintenance", "type": "timer", "config": "0 0 * * * * *" }
+    { "name": "driftMaintenance", "type": "timer", "config": "0 0 * * * * *" },
+    { "name": "dailyMetrics", "type": "timer", "config": "0 30 0 * * * *" }
   ]
 }

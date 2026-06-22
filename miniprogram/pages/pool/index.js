@@ -4,6 +4,7 @@ const {
 } = require('../../utils/util');
 const safeAreaBehavior = require('../../behaviors/safe-area');
 const { setTabBarIndex } = require('../../utils/tab-bar');
+const { trackPageView } = require('../../utils/track');
 
 const FILTER_MODES = [
   { key: 'category', label: '按品类' },
@@ -65,6 +66,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 0);
+    trackPageView('pool/index');
     this.setData({ loggedIn: isLoggedIn() });
     const poolSearch = wx.getStorageSync('poolSearch');
     if (poolSearch) {
@@ -107,6 +109,17 @@ Page({
   },
 
   async loadStats() {
+    if (!this.data.loggedIn) {
+      this.setData({
+        stats: {
+          givenCount: 0,
+          receivedCount: 0,
+          wantCount: 0,
+          availableCoin: 0,
+        },
+      });
+      return;
+    }
     try {
       const stats = await api.getPoolStats();
       this.setData({

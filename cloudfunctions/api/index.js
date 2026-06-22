@@ -12,6 +12,9 @@ const credit = require('./handlers/credit');
 const booklist = require('./handlers/booklist');
 const logistics = require('./handlers/logistics');
 const report = require('./handlers/report');
+const analytics = require('./handlers/analytics');
+const admin = require('./handlers/admin');
+const { logApiCall } = require('./lib/analytics');
 const { ok, fail } = require('./lib/utils');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -78,6 +81,15 @@ const ROUTES = {
   'booklist.feed': (data, openid) => booklist.feed(openid, data),
   'booklist.detail': (data) => booklist.detail(data),
 
+  'analytics.track': (data, openid, ctx) => analytics.track(openid, data, ctx),
+
+  'admin.overview': (data, openid) => admin.overview(openid, data),
+  'admin.trend': (data, openid) => admin.trend(openid, data),
+  'admin.funnel': (data, openid) => admin.funnel(openid, data),
+  'admin.conclusion': (data, openid) => admin.conclusion(openid, data),
+  'admin.export': (data, openid) => admin.exportMetrics(openid, data),
+  'admin.rebuild': (data, openid) => admin.rebuild(openid, data),
+
   'health': () => ok({ service: 'shupiaopiao-cloud', version: '1.0.0' }),
   'system.initDb': async () => {
     const { ensureCollections } = require('./lib/collections');
@@ -92,7 +104,11 @@ exports.main = async (event) => {
   if (event.Type === 'Timer' && event.TriggerName === 'driftMaintenance') {
     return drift.maintainDriftOrders();
   }
-  const { action, data = {} } = event;
+  if (event.Type === 'Timer' && event.TriggerName === 'dailyMetrics') {
+    const { aggregateDaily } = require('./lib/metricsAggregator');
+    return aggregateDaily();
+  }
+  const { action, data = {}, ctx = {} } = event;
   const wxContext = cloud.getWXContext();
   const openid = wxContext.OPENID;
 
@@ -101,22 +117,38 @@ exports.main = async (event) => {
   const handler = ROUTES[action];
   if (!handler) return fail(404, `未知 action: ${action}`);
 
+  const startedAt = Date.now();
+  let result;
   try {
-    return await handler(data, openid);
+    result = await handler(data, openid, ctx);
+    return result;
   } catch (err) {
     console.error(`[api] ${action}`, err);
-    if (err.message === 'INSUFFICIENT_COINS') return fail(400, '可用公益积分不足');
-    if (err.message === 'INFLIGHT_LIMIT') return fail(400, '已有 2 单未收货，请先完成在途漂流');
-    if (err.message === 'ALREADY_CLAIMED') return fail(409, '该书已被其他书友接漂');
-    if (err.message === 'SELF_CLAIM') return fail(400, '不能接漂自己赠送的书');
-    if (err.message === 'ADDRESS_NOT_FOUND') return fail(404, '收货地址不存在');
-    if (err.message === 'ORDER_NOT_FOUND') return fail(404, '漂流记录不存在');
-    if (err.message === 'FORBIDDEN') return fail(403, '无权执行此操作');
-    if (err.message === 'INVALID_STATUS') return fail(409, '当前状态不允许执行此操作');
-    if (err.message === 'SHIP_DEADLINE_EXPIRED') return fail(409, '寄出期限已到，请刷新记录状态');
-    if (err.message === 'DISPUTE_RESTRICTED') return fail(403, '申诉功能暂时受限，请先完成当前漂流记录');
-    if (err.message === 'ACCOUNTING_VERSION_UNSUPPORTED') return fail(409, '旧记录账务待迁移，请联系管理员');
-    if (err.code === 'CONTENT_RISK' || err.code === 'CONTENT_CHECK_FAILED') return fail(400, err.message);
-    return fail(500, err.message || '服务器错误');
+    if (err.message === 'INSUFFICIENT_COINS') return (result = fail(400, '可用公益积分不足'));
+    if (err.message === 'INFLIGHT_LIMIT') return (result = fail(400, '已有 2 单未收货，请先完成在途漂流'));
+    if (err.message === 'ALREADY_CLAIMED') return (result = fail(409, '该书已被其他书友接漂'));
+    if (err.message === 'SELF_CLAIM') return (result = fail(400, '不能接漂自己赠送的书'));
+    if (err.message === 'ADDRESS_NOT_FOUND') return (result = fail(404, '收货地址不存在'));
+    if (err.message === 'ORDER_NOT_FOUND') return (result = fail(404, '漂流记录不存在'));
+    if (err.message === 'FORBIDDEN') return (result = fail(403, '无权执行此操作'));
+    if (err.message === 'INVALID_STATUS') return (result = fail(409, '当前状态不允许执行此操作'));
+    if (err.message === 'SHIP_DEADLINE_EXPIRED') return (result = fail(409, '寄出期限已到，请刷新记录状态'));
+    if (err.message === 'DISPUTE_RESTRICTED') return (result = fail(403, '申诉功能暂时受限，请先完成当前漂流记录'));
+    if (err.message === 'ACCOUNTING_VERSION_UNSUPPORTED') return (result = fail(409, '旧记录账务待迁移，请联系管理员'));
+    if (err.code === 'CONTENT_RISK' || err.code === 'CONTENT_CHECK_FAILED') return (result = fail(400, err.message));
+    return (result = fail(500, err.message || '服务器错误'));
+  } finally {
+    // 埋点中间件：自动记录每次调用，失败静默，绝不阻断主流程
+    // analytics.track 自身已落库，避免重复记 api_call
+    if (action !== 'analytics.track' && !action.startsWith('admin.')) {
+      logApiCall({
+        action,
+        openid,
+        result,
+        durationMs: Date.now() - startedAt,
+        platform: ctx.platform,
+        scene: ctx.scene,
+      }).catch(() => {});
+    }
   }
 };

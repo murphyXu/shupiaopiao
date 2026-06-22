@@ -1,6 +1,7 @@
 const api = require('./utils/api');
 const { cloudEnvId } = require('./config/index');
 const { getSystemMetrics } = require('./utils/system');
+const track = require('./utils/track');
 
 App({
   globalData: {
@@ -29,6 +30,10 @@ App({
       env: cloudEnvId || undefined,
     });
     this.globalData.system = getSystemMetrics();
+    try {
+      track.setContext({ platform: (this.globalData.system || {}).platform || '', scene: options.scene || '' });
+      track.track('launch', { scene: options.scene || '' });
+    } catch (e) { /* 埋点静默 */ }
 
     const user = wx.getStorageSync('userInfo');
     if (user && user.id) {
@@ -39,6 +44,13 @@ App({
 
   onShow(options = {}) {
     this.captureInvite(options);
+    try {
+      if (options.scene !== undefined) track.setContext({ scene: options.scene });
+    } catch (e) { /* 埋点静默 */ }
+  },
+
+  onHide() {
+    try { track.flush(); } catch (e) { /* 埋点静默 */ }
   },
 
   fetchUser() {

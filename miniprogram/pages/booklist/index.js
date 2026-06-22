@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const safeAreaBehavior = require('../../behaviors/safe-area');
 const { setTabBarIndex } = require('../../utils/tab-bar');
 const { getBooklistSignals } = require('../../utils/booklistSignals');
+const { trackPageView } = require('../../utils/track');
 
 Page({
   behaviors: [safeAreaBehavior],
@@ -20,6 +21,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 0);
+    trackPageView('booklist/index');
     this.restoreScrollPosition();
   },
 

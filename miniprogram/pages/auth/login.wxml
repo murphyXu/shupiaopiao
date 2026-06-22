@@ -1,4 +1,8 @@
 <view class="login-page" style="padding-top: {{navPaddingTop}}px;">
+  <view class="login-nav">
+    <view wx:if="{{canGoBack}}" class="login-back" bindtap="skipLogin">‹ 返回</view>
+  </view>
+
   <view class="logo-area">
     <image class="brand-logo" src="/assets/brand/logo.png" mode="aspectFit" />
     <text class="title">书漂漂</text>
@@ -19,7 +23,21 @@
     <text class="link" catchtap="goTerms">《用户协议》</text>
   </view>
 
-  <button class="btn-primary login-btn" bindtap="handleLogin" disabled="{{!agreed || loading}}" loading="{{loading}}">
+  <button
+    class="btn-primary login-action-btn login-btn login-btn-active"
+    hover-class="login-btn-hover"
+    bindtap="handleLogin"
+    disabled="{{loading}}"
+    loading="{{loading}}"
+  >
     微信一键登录
+  </button>
+
+  <button
+    class="login-action-btn skip-login-btn"
+    hover-class="none"
+    bindtap="skipLogin"
+  >
+    暂不登录，先逛逛
   </button>
 </view>

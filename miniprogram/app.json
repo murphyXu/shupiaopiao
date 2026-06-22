@@ -33,7 +33,8 @@
     "pages/mine/credit",
     "pages/mine/logistics",
     "pages/mine/disputes",
-    "pages/mine/settings"
+    "pages/mine/settings",
+    "pages/admin/dashboard"
   ],
   "window": {
     "navigationBarBackgroundColor": "#ffffff",

@@ -4,6 +4,7 @@ const {
 } = require('../../utils/util');
 const safeAreaBehavior = require('../../behaviors/safe-area');
 const { setTabBarIndex } = require('../../utils/tab-bar');
+const { trackPageView } = require('../../utils/track');
 
 const PRIMARY_TABS = [
   { key: 'class', label: '书籍分类' },
@@ -156,6 +157,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 1);
+    trackPageView('shelf/index');
     if (wx.getStorageSync('forceOwnShelf')) {
       wx.removeStorageSync('forceOwnShelf');
       if (this.data.shareMode) {

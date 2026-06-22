@@ -157,37 +157,13 @@
   line-height: 1.6;
 }
 
-.guest-card {
+.guest-login-tag {
+  background: #fff;
+  border: 1rpx solid #c8e8d8;
+}
+
+.invite-share-placeholder {
+  display: inline-block;
   text-align: center;
-  padding: 48rpx 0 24rpx;
-}
-
-.guest-card .brand-logo {
-  width: 120rpx;
-  height: 120rpx;
-  margin: 0 auto 24rpx;
-}
-
-.guest-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #15211B;
-}
-
-.guest-desc {
-  font-size: 26rpx;
-  color: #9aa8a0;
-  line-height: 1.6;
-  margin: 16rpx 32rpx 40rpx;
-}
-
-.guest-btn {
-  margin: 0 32rpx;
-}
-
-.guest-link {
-  margin-top: 32rpx;
-  padding: 24rpx 0;
-  font-size: 28rpx;
-  color: #46564e;
+  box-sizing: border-box;
 }

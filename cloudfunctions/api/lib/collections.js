@@ -16,6 +16,8 @@ const COLLECTIONS = [
   'addresses',
   'reviews',
   'reports',
+  'events',
+  'daily_metrics',
 ];
 
 function isAlreadyExists(err) {

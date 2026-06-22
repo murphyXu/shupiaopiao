@@ -1,0 +1,70 @@
+<view class="page" style="padding-top: {{navPaddingTop}}px;">
+  <view class="header">
+    <text class="title">书漂漂 · 数据看板</text>
+    <text class="subtitle">内部运营数据 · 仅管理员可见</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="state">数据加载中…</view>
+
+  <view wx:elif="{{denied}}" class="state denied">
+    <text class="state-emoji">🔒</text>
+    <text>无权访问，请在云函数环境变量 ADMIN_OPENIDS 中配置你的 openid</text>
+  </view>
+
+  <block wx:else>
+    <view class="section-title">今日概览</view>
+    <view class="cards">
+      <view class="card"><text class="num">{{overview.today.dau}}</text><text class="label">今日活跃</text></view>
+      <view class="card"><text class="num">{{overview.today.newUsers}}</text><text class="label">今日新增</text></view>
+      <view class="card"><text class="num">{{overview.today.driftPublished}}</text><text class="label">今日上漂</text></view>
+      <view class="card"><text class="num">{{overview.today.driftDone}}</text><text class="label">今日完成</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.totalUsers}}</text><text class="label">累计用户</text></view>
+      <view class="card"><text class="num">{{overview.today.coinStock}}</text><text class="label">积分存量</text></view>
+    </view>
+
+    <view class="section-title">近 7 天</view>
+    <view class="week">
+      <view class="week-row"><text>日活均值</text><text class="week-val">{{overview.week.dauAvg}} <text class="{{overview.weekText.dauWoWUp ? 'up' : 'down'}}">{{overview.weekText.dauWoWUp ? '↑' : '↓'}}{{overview.weekText.dauWoW}}</text></text></view>
+      <view class="week-row"><text>新增用户</text><text class="week-val">{{overview.week.newUsers}}</text></view>
+      <view class="week-row"><text>积分发行 / 消耗</text><text class="week-val">{{overview.week.coinIssued}} / {{overview.week.coinConsumed}}</text></view>
+      <view class="week-row"><text>次日留存</text><text class="week-val">{{overview.weekText.retentionD1}}</text></view>
+      <view class="week-row"><text>接口错误率</text><text class="week-val">{{overview.weekText.errorRate}}</text></view>
+    </view>
+
+    <view class="section-title">日活趋势（近 14 天）</view>
+    <view class="chart">
+      <view class="bars">
+        <view wx:for="{{trend.bars}}" wx:key="day" class="bar-col">
+          <view class="bar" style="height: {{item.height}}%;"></view>
+          <text class="bar-label">{{item.day}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-title">漂流漏斗（近 {{funnel.rangeDays}} 天）</view>
+    <view class="funnel">
+      <view wx:for="{{funnel.stages}}" wx:key="label" class="funnel-row">
+        <text class="funnel-label">{{item.label}}</text>
+        <view class="funnel-bar-wrap">
+          <view class="funnel-bar" style="width: {{item.width}}%;"></view>
+        </view>
+        <text class="funnel-value">{{item.value}}</text>
+      </view>
+      <view class="funnel-rates">
+        <text>被接率 {{funnel.ratesText.publishToClaim}}</text>
+        <text>整体完成率 {{funnel.ratesText.overall}}</text>
+        <text class="abnormal">取消 {{funnel.abnormal.cancelled}} · 纠纷 {{funnel.abnormal.disputed}}</text>
+      </view>
+    </view>
+
+    <view class="section-title">分析结论</view>
+    <view class="conclusions">
+      <view wx:for="{{conclusions}}" wx:key="text" class="conclusion conclusion-{{item.level}}">
+        <text class="dot"></text>
+        <text class="conclusion-text">{{item.text}}</text>
+      </view>
+    </view>
+
+    <view class="tip">数据每日 00:30 自动聚合；下拉可刷新</view>
+  </block>
+</view>
