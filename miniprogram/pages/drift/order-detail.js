@@ -1,18 +1,6 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
-
-function shippingInfoText(address = {}) {
-  const region = Array.isArray(address.region) ? address.region.join('') : String(address.region || '');
-  return [
-    `收件人：${address.name || ''}`,
-    `联系电话：${address.phone || ''}`,
-    `收件地址：${region}${address.detail || ''}`,
-  ].join('\n');
-}
-
-function hasShippingInfo(address = {}) {
-  return !!(address.name || address.phone || address.region || address.detail);
-}
+const { shippingInfoText, hasShippingInfo } = require('../../utils/shipping');
 
 Page({
   data: { detail: null, statusMap: ORDER_STATUS },

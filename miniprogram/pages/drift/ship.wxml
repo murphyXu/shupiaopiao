@@ -1,12 +1,48 @@
 <view class="page">
-  <view class="card">
-    <view class="label">承运商</view>
-    <picker range="{{expressCompanies}}" value="{{expressIndex}}" bindchange="selectExpress">
-      <view class="picker-line">{{expressCompanies[expressIndex]}} ›</view>
-    </picker>
-    <view class="label field-label">运单号</view>
-    <input maxlength="32" value="{{trackingNo}}" bindinput="inputTracking" placeholder="请输入运单号" />
-  </view>
-  <view class="note-box">请寄送快递到付件，平台不收取物流费用。物流状态以承运商实际查询结果为准。</view>
-  <button class="btn-primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">确认已寄出</button>
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+
+  <block wx:elif="{{detail}}">
+    <view class="card row book-card">
+      <image class="book-cover-sm" src="{{detail.order.book.cover}}" mode="aspectFill" />
+      <view class="info">
+        <view class="title">{{detail.order.book.title}}</view>
+        <text class="badge">待寄出</text>
+        <view wx:if="{{detail.order.receiverNickname}}" class="muted receiver">领书方：{{detail.order.receiverNickname}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{deadlineText}}" class="deadline-card">
+      <view class="deadline-title">⏱ {{deadlineText}}</view>
+      <view class="deadline-sub">到付件，运费由领书方承担</view>
+    </view>
+
+    <view wx:if="{{detail.order.addressSnapshot}}" class="card address-card">
+      <view class="section-label">收件信息</view>
+      <view class="address-name">{{detail.order.addressSnapshot.name}}</view>
+      <view class="address-phone">{{detail.order.addressSnapshot.phone}}</view>
+      <view class="address-detail">{{regionText}} {{detail.order.addressSnapshot.detail}}</view>
+      <view class="privacy-note">地址仅用于本次到付寄件，请勿外传</view>
+      <view class="action-row">
+        <view class="btn-ghost action-btn" bindtap="copyShippingInfo">复制收件信息</view>
+        <view class="btn-primary action-btn" bindtap="openExpressSheet">去寄快递 ›</view>
+      </view>
+    </view>
+
+    <view class="card tracking-card">
+      <view class="section-label">录入运单号（可稍后再填）</view>
+      <view class="field-label">承运商</view>
+      <picker range="{{expressCompanies}}" value="{{expressIndex}}" bindchange="selectExpress">
+        <view class="picker-line">{{expressCompanies[expressIndex]}} ›</view>
+      </picker>
+      <view class="field-label">运单号</view>
+      <input class="tracking-input" maxlength="32" value="{{trackingNo}}" bindinput="inputTracking" placeholder="收到单号后粘贴" />
+      <view wx:if="{{trackingError}}" class="tracking-error">{{trackingError}}</view>
+      <view class="tracking-hint">快递员揽收后，可在短信或快递 App 中查看单号；粘贴整段短信会自动提取单号</view>
+    </view>
+
+    <view class="note-box">请寄送快递到付件，平台不收取物流费用。物流状态以承运商实际查询结果为准。</view>
+
+    <button class="btn-primary submit-btn" loading="{{submitting}}" disabled="{{submitting || !canSubmit}}" bindtap="submit">确认已寄出</button>
+    <button class="btn-ghost cancel-btn" bindtap="cancel">取消漂流</button>
+  </block>
 </view>

@@ -74,5 +74,11 @@
   "requiredPrivateInfos": [
     "chooseAddress"
   ],
+  "navigateToMiniProgramAppIdList": [
+    "wx66188bf666705688",
+    "wx5882299e98d3b22a",
+    "wx0b42aa50950c02e9",
+    "wx73247a629467043c"
+  ],
   "style": "v2"
 }

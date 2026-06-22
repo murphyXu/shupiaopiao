@@ -16,7 +16,7 @@ function progressText(order) {
 }
 
 function progressHint(order) {
-  if (order.status === 'PENDING_SHIP') return '录入快递单号后，领取方会看到物流进展';
+  if (order.status === 'PENDING_SHIP') return '复制地址去寄快递，收到单号后回来填写';
   if (order.status === 'SHIPPED') return '对方确认收货后，公益积分会自动到账';
   if (order.status === 'IN_POOL') return '有人申请接漂后，这里会提醒你寄出';
   return '';
@@ -29,19 +29,6 @@ function withProgress(list = []) {
     progressHint: progressHint(order),
     canCancelOpen: !order.receiverId && !!order.driftId && OPEN_DRIFT_CANCEL_STATUSES.includes(order.status),
   }));
-}
-
-function shippingInfoText(address = {}) {
-  const region = Array.isArray(address.region) ? address.region.join('') : String(address.region || '');
-  return [
-    `收件人：${address.name || ''}`,
-    `联系电话：${address.phone || ''}`,
-    `收件地址：${region}${address.detail || ''}`,
-  ].join('\n');
-}
-
-function hasShippingInfo(address = {}) {
-  return !!(address.name || address.phone || address.region || address.detail);
 }
 
 Page({
@@ -73,24 +60,6 @@ Page({
       return;
     }
     wx.navigateTo({ url: `/pages/drift/order-detail?orderId=${orderId}&role=given` });
-  },
-
-  async copyShippingInfo(e) {
-    const orderId = e.currentTarget.dataset.id;
-    if (!orderId || String(orderId).startsWith('drift-')) {
-      wx.showToast({ title: '暂无寄送信息', icon: 'none' });
-      return;
-    }
-    const detail = await api.getOrderDetail(orderId, 'given');
-    const address = detail.order && detail.order.addressSnapshot;
-    if (!hasShippingInfo(address)) {
-      wx.showToast({ title: '暂无寄送信息', icon: 'none' });
-      return;
-    }
-    wx.setClipboardData({
-      data: shippingInfoText(address),
-      success: () => wx.showToast({ title: '收件信息已复制', icon: 'none' }),
-    });
   },
 
   cancel(e) {

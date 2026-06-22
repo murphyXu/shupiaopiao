@@ -46,6 +46,9 @@ assert.ok(routes.includes('已有 2 单未收货，请先完成在途漂流') &&
 assert.ok(routes.includes("'drift.orderDetail'") && routes.includes("'drift.cancel'"), 'fulfillment routes missing');
 assert.ok(appJson.includes('pages/drift/order-detail') && appJson.includes('pages/drift/ship'), 'fulfillment pages missing');
 assert.ok(!givenJs.includes('showActionSheet') && givenJs.includes('/pages/drift/ship?orderId='), 'ship must use dedicated page');
+const shipWxml = readOptional('miniprogram/pages/drift/ship.wxml');
+assert.ok(shipWxml.includes('<picker') && shipWxml.includes('运单号') && shipWxml.includes('到付'), 'ship page should use a picker and explicit COD copy');
+assert.ok(shipWxml.includes('收件信息') && shipWxml.includes('去寄快递'), 'ship page should expose address and express jump actions');
 assert.ok(drift.includes('claim_unfreeze') && drift.includes('settleOrder'), 'cancel or settlement missing');
 assert.ok(drift.includes('maintainDriftOrders') && drift.includes('autoCompleteAt'), 'maintenance missing');
 

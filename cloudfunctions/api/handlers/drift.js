@@ -414,8 +414,10 @@ async function ship(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   const expressCompany = String(data.expressCompany || '').trim();
-  const trackingNo = String(data.trackingNo || '').trim();
-  if (!expressCompany || !trackingNo || trackingNo.length > 32) return fail(400, '请填写有效的承运商和运单号');
+  const { validateTrackingNo } = require('../lib/trackingNo');
+  const trackingCheck = validateTrackingNo(data.trackingNo, expressCompany);
+  if (!expressCompany || !trackingCheck.ok) return fail(400, trackingCheck.message || '请填写有效的承运商和运单号');
+  const trackingNo = trackingCheck.normalized;
   const now = nowIso();
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(data.orderId).get();
