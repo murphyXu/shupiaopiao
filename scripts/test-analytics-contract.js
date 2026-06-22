@@ -85,7 +85,7 @@ assert.strictEqual(admin.isAdmin(''), false, 'empty openid denied');
 const track = read('miniprogram/utils/track.js');
 assert.ok(track.includes('analytics.track') && track.includes('flush'), 'track util batches and flushes');
 assert.ok(track.includes('showError: false'), 'track must not disturb user on failure');
-['booklist', 'pool', 'shelf', 'mine'].forEach((p) => {
+['pool', 'shelf', 'mine'].forEach((p) => {
   const js = read(`miniprogram/pages/${p}/index.js`);
   assert.ok(js.includes("require('../../utils/track')"), `${p} page imports track`);
   assert.ok(js.includes('trackPageView'), `${p} page emits page_view`);

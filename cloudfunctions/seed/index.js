@@ -119,49 +119,6 @@ exports.main = async (event = {}) => {
     });
   }
 
-  const ageLists = [
-    { title: '0-3岁 启蒙绘本', ageRange: '0-3', books: ['9787533256739', '9787506282174', '9787533251444', '9787505615556'] },
-    { title: '3-6岁 亲子共读', ageRange: '3-6', books: ['9787533251413', '9787533251420', '9787533251437', '9787506282181', '9787506282198', '9787539172768'] },
-    { title: '6-9岁 桥梁书', ageRange: '6-9', books: ['9787532747735', '9787506282204', '9787544727099'] },
-    { title: '9-12岁 文学经典', ageRange: '9-12', books: ['9787111544937', '9787020002207', '9787544258560', '9787532748388'] },
-  ];
-
-  for (const list of ageLists) {
-    const listId = uid();
-    await db.collection('booklists').doc(listId).set({
-      data: {
-        title: list.title,
-        description: `${list.ageRange}岁适龄童书精选`,
-        type: 'age',
-        ageRange: list.ageRange,
-      },
-    });
-    for (let i = 0; i < list.books.length; i++) {
-      if (!bookIds[list.books[i]]) continue;
-      await db.collection('booklist_items').doc(uid()).set({
-        data: { listId, bookId: bookIds[list.books[i]], sortOrder: i },
-      });
-    }
-  }
-
-  const themeId = uid();
-  await db.collection('booklists').doc(themeId).set({
-    data: {
-      title: '温暖亲情主题',
-      description: '关于爸爸妈妈和家人的绘本',
-      type: 'theme',
-      ageRange: '',
-    },
-  });
-  const themeIsbns = ['9787533251413', '9787533251420', '9787506282181'];
-  for (let i = 0; i < themeIsbns.length; i++) {
-    const isbn = themeIsbns[i];
-    if (!bookIds[isbn]) continue;
-    await db.collection('booklist_items').doc(uid()).set({
-      data: { listId: themeId, bookId: bookIds[isbn], sortOrder: i },
-    });
-  }
-
   return {
     code: 0,
     msg: 'seed ok',

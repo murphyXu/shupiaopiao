@@ -3,7 +3,6 @@ const {
   CATEGORIES, BOOK_CLASSES, SHELF_LOCATIONS, findLabel,
 } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
-const { recordBookView } = require('../../utils/booklistSignals');
 
 function isGenericCategory(category) {
   return !category || ['图书', '童书', '其他', '未分类'].includes(String(category).trim());
@@ -38,7 +37,6 @@ Page({
   },
 
   setBookItem(item) {
-    recordBookView(item.book);
     const nextItem = {
       ...item,
       readingStatusLabel: item.readingStatusLabel || findLabel(CATEGORIES, item.readingStatus, '想读'),

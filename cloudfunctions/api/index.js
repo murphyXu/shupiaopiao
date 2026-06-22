@@ -9,7 +9,6 @@ const pricing = require('./handlers/pricing');
 const wallet = require('./handlers/wallet');
 const address = require('./handlers/address');
 const credit = require('./handlers/credit');
-const booklist = require('./handlers/booklist');
 const logistics = require('./handlers/logistics');
 const report = require('./handlers/report');
 const analytics = require('./handlers/analytics');
@@ -76,10 +75,6 @@ const ROUTES = {
   'address.delete': (data, openid) => address.remove(openid, data),
 
   'logistics.track': (data, openid) => logistics.track(openid, data),
-
-  'booklist.categories': () => booklist.categories(),
-  'booklist.feed': (data, openid) => booklist.feed(openid, data),
-  'booklist.detail': (data) => booklist.detail(data),
 
   'analytics.track': (data, openid, ctx) => analytics.track(openid, data, ctx),
 

@@ -2,7 +2,6 @@ const api = require('../../utils/api');
 const { CATEGORIES, requireLogin } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { cacheRemoteCovers } = require('../../utils/coverRefresh');
-const { recordSearchKeyword, recordBookView } = require('../../utils/booklistSignals');
 
 const LOADING_QUOTES = [
   '书卷多情似故人',
@@ -56,8 +55,6 @@ Page({
     this.setData({ loading: true, searched: false, books: [] });
     try {
       const res = await api.searchBooks(keyword);
-      recordSearchKeyword(keyword);
-      (res.list || []).slice(0, 3).forEach(recordBookView);
       this.setData({ books: res.list, searched: true });
       cacheRemoteCovers(res.list);
     } catch (e) {

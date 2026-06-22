@@ -18,8 +18,11 @@ assert.deepStrictEqual(
   ['pages/pool/index:漂流', 'pages/shelf/index:书架', 'pages/mine/index:我的'],
   'native tabbar should order drift, shelf, mine',
 );
-assert.ok(!appJson.tabBar.list.some((item) => item.pagePath === 'pages/booklist/index'), 'booklist tab should be hidden');
-assert.ok(!tabbarJs.includes('/pages/booklist/index'), 'custom tabbar should hide booklist');
+assert.ok(!appJson.tabBar.list.some((item) => item.pagePath === 'pages/booklist/index'), 'booklist tab should stay removed');
+assert.ok(!tabbarJs.includes('/pages/booklist/index'), 'custom tabbar should not include booklist');
+assert.ok(!appJson.pages.some((page) => page.includes('booklist')), 'app.json should not register booklist pages');
+assert.ok(!fs.existsSync(path.join(__dirname, '../miniprogram/pages/booklist')), 'booklist pages directory should be removed');
+assert.ok(!fs.existsSync(path.join(__dirname, '../miniprogram/assets/booklist-covers')), 'booklist cover assets should be removed');
 assert.ok(
   tabbarJs.indexOf("pagePath: '/pages/pool/index'") < tabbarJs.indexOf("pagePath: '/pages/shelf/index'")
     && tabbarJs.indexOf("pagePath: '/pages/shelf/index'") < tabbarJs.indexOf("pagePath: '/pages/mine/index'"),

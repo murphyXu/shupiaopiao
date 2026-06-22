@@ -2,7 +2,6 @@ const api = require('../../utils/api');
 const { requireLogin } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { reloadIfCoversUpdated } = require('../../utils/coverPage');
-const { recordBookView } = require('../../utils/booklistSignals');
 
 Page({
   data: { book: null, bookId: '' },
@@ -25,7 +24,6 @@ Page({
     const { bookId } = this.data;
     if (!bookId) return;
     api.getBookDetail(bookId).then((book) => {
-      recordBookView(book);
       this.setData({ book });
     });
   },

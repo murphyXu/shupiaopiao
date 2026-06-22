@@ -14,16 +14,6 @@ function enrichData(action, data) {
     cacheRemoteCover(book);
     return book;
   }
-  if (action === 'booklist.detail') {
-    const sections = (((data.article || {}).sections) || []).map((section) => (
-      section.book ? { ...section, book: normalizeBook(section.book) } : section
-    ));
-    return {
-      ...data,
-      books: (data.books || []).map(normalizeBook),
-      article: data.article ? { ...data.article, sections } : data.article,
-    };
-  }
   return normalizeBooksDeep(data);
 }
 
@@ -151,8 +141,5 @@ module.exports = {
   updateAddress: (id, data) => call('address.update', { id, ...data }),
   deleteAddress: (id) => call('address.delete', { id }),
   getLogistics: (trackingNo, expressCompany) => call('logistics.track', { trackingNo, expressCompany }),
-  getBooklistCategories: () => call('booklist.categories'),
-  getBooklistFeed: (page = 1, size = 20, signals = {}) => call('booklist.feed', { page, size, signals }),
-  getBooklistDetail: (id) => call('booklist.detail', { id }),
   runSeed: () => call('health').then(() => wx.cloud.callFunction({ name: 'seed' })),
 };

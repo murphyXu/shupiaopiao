@@ -30,7 +30,6 @@ const ACTION_EVENT_MAP = {
   'shelf.manualAdd': 'shelf_add',
   'books.isbn': 'book_lookup',
   'books.search': 'book_search',
-  'booklist.detail': 'booklist_view',
   'pool.want': 'drift_want',
 };
 

@@ -98,7 +98,6 @@ wx.cloud.callFunction({ name: 'seed', data: { syncCatalog: true } }).then(consol
 | `addresses` | 收货地址 |
 | `pricing_cache` | 核价缓存 |
 | `reviews` | 评价 |
-| `booklists` / `booklist_items` | 书单 |
 
 > 所有数据经 `api` 云函数访问，客户端不直连数据库，无需额外配置 DB 权限规则。
 

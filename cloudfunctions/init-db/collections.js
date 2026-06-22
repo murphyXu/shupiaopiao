@@ -2,8 +2,6 @@
 const COLLECTIONS = [
   'books',
   'pricing_cache',
-  'booklists',
-  'booklist_items',
   'users',
   'shelf_books',
   'drifts',
