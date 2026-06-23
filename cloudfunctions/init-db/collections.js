@@ -22,7 +22,7 @@ function isAlreadyExists(err) {
   return msg.includes('already exists')
     || msg.includes('Table exist')
     || msg.includes('ResourceExist')
-    || err.errCode === -501001;
+    || msg.includes('DATABASE_COLLECTION_EXIST');
 }
 
 function isCollectionMissing(err) {
