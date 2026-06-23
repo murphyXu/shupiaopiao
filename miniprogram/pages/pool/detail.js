@@ -23,6 +23,12 @@ Page({
     wx.navigateTo({ url: `/pages/drift/claim?driftId=${this.driftId}` });
   },
 
+  goSameGiverItem(e) {
+    const { id } = e.currentTarget.dataset;
+    if (!id || id === this.driftId) return;
+    wx.navigateTo({ url: `/pages/pool/detail?id=${id}` });
+  },
+
   async toggleWant() {
     if (this.data.item && this.data.item.isMine) {
       wx.showToast({ title: '不能想要接漂自己赠送的书', icon: 'none' });

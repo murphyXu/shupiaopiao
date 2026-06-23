@@ -34,6 +34,7 @@ function publishEarnGuideModal() {
       items: [
         '接漂方确认收货后，获得本书流转积分',
         `首次完成额外 +${r.firstGiveBonus} 公益积分（仅一次）`,
+        '若上漂时将流转积分设为 0，完成赠书不计该首次奖励',
       ],
     },
     {
@@ -62,7 +63,7 @@ function settingsPointRules() {
         title: '公益积分 · 加分',
         body: [
           `上漂审核通过：+${r.publishAuditReward}（每位用户累计最多 ${r.publishAuditCap}）`,
-          `首次完成赠书并完成接漂：额外 +${r.firstGiveBonus}（每位用户仅一次）`,
+          `首次完成赠书并完成接漂：额外 +${r.firstGiveBonus}（每位用户仅一次；0 积分完成不计）`,
           '接漂方确认收货后：赠书方获得该书的流转积分',
           `邀请书友完成有效互动：+${r.inviteReward}（每日最多 ${r.inviteDailyCap}，累计最多 ${r.inviteLifetimeCap}）`,
         ].join('\n'),

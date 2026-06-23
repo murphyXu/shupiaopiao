@@ -2,10 +2,12 @@ const { ok, fail, uid, nowIso } = require('../lib/utils');
 const {
   db, _, requireUser, getBookById, getBooksByIds, getUsersByIds, formatBook, settleInviteReward, DEFAULT_SHELF_LIMIT,
 } = require('../lib/db');
+const { refreshBooksCoverMetadata, refreshBookCoverMetadata } = require('../lib/bookLookup');
+const { formatDisplayBook } = require('../lib/bookCover');
 const { runAutoCheck, CONDITION_LABELS, CONDITION_ISSUE_LABELS } = require('../lib/pricing');
 const { assertSafeTextFields, assertSafeMediaFiles } = require('../lib/contentSecurity');
 const {
-  policyForStage, calculateCoinValue, availableCoin, addHours, addDays,
+  policyForStage, calculateCoinValue, resolveRequestedCoinValue, availableCoin, addHours, addDays,
   cancelCreditChange,
   applyPendingPenalty,
   splitViolationPenalty,
@@ -23,6 +25,7 @@ const {
   normalizeAddressSnapshot,
   BUNDLE_MAX_ORDERS,
 } = require('../lib/shipmentBundle');
+const { normalizeShipRegion, parseRegionString } = require('../lib/shipRegion');
 
 const REPORT_HIDE_THRESHOLD = 3;
 const ACTIVE_ORDER_STATUSES = ['PENDING_SHIP', 'SHIPPED', 'DISPUTED'];
@@ -175,7 +178,7 @@ function formatOrder(row, drift, book, giver, receiver) {
     isAnonymous: anonymous,
     images: drift.images || [],
     imageMap: drift.imageMap || {},
-    book: book ? { id: book._id, title: book.title, author: book.author, cover: book.cover, isbn: book.isbn } : {},
+    book: formatDisplayBook(book),
     giverNickname: anonymous ? '匿名书友' : (giver ? giver.nickname : ''),
     receiverNickname: receiver ? receiver.nickname : '',
   };
@@ -241,6 +244,41 @@ async function revokePublishReward(transaction, drift, now, reason = '取消漂�
   }
 }
 
+async function resolveShipRegionForPublish(user, data) {
+  const fromClient = normalizeShipRegion(data.shipRegion);
+  if (fromClient) return fromClient;
+  const fromUser = normalizeShipRegion(user.defaultShipRegion);
+  if (fromUser) return fromUser;
+  try {
+    const { data: addresses } = await db.collection('addresses')
+      .where({ userId: user._id })
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .get();
+    const defaultAddr = addresses.find((item) => item.isDefault) || addresses[0];
+    if (defaultAddr) {
+      const parsed = parseRegionString(defaultAddr.region);
+      if (parsed) return parsed;
+    }
+  } catch (e) {
+    // ignore address lookup failures
+  }
+  try {
+    const { data: recentDrifts } = await db.collection('drifts')
+      .where({ userId: user._id })
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+    if (recentDrifts[0]) {
+      const parsed = normalizeShipRegion(recentDrifts[0].shipRegion);
+      if (parsed) return parsed;
+    }
+  } catch (e) {
+    // ignore drift lookup failures
+  }
+  return null;
+}
+
 async function publish(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
@@ -259,6 +297,13 @@ async function publish(openid, data) {
   const condition = data.condition || 'like_new';
   const imageResult = normalizeImageMap(data);
   const issues = normalizeConditionIssues(data.conditionIssues);
+  const systemCoinValue = calculateCoinValue(listPrice, condition);
+  const coinResolution = resolveRequestedCoinValue(systemCoinValue, data.coinValue);
+  if (coinResolution.error === 'COIN_VALUE_TOO_LOW') return fail(400, '流转积分不能小于 0');
+  if (coinResolution.error === 'COIN_VALUE_TOO_HIGH') return fail(400, '流转积分不能高于系统建议值');
+  if (coinResolution.error === 'INVALID_COIN_VALUE') return fail(400, '流转积分无效');
+  const { coinValue } = coinResolution;
+  const shipRegion = await resolveShipRegionForPublish(user, data);
   const driftId = uid();
   const driftDoc = {
     userId: user._id,
@@ -272,12 +317,14 @@ async function publish(openid, data) {
     remark: '',
     isAnonymous: data.isAnonymous !== false,
     listPrice,
-    coinValue: calculateCoinValue(listPrice, condition),
+    systemCoinValue,
+    coinValue,
     publishRewardGranted: false,
     status: 'PENDING_REVIEW',
     rejectReason: [],
     createdAt: nowIso(),
   };
+  if (shipRegion) driftDoc.shipRegion = shipRegion;
   const checkResult = runAutoCheck(driftDoc, book, user, recentCount + 1, activeDuplicateCount);
   if (activeDuplicateCount > 0) {
     const duplicateReason = checkResult.reasons.find((reason) => reason.code === 'DUPLICATE');
@@ -287,6 +334,9 @@ async function publish(openid, data) {
   driftDoc.status = status;
   driftDoc.rejectReason = checkResult.passed ? [] : checkResult.reasons;
   await db.collection('drifts').doc(driftId).set({ data: driftDoc });
+  if (shipRegion) {
+    await db.collection('users').doc(user._id).update({ data: { defaultShipRegion: shipRegion } });
+  }
   await settleInviteReward(user, 'drift_publish');
   if (checkResult.passed) await grantPublishReward(user._id, driftId);
   return ok({
@@ -301,7 +351,7 @@ async function check(openid, data) {
   const { data: drift } = await db.collection('drifts').doc(data.driftId).get();
   if (!drift || drift.userId !== user._id) return fail(404, '漂流记录不存在');
   const book = await getBookById(drift.bookId);
-  return ok({ driftId: drift._id, status: drift.status, passed: drift.status === 'IN_POOL', coinValue: drift.coinValue, reasons: drift.rejectReason || [], book });
+  return ok({ driftId: drift._id, status: drift.status, passed: drift.status === 'IN_POOL', coinValue: drift.coinValue, systemCoinValue: drift.systemCoinValue || drift.coinValue, reasons: drift.rejectReason || [], book });
 }
 
 async function appeal(openid, data) {
@@ -397,7 +447,8 @@ async function loadOrderRelations(rows) {
   const driftIds = [...new Set(rows.map((row) => row.driftId))];
   const { data: drifts } = driftIds.length ? await db.collection('drifts').where({ _id: _.in(driftIds) }).get() : { data: [] };
   const driftMap = Object.fromEntries(drifts.map((item) => [item._id, item]));
-  const books = await getBooksByIds(drifts.map((item) => item.bookId));
+  let books = await getBooksByIds(drifts.map((item) => item.bookId));
+  books = await refreshBooksCoverMetadata(db, books, Object.keys(books).length);
   const userIds = [...new Set(rows.flatMap((row) => [row.giverId, row.receiverId]).filter(Boolean))];
   const users = await getUsersByIds(userIds);
   return { driftMap, books, users };
@@ -426,7 +477,8 @@ async function givenOrders(user, data) {
   const orderedIds = new Set(rows.map((row) => row.driftId));
   const orderList = rows.filter((row) => driftMap[row.driftId]).map((row) => formatOrder(row, driftMap[row.driftId], books[driftMap[row.driftId].bookId] || {}, users[row.giverId] || user, users[row.receiverId]));
   const missing = userDrifts.filter((item) => !orderedIds.has(item._id));
-  const missingBooks = await getBooksByIds(missing.map((item) => item.bookId));
+  let missingBooks = await getBooksByIds(missing.map((item) => item.bookId));
+  missingBooks = await refreshBooksCoverMetadata(db, missingBooks, missing.length);
   const list = orderList.concat(missing.map((item) => formatDriftOnlyRecord(item, missingBooks[item.bookId], user)))
     .filter((item) => !data.status || item.status === data.status)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50);
@@ -441,7 +493,8 @@ async function orderDetail(openid, data) {
   if (!order || (![order.giverId, order.receiverId].includes(user._id) && !isAdminOpenid(openid))) return fail(404, '漂流记录不存在');
   const { data: drift } = await db.collection('drifts').doc(order.driftId).get();
   if (!drift) return fail(404, '漂流内容不存在');
-  const book = await getBookById(drift.bookId);
+  let book = await getBookById(drift.bookId);
+  if (book) book = await refreshBookCoverMetadata(db, book);
   const users = await getUsersByIds([order.giverId, order.receiverId]);
   const role = user._id === order.giverId ? 'giver' : (user._id === order.receiverId ? 'receiver' : 'admin');
   const { data: reviews } = await db.collection('reviews').where({ orderId: order._id, fromUser: user._id }).limit(1).get();
@@ -467,12 +520,7 @@ async function orderDetail(openid, data) {
               id: row._id,
               status: row.status,
               bundleSeq: row.bundleSeq || 0,
-              book: books[driftMap[row.driftId].bookId]
-                ? {
-                  title: books[driftMap[row.driftId].bookId].title,
-                  cover: books[driftMap[row.driftId].bookId].cover,
-                }
-                : {},
+              book: formatDisplayBook(books[driftMap[row.driftId].bookId] || {}),
             })),
         };
       }
@@ -728,12 +776,17 @@ async function settleOrder(orderId, completionType, actorUserId = '') {
     const receiverPatch = { coinFrozen: _.inc(-Number(order.coinValue)), coinBalance: _.inc(-Number(order.coinValue)), creditScore: _.inc(2) };
     if (order.activeCounted === true) receiverPatch.activeClaimCount = _.inc(-1);
     await transaction.collection('users').doc(order.receiverId).update({ data: receiverPatch });
-    const firstBonus = giver.firstGiveRewarded ? 0 : policy().firstGiveBonus;
-    const grossReward = Number(order.coinValue) + firstBonus;
+    const orderCoinValue = Number(order.coinValue) || 0;
+    const firstBonus = orderCoinValue === 0 ? 0 : (giver.firstGiveRewarded ? 0 : policy().firstGiveBonus);
+    const grossReward = orderCoinValue + firstBonus;
     const { credited, offset } = applyPendingPenalty(grossReward, giver.coinPenaltyPending);
-    await transaction.collection('users').doc(order.giverId).update({
-      data: { coinBalance: _.inc(credited), coinPenaltyPending: _.inc(-offset), creditScore: _.inc(2), firstGiveRewarded: true },
-    });
+    const giverPatch = {
+      coinBalance: _.inc(credited),
+      coinPenaltyPending: _.inc(-offset),
+      creditScore: _.inc(2),
+    };
+    if (firstBonus > 0) giverPatch.firstGiveRewarded = true;
+    await transaction.collection('users').doc(order.giverId).update({ data: giverPatch });
     await transaction.collection('drift_orders').doc(order._id).update({ data: { status: 'DONE', activeCounted: false, completionType, confirmedAt: now } });
     await transaction.collection('drifts').doc(order.driftId).update({ data: { status: 'COMPLETED' } });
     if (order.shelfBookId || drift.shelfBookId) await transaction.collection('shelf_books').doc(order.shelfBookId || drift.shelfBookId).remove();

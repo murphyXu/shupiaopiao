@@ -23,6 +23,29 @@ const normalized = normalizeBook({
 });
 assert.strictEqual(normalized.cover, 'https://covers.openlibrary.org/b/id/123-M.jpg');
 
+const { normalizeBooksDeep } = require('../miniprogram/utils/cover');
+const nested = normalizeBooksDeep({
+  book: {
+    isbn: '9787559855022',
+    title: 'Main',
+    cover: 'local:9787559855022',
+    coverRemote: 'https://static.tanshuapi.com/main.jpg',
+  },
+  sameGiverPool: {
+    items: [{
+      id: 'drift-2',
+      book: {
+        isbn: '9787559855023',
+        title: 'Sibling',
+        cover: 'local:9787559855023',
+        coverRemote: 'https://static.tanshuapi.com/sibling.jpg',
+      },
+    }],
+  },
+});
+assert.strictEqual(nested.book.cover, 'https://static.tanshuapi.com/main.jpg');
+assert.strictEqual(nested.sameGiverPool.items[0].book.cover, 'https://static.tanshuapi.com/sibling.jpg');
+
 (async () => {
   const calls = [];
   const originalWarn = console.warn;

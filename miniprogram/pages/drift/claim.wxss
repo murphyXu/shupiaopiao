@@ -3,3 +3,61 @@
 .address-card { min-height: 100rpx; }
 .wx-address-btn { margin: -8rpx 0 24rpx; }
 .balance { display: flex; justify-content: space-between; align-items: center; }
+
+.shipping-hint {
+  margin-top: 12rpx;
+  color: #46564e;
+  line-height: 1.5;
+}
+
+.same-giver-card {
+  background: #EAFBF2;
+  border: 1rpx solid #c8efd9;
+}
+
+.same-giver-label {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0C7A4B;
+}
+
+.same-giver-tip {
+  margin-top: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+.same-giver-item {
+  padding: 18rpx 0;
+  border-top: 1rpx solid #c8efd9;
+}
+
+.same-giver-item-hover {
+  opacity: 0.72;
+}
+
+.same-giver-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.same-giver-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #15211B;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.same-giver-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 8rpx;
+}
+
+.same-giver-arrow {
+  font-size: 36rpx;
+  color: #0C7A4B;
+  line-height: 1;
+}

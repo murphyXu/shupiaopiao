@@ -42,10 +42,18 @@
     <view class="label">公益积分</view>
     <view wx:if="{{hasListPrice}}" class="price-line">
       <text>图书定价：¥{{listPrice}}</text>
-      <text>系统流转积分值：{{coinValue}} 积分</text>
+      <text>系统建议：{{systemCoinValue}} 积分</text>
     </view>
     <view wx:else class="price-warning">图书定价缺失，暂不能发起漂流。请先重新扫码或编辑补齐定价。</view>
-    <view class="coin-hint">由系统根据图书定价和品相统一计算，用户不能自行定价。</view>
+    <view wx:if="{{hasListPrice}}" class="coin-stepper-row">
+      <view class="coin-stepper-label">本次设定</view>
+      <view class="coin-stepper">
+        <button class="stepper-btn" bindtap="decreaseCoinValue" disabled="{{coinValue <= 0 || submitting}}">−</button>
+        <view class="coin-stepper-value">{{coinValue}} 积分</view>
+        <button class="stepper-btn" bindtap="increaseCoinValue" disabled="{{coinValue >= systemCoinValue || submitting}}">+</button>
+      </view>
+    </view>
+    <view class="coin-hint">{{coinHint}}</view>
   </view>
 
   <view class="card">
@@ -59,6 +67,12 @@
         <view class="identity-title">匿名漂流</view>
         <view class="identity-desc">对外显示为匿名书友</view>
       </view>
+    </view>
+    <view wx:if="{{shipRegionLabel}}" class="ship-region-note muted">寄出参考地：{{shipRegionLabel}}（供接漂方参考到付运费）</view>
+    <view wx:elif="{{needsShipRegionPicker}}" class="ship-region-picker">
+      <picker mode="region" bindchange="onShipRegionChange">
+        <view class="ship-region-line muted">寄出参考地：可选填写省/市，便于接漂方参考运费 ›</view>
+      </picker>
     </view>
   </view>
 

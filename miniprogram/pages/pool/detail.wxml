@@ -19,7 +19,25 @@
 
   <view wx:if="{{item.sameGiverPool}}" class="card same-giver-card">
     <view class="same-giver-label">{{item.sameGiverPool.label}}</view>
-    <view class="muted">凑单通常只需一次到付运费</view>
+    <view class="muted same-giver-tip">凑单通常只需一次到付运费，点击查看详情</view>
+    <view
+      wx:for="{{item.sameGiverPool.items}}"
+      wx:key="id"
+      class="same-giver-item row"
+      hover-class="same-giver-item-hover"
+      bindtap="goSameGiverItem"
+      data-id="{{item.id}}"
+    >
+      <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" binderror="onCoverError" data-index="{{index}}" data-list-key="item.sameGiverPool.items" data-nested-key="book" data-isbn="{{item.book.isbn}}" />
+      <view class="same-giver-info">
+        <view class="same-giver-title">{{item.book.title}}</view>
+        <view class="same-giver-meta">
+          <text class="coin">流转积分 {{item.coinValue}}</text>
+          <text wx:if="{{item.lightweightHint}}" class="pill lightweight">轻量</text>
+        </view>
+      </view>
+      <text class="same-giver-arrow">›</text>
+    </view>
   </view>
 
   <view class="card giver">
@@ -27,10 +45,11 @@
     <view>
       <view class="giver-name">{{item.giver.nickname}}</view>
       <view class="muted">信用积分 {{item.giver.creditScore}}</view>
+      <view wx:if="{{item.shipFrom}}" class="ship-from-line">寄出地：{{item.shipFrom.label}}</view>
     </view>
   </view>
 
-  <view class="tip">运费采用快递到付，由接漂方与快递公司线下结算，平台不收取任何费用。</view>
+  <view class="tip">运费采用快递到付，由接漂方与快递公司线下结算，平台不收取任何费用{{item.shipFrom ? '；实际运费以快递员收费为准' : ''}}。</view>
 
   <view class="fixed-actions {{item.isMine ? 'mine-actions' : ''}}">
     <view wx:if="{{!item.isMine}}" class="btn-ghost want-btn {{item.wanted ? 'active' : ''}}" bindtap="toggleWant">{{item.wanted ? '已想要' : '想要接漂'}}</view>
