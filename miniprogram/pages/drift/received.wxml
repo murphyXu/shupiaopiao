@@ -5,7 +5,7 @@
       <text wx:if="{{item.bundleBadge}}" class="bundle-badge">{{item.bundleBadge}}</text>
     </view>
     <view class="row">
-      <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
+      <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" binderror="onCoverError" data-index="{{index}}" data-list-key="orders" data-nested-key="book" data-isbn="{{item.book.isbn}}" />
       <view class="info">
         <view class="title">{{item.book.title}}</view>
         <view class="muted">赠书方：{{item.giverNickname}}</view>

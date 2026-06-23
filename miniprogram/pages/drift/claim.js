@@ -1,8 +1,15 @@
 const api = require('../../utils/api');
 const { isLoggedIn, requireLogin } = require('../../utils/util');
+const { onCoverError } = require('../../utils/cover');
+const { shippingDistanceHint } = require('../../utils/shipRegion');
+
+function buildShippingHint(item, address) {
+  if (!item || !item.shipFrom) return '';
+  return shippingDistanceHint(address && address.region, item.shipFrom);
+}
 
 Page({
-  data: { item: null, address: null, balance: 0, available: 0, frozen: 0 },
+  data: { item: null, address: null, balance: 0, available: 0, frozen: 0, shippingHint: '' },
 
   onLoad(options) {
     if (!isLoggedIn()) {
@@ -16,8 +23,22 @@ Page({
       api.getAddresses(),
     ]).then(([item, wallet, addrRes]) => {
       const defaultAddr = addrRes.list.find((a) => a.isDefault) || addrRes.list[0];
-      this.setData({ item, balance: wallet.balance, available: wallet.available, frozen: wallet.frozen, address: defaultAddr || null });
+      const address = defaultAddr || null;
+      this.setData({
+        item,
+        balance: wallet.balance,
+        available: wallet.available,
+        frozen: wallet.frozen,
+        address,
+        shippingHint: buildShippingHint(item, address),
+      });
     });
+  },
+
+  goSameGiverItem(e) {
+    const { id } = e.currentTarget.dataset;
+    if (!id || id === this.driftId) return;
+    wx.redirectTo({ url: `/pages/pool/detail?id=${id}` });
   },
 
   selectAddress() {
@@ -37,7 +58,10 @@ Page({
         };
         try {
           const address = await api.addAddress(data);
-          this.setData({ address });
+          this.setData({
+            address,
+            shippingHint: buildShippingHint(this.data.item, address),
+          });
           wx.showToast({ title: '已读取微信地址' });
         } catch (e) {
           console.error(e);
@@ -52,7 +76,10 @@ Page({
   onShow() {
     const selected = wx.getStorageSync('selectedAddress');
     if (selected) {
-      this.setData({ address: selected });
+      this.setData({
+        address: selected,
+        shippingHint: buildShippingHint(this.data.item, selected),
+      });
       wx.removeStorageSync('selectedAddress');
     }
   },
@@ -74,4 +101,6 @@ Page({
       console.error(e);
     }
   },
+
+  onCoverError,
 });

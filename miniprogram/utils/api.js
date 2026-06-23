@@ -5,31 +5,114 @@ const {
 } = require('./coverRefresh');
 
 const POOL_COVER_ACTIONS = new Set(['pool.list', 'pool.detail', 'pool.wants']);
+const ORDER_COVER_ACTIONS = new Set(['drift.orders', 'drift.orderDetail', 'drift.bundleDetail']);
+
+function collectNestedBooks(data, books = []) {
+  if (!data || typeof data !== 'object') return books;
+  if (data.book && data.book.isbn) books.push(data.book);
+  if (data.sameGiverPool && Array.isArray(data.sameGiverPool.items)) {
+    data.sameGiverPool.items.forEach((item) => {
+      if (item && item.book) books.push(item.book);
+    });
+  }
+  if (data.order && data.order.book) books.push(data.order.book);
+  if (data.bundle && Array.isArray(data.bundle.siblings)) {
+    data.bundle.siblings.forEach((item) => {
+      if (item && item.book) books.push(item.book);
+    });
+  }
+  if (Array.isArray(data.orders)) {
+    data.orders.forEach((item) => {
+      if (item && item.book) books.push(item.book);
+    });
+  }
+  return books;
+}
 
 function poolBooksFromData(data) {
   if (!data) return [];
-  if (Array.isArray(data.list)) return data.list.map((item) => item.book).filter(Boolean);
-  if (data.book) return [data.book];
-  return [];
+  if (Array.isArray(data.list)) {
+    return collectNestedBooks(data, data.list.map((item) => item.book).filter(Boolean));
+  }
+  return collectNestedBooks(data, []);
 }
 
-async function enrichPoolCovers(data) {
+function orderBooksFromData(data) {
+  if (!data) return [];
+  if (Array.isArray(data.list)) {
+    return collectNestedBooks(data, data.list.map((item) => item.book).filter(Boolean));
+  }
+  return collectNestedBooks(data, []);
+}
+
+function applyPoolCoverUpdates(data, updates) {
+  if (!data || !Object.keys(updates).length) return data;
+  let enriched = data;
+  if (Array.isArray(enriched.list)) {
+    enriched = { ...enriched, list: applyCoverUpdates(enriched.list, updates, 'book') };
+  }
+  if (enriched.book) {
+    const [updatedRoot] = applyCoverUpdates([enriched], updates, 'book');
+    enriched = { ...updatedRoot, sameGiverPool: enriched.sameGiverPool };
+  }
+  if (enriched.sameGiverPool && Array.isArray(enriched.sameGiverPool.items)) {
+    enriched = {
+      ...enriched,
+      sameGiverPool: {
+        ...enriched.sameGiverPool,
+        items: applyCoverUpdates(enriched.sameGiverPool.items, updates, 'book'),
+      },
+    };
+  }
+  return enriched;
+}
+
+function applyOrderCoverUpdates(data, updates) {
+  if (!data || !Object.keys(updates).length) return data;
+  let enriched = data;
+  if (Array.isArray(enriched.list)) {
+    enriched = { ...enriched, list: applyCoverUpdates(enriched.list, updates, 'book') };
+  }
+  if (enriched.order && enriched.order.book) {
+    const [updatedRoot] = applyCoverUpdates([{ book: enriched.order.book }], updates, 'book');
+    enriched = { ...enriched, order: { ...enriched.order, book: updatedRoot.book } };
+  }
+  if (enriched.bundle && Array.isArray(enriched.bundle.siblings)) {
+    enriched = {
+      ...enriched,
+      bundle: {
+        ...enriched.bundle,
+        siblings: applyCoverUpdates(enriched.bundle.siblings, updates, 'book'),
+      },
+    };
+  }
+  if (Array.isArray(enriched.orders)) {
+    enriched = { ...enriched, orders: applyCoverUpdates(enriched.orders, updates, 'book') };
+  }
+  return enriched;
+}
+
+async function enrichRemoteCovers(data, booksFromData, applyUpdates) {
   let enriched = normalizeBooksDeep(data);
   let coverPass = 0;
   const { shouldCacheRemoteCover } = require('./coverRefresh');
   while (coverPass < 8) {
-    const books = poolBooksFromData(enriched);
+    const books = booksFromData(enriched);
     if (!books.some(shouldCacheRemoteCover)) break;
     const updates = await cacheRemoteCovers(books, 12);
     if (!Object.keys(updates).length) break;
-    if (Array.isArray(enriched.list)) {
-      enriched = { ...enriched, list: applyCoverUpdates(enriched.list, updates, 'book') };
-    } else if (enriched.book) {
-      enriched = applyCoverUpdates([enriched], updates, 'book')[0];
-    }
+    enriched = applyUpdates(enriched, updates);
     coverPass += 1;
   }
   return enriched;
+}
+
+async function enrichPoolCovers(data) {
+  return enrichRemoteCovers(data, poolBooksFromData, applyPoolCoverUpdates);
+}
+
+async function enrichOrderCovers(data) {
+  return enrichRemoteCovers(data, orderBooksFromData, applyOrderCoverUpdates);
 }
 
 async function enrichData(action, data) {
@@ -46,6 +129,9 @@ async function enrichData(action, data) {
   }
   if (POOL_COVER_ACTIONS.has(action)) {
     return enrichPoolCovers(data);
+  }
+  if (ORDER_COVER_ACTIONS.has(action)) {
+    return enrichOrderCovers(data);
   }
   return normalizeBooksDeep(data);
 }

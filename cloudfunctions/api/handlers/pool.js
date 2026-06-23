@@ -6,6 +6,8 @@ const { refreshBooksCoverMetadata, refreshBookCoverMetadata } = require('../lib/
 const { CONDITION_LABELS } = require('../lib/pricing');
 const { normalizeBookCategory } = require('../lib/bookCategory');
 const { availableCoin, isLightweightBook } = require('../lib/driftPolicy');
+const { formatDisplayBook } = require('../lib/bookCover');
+const { formatShipFromField } = require('../lib/shipRegion');
 
 const CATEGORY_LABELS = {
   children: '童书',
@@ -38,28 +40,8 @@ function wantIdFor(userId, driftId) {
   return `${userId}_${driftId}`;
 }
 
-function isCloudCover(cover = '') {
-  return typeof cover === 'string' && cover.startsWith('cloud://');
-}
-
-function isRemoteCover(cover = '') {
-  return typeof cover === 'string' && /^https?:\/\//.test(cover);
-}
-
-function normalizeHttps(url = '') {
-  return String(url || '').replace(/^http:\/\//, 'https://');
-}
-
 function formatPoolBook(book) {
-  const formatted = formatBook(book);
-  if (isCloudCover(formatted.cover)) return formatted;
-  if (isRemoteCover(formatted.coverRemote)) {
-    return { ...formatted, cover: normalizeHttps(formatted.coverRemote) };
-  }
-  if (isRemoteCover(formatted.cover)) {
-    return { ...formatted, cover: normalizeHttps(formatted.cover) };
-  }
-  return formatted;
+  return formatDisplayBook(book);
 }
 
 async function getWantedDriftIds(userId, driftIds = []) {
@@ -152,6 +134,27 @@ async function getWantDoc(userId, driftId) {
   }
 }
 
+async function formatSameGiverPoolItems(drifts = [], user = null) {
+  if (!drifts.length) return [];
+  const bookIds = drifts.map((drift) => drift.bookId);
+  let books = await getBooksByIds(bookIds);
+  books = await refreshBooksCoverMetadata(db, books, drifts.length);
+  return drifts
+    .filter((drift) => books[drift.bookId])
+    .map((drift) => {
+      const book = books[drift.bookId];
+      return {
+        id: drift._id,
+        coinValue: drift.coinValue,
+        book: formatPoolBook(book),
+        lightweightHint: isLightweightBook({
+          coinValue: drift.coinValue,
+          listPrice: book.listPrice || drift.listPrice,
+        }),
+      };
+    });
+}
+
 function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds = new Set()) {
   const category = classifyCategory(book);
   const conditionIssueLabels = drift.conditionIssueLabels || [];
@@ -184,6 +187,7 @@ function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds =
       avatar: isAnonymous ? '' : giver.avatar,
       creditScore: giver.creditScore,
     },
+    shipFrom: formatShipFromField(drift.shipRegion),
   };
 }
 
@@ -268,10 +272,12 @@ async function detail(data, openid) {
   const visibleSameGiver = await filterVisibleDrifts(sameGiverDrifts);
   const sameGiverCount = visibleSameGiver.length;
   const isAnonymous = !!drift.isAnonymous;
+  const sameGiverItems = await formatSameGiverPoolItems(visibleSameGiver, user);
   const sameGiverPool = sameGiverCount ? {
     count: sameGiverCount,
     label: isAnonymous ? `同一书友还有 ${sameGiverCount} 本可接` : `还有 ${sameGiverCount} 本在漂`,
     anonymous: isAnonymous,
+    items: sameGiverItems,
   } : null;
   const lightweightHint = isLightweightBook({
     coinValue: drift.coinValue,

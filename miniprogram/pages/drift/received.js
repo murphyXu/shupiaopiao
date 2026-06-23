@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
+const { onCoverError } = require('../../utils/cover');
 
 function withBundleBadge(orders = []) {
   const counts = {};
@@ -54,4 +55,6 @@ Page({
     const { no, company } = e.currentTarget.dataset;
     wx.navigateTo({ url: `/pages/mine/logistics?trackingNo=${no}&expressCompany=${company}` });
   },
+
+  onCoverError,
 });

@@ -35,6 +35,18 @@ function calculateCoinValue(listPrice, condition) {
   return Math.max(Math.round(price * (CONDITION_FACTORS[condition] || 0.8) * 0.2), 0);
 }
 
+function resolveRequestedCoinValue(systemCoinValue, requested) {
+  const system = Math.max(Math.floor(Number(systemCoinValue) || 0), 0);
+  if (requested === undefined || requested === null || requested === '') {
+    return { coinValue: system, systemCoinValue: system };
+  }
+  const value = Math.floor(Number(requested));
+  if (!Number.isFinite(value)) return { error: 'INVALID_COIN_VALUE' };
+  if (value < 0) return { error: 'COIN_VALUE_TOO_LOW' };
+  if (value > system) return { error: 'COIN_VALUE_TOO_HIGH' };
+  return { coinValue: value, systemCoinValue: system };
+}
+
 function availableCoin(user = {}) {
   return Math.max((Number(user.coinBalance) || 0) - (Number(user.coinFrozen) || 0), 0);
 }
@@ -85,6 +97,7 @@ module.exports = {
   CONDITION_FACTORS,
   policyForStage,
   calculateCoinValue,
+  resolveRequestedCoinValue,
   availableCoin,
   addHours,
   addDays,

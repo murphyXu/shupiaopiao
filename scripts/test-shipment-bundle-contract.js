@@ -41,6 +41,7 @@ assert.ok(driftHandler.includes('async function bundleDetail') && driftHandler.i
 assert.ok(driftHandler.includes('bundleId') && driftHandler.includes('shipBundlePendingOrders'), 'ship should support bundle batching');
 assert.ok(driftHandler.includes('siblings:') && driftHandler.includes('bundleSeq'), 'order detail should expose bundle siblings');
 assert.ok(poolHandler.includes('sameGiverPool') && poolHandler.includes('lightweightHint'), 'pool detail should expose bundle hints');
+assert.ok(poolHandler.includes('formatSameGiverPoolItems') && poolHandler.includes('items: sameGiverItems'), 'pool detail should expose same-giver book list');
 assert.ok(routes.includes("'drift.bundleDetail'") && routes.includes('已有 5 单未收货，请先完成在途漂流'), 'routes should expose bundle detail and 5-order limit');
 assert.ok(routes.includes('bundleP1: true'), 'health route should expose bundle deployment marker');
 
@@ -49,11 +50,17 @@ assert.ok(givenWxml.includes('合并 {{item.orderCount}} 本') && givenWxml.incl
 assert.ok(shipJs.includes('getBundleDetail') && shipJs.includes('shipBundle') && shipJs.includes('options.bundleId'), 'ship page should support bundleId');
 assert.ok(shipWxml.includes('合并寄出') && shipWxml.includes('<button class="btn-primary submit-btn"'), 'ship page should use button submit for bundles');
 assert.ok(claimWxml.includes('同时未收货最多 5 单') && claimWxml.includes('轻量'), 'claim page should show 5-order cap and lightweight badge');
+assert.ok(claimWxml.includes('shippingHint') && poolDetailWxml.includes('item.shipFrom'), 'claim and pool detail should expose ship-from hints');
 assert.ok(claimJs.includes('已与上一本合并寄出') && claimJs.includes('result.merged'), 'claim page should toast merge success');
 assert.ok(receivedWxml.includes('bundleBadge') && receivedWxml.includes('bundle-badge'), 'received list should show bundle badge');
 assert.ok(orderDetailWxml.includes('同包裹其他图书') && orderDetailWxml.includes('detail.bundle.siblings'), 'order detail should list siblings');
 assert.ok(poolDetailWxml.includes('sameGiverPool') && poolDetailWxml.includes('same-giver-card'), 'pool detail should show same-giver hint');
+assert.ok(poolDetailWxml.includes('sameGiverPool.items') && poolDetailWxml.includes('goSameGiverItem'), 'pool detail should list clickable same-giver books');
+assert.ok(claimWxml.includes('sameGiverPool.items') && claimJs.includes('goSameGiverItem'), 'claim page should list clickable same-giver books');
+assert.ok(poolDetailWxml.includes('item.sameGiverPool.items') && claimWxml.includes('item.sameGiverPool.items'), 'same-giver covers should use nested cover error path');
+assert.ok(receivedWxml.includes('onCoverError') && receivedWxml.includes('data-list-key="orders"'), 'received list should recover standard covers');
 assert.ok(apiUtils.includes('getBundleDetail') && apiUtils.includes('shipBundle'), 'api utils should wrap bundle actions');
+assert.ok(apiUtils.includes('drift.orders') && driftHandler.includes('formatDisplayBook'), 'order APIs should resolve standard book covers');
 
 const {
   computeAddressKey,

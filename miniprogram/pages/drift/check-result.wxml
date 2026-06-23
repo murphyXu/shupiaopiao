@@ -5,9 +5,13 @@
 
   <view class="card checks" wx:if="{{passed}}">
     <view wx:for="{{checks}}" wx:key="name" class="check-item">✓ {{item.name}}</view>
-    <view class="hero-coin mini">
+    <view wx:if="{{coinValue > 0}}" class="hero-coin mini">
       <view class="hero-label">预获得公益积分（收货后到账）</view>
       <view class="hero-num">+{{coinValue}}</view>
+    </view>
+    <view wx:else class="hero-coin mini">
+      <view class="hero-label">本次无流转积分</view>
+      <view class="result-sub muted">完成赠书后不计入首次完成赠书奖励</view>
     </view>
   </view>
 

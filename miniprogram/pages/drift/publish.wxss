@@ -205,6 +205,49 @@
   margin-top: 12rpx;
   color: #9aa8a0;
   font-size: 23rpx;
+  line-height: 1.45;
+}
+.coin-stepper-row {
+  margin-top: 8rpx;
+}
+.coin-stepper-label {
+  color: #46564e;
+  font-size: 24rpx;
+  font-weight: 700;
+  margin-bottom: 12rpx;
+}
+.coin-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+}
+.stepper-btn {
+  width: 72rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0;
+  line-height: 72rpx;
+  border-radius: 18rpx;
+  background: #EAFBF2;
+  color: #0C7A4B;
+  font-size: 40rpx;
+  font-weight: 700;
+}
+.stepper-btn::after {
+  border: 0;
+}
+.stepper-btn[disabled] {
+  opacity: 0.45;
+  color: #9aa8a0;
+  background: #f2f4f8;
+}
+.coin-stepper-value {
+  min-width: 160rpx;
+  text-align: center;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #0C7A4B;
 }
 .publish-submit {
   width: 100%;
@@ -245,5 +288,11 @@
   color: #6A7B72;
   font-size: 22rpx;
   line-height: 1.4;
+}
+.ship-region-note,
+.ship-region-line {
+  margin-top: 16rpx;
+  font-size: 23rpx;
+  line-height: 1.45;
 }
 textarea { width: 100%; min-height: 100rpx; border: 1rpx solid #d6dbe2; border-radius: 12rpx; padding: 16rpx; box-sizing: border-box; }

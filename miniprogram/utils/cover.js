@@ -38,20 +38,25 @@ function normalizeBooksDeep(value) {
   if (next.book) next.book = normalizeBook(next.book);
   Object.keys(next).forEach((key) => {
     if (key === 'book') return;
-    if (Array.isArray(next[key])) {
-      next[key] = normalizeBooksDeep(next[key]);
+    const child = next[key];
+    if (child && typeof child === 'object') {
+      next[key] = normalizeBooksDeep(child);
     }
   });
   return next;
 }
 
+function readNestedValue(root, path) {
+  if (!path) return root;
+  return String(path).split('.').reduce((value, part) => (value ? value[part] : null), root);
+}
+
 function readBookFromContext(ctx, { single, listKey, index, nestedKey }) {
   if (single) {
-    const parts = single.split('.');
-    return parts.reduce((value, part) => (value ? value[part] : null), ctx.data) || null;
+    return readNestedValue(ctx.data, single) || null;
   }
   if (index === undefined || index === '') return null;
-  const list = ctx.data[listKey || 'list'] || [];
+  const list = readNestedValue(ctx.data, listKey || 'list') || [];
   const item = list[index];
   if (!item) return null;
   return nestedKey ? item[nestedKey] : item;
