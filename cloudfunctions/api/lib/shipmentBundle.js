@@ -53,15 +53,20 @@ async function writeOrderBundleMeta(transaction, orderId, bundleId, bundleSeq) {
   });
 }
 
-async function attachOrderToBundle(transaction, order, _) {
-  const now = nowIso();
+async function loadBundleAttachPlan(transaction, order, now = nowIso()) {
   const addressKey = computeAddressKey(order.addressSnapshot);
   const bundleDocId = openBundleDocId(order.giverId, order.receiverId, addressKey);
   const bundleSnap = await transaction.collection('shipment_bundles').doc(bundleDocId).get();
-  const existing = bundleSnap.data;
+  const existing = bundleSnap.data || null;
   const candidate = existing
     ? pickMergeCandidate([{ ...existing, _id: bundleDocId }], now)
     : null;
+  return { addressKey, bundleDocId, existing, candidate };
+}
+
+async function applyBundleAttachPlan(transaction, order, plan, _) {
+  const now = nowIso();
+  const { addressKey, bundleDocId, existing, candidate } = plan;
 
   if (candidate && candidate._id) {
     const bundleOrderCount = (candidate.orderIds || []).length + 1;
@@ -104,6 +109,12 @@ async function attachOrderToBundle(transaction, order, _) {
   }
   await writeOrderBundleMeta(transaction, order._id, bundleDocId, bundleOrderCount);
   return { merged: false, bundleId: bundleDocId, bundleOrderCount };
+}
+
+async function attachOrderToBundle(transaction, order, _) {
+  const now = nowIso();
+  const plan = await loadBundleAttachPlan(transaction, order, now);
+  return applyBundleAttachPlan(transaction, order, plan, _);
 }
 
 async function removeOrderFromBundle(transaction, order, _) {
@@ -199,6 +210,8 @@ module.exports = {
   openBundleDocId,
   canMergeOpenBundle,
   pickMergeCandidate,
+  loadBundleAttachPlan,
+  applyBundleAttachPlan,
   attachOrderToBundle,
   removeOrderFromBundle,
   loadBundleByRef,

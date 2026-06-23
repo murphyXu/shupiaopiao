@@ -34,7 +34,9 @@ assert.ok(driftPolicy.includes('inflightLimit: 5') && driftPolicy.includes('BUND
 assert.ok(driftPolicy.includes('isLightweightBook'), 'lightweight helper missing');
 collections.forEach((source) => assert.ok(source.includes("'shipment_bundles'"), 'shipment_bundles collection missing'));
 
-assert.ok(driftHandler.includes('attachOrderToBundle') && driftHandler.includes('bundleResult.merged'), 'claim should attach orders to bundle');
+assert.ok(bundleLib.includes('loadBundleAttachPlan') && bundleLib.includes('applyBundleAttachPlan'), 'bundle attach should split read and write phases');
+assert.ok(read('cloudfunctions/api/lib/db.js').includes('throwOnNotFound: false'), 'db should tolerate missing docs in transactions');
+assert.ok(driftHandler.includes('loadBundleAttachPlan') && driftHandler.includes('applyBundleAttachPlan'), 'claim should read bundle plan before writes');
 assert.ok(driftHandler.includes('async function bundleDetail') && driftHandler.includes('removeOrderFromBundle'), 'bundle detail and cancel detach missing');
 assert.ok(driftHandler.includes('bundleId') && driftHandler.includes('shipBundlePendingOrders'), 'ship should support bundle batching');
 assert.ok(driftHandler.includes('siblings:') && driftHandler.includes('bundleSeq'), 'order detail should expose bundle siblings');

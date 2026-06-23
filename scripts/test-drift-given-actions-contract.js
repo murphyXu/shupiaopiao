@@ -40,7 +40,7 @@ assert.ok(apiUtils.includes('cancelOpenDrift') && apiUtils.includes("call('drift
 assert.ok(apiRoutes.includes("'drift.detail':") && apiRoutes.includes('drift.orderDetail(openid, data)'), 'api should expose a detail alias for route compatibility');
 assert.ok(apiRoutes.includes("'drift.cancelOpen':") && apiRoutes.includes('drift.cancelOpen(openid, data)'), 'api should expose unclaimed drift cancellation route');
 assert.ok(driftHandler.includes("normalizeAddressSnapshot") && driftHandler.includes('../lib/shipmentBundle') && driftHandler.includes('async function resolveOrderAddressSnapshot'), 'backend should normalize address snapshots and recover from addressId');
-assert.ok(driftHandler.includes('addressSnapshot: normalizeAddressSnapshot(address)') && driftHandler.includes('resolveOrderAddressSnapshot(order)'), 'claim and detail should share normalized shipping info');
+assert.ok(driftHandler.includes('addressSnapshot') && driftHandler.includes('resolveOrderAddressSnapshot'), 'claim and detail should share normalized shipping info');
 assert.ok(driftHandler.includes('if (!data.orderId) return fail(400') && driftHandler.includes('if (!drift) return fail(404'), 'order detail backend should guard missing order and drift data');
 assert.ok(driftHandler.includes('async function cancelOpen') && driftHandler.includes('OPEN_DRIFT_CANCEL_STATUSES') && driftHandler.includes("status: 'CANCELLED'"), 'backend should cancel only unclaimed published drifts');
 

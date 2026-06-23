@@ -15,6 +15,8 @@ const { ensureAccountingV2 } = require('../lib/driftMigration');
 const { ensureCollection } = require('../lib/collections');
 const {
   attachOrderToBundle,
+  loadBundleAttachPlan,
+  applyBundleAttachPlan,
   removeOrderFromBundle,
   loadBundleByRef,
   shipBundlePendingOrders,
@@ -340,6 +342,16 @@ async function claim(openid, data) {
     if ((Number(freshUser.activeClaimCount) || 0) >= policy().inflightLimit) throw new Error('INFLIGHT_LIMIT');
     driftForInvite = drift;
 
+    const addressSnapshot = normalizeAddressSnapshot(address);
+    const bundleOrder = {
+      _id: orderId,
+      giverId: drift.userId,
+      receiverId: user._id,
+      addressSnapshot,
+      status: 'PENDING_SHIP',
+    };
+    const bundlePlan = await loadBundleAttachPlan(transaction, bundleOrder, now);
+
     await transaction.collection('users').doc(user._id).update({
       data: { coinFrozen: _.inc(drift.coinValue), activeClaimCount: _.inc(1) },
     });
@@ -351,7 +363,7 @@ async function claim(openid, data) {
         receiverId: user._id,
         shelfBookId: drift.shelfBookId,
         addressId: data.addressId,
-        addressSnapshot: normalizeAddressSnapshot(address),
+        addressSnapshot,
         coinValue: Number(drift.coinValue) || 0,
         status: 'PENDING_SHIP',
         claimedAt: now,
@@ -368,13 +380,7 @@ async function claim(openid, data) {
       frozenDelta: Number(drift.coinValue) || 0, description: '接漂占用公益积分', createdAt: now,
     });
     await writeOrderEvent(transaction, { orderId, type: 'CLAIMED', actorId: user._id, createdAt: now });
-    bundleResult = await attachOrderToBundle(transaction, {
-      _id: orderId,
-      giverId: drift.userId,
-      receiverId: user._id,
-      addressSnapshot: normalizeAddressSnapshot(address),
-      status: 'PENDING_SHIP',
-    }, _);
+    bundleResult = await applyBundleAttachPlan(transaction, bundleOrder, bundlePlan, _);
   });
 
   if (driftForInvite) await settleInviteReward(user, 'drift_claim');
