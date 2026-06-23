@@ -28,7 +28,7 @@ const poolDetailWxml = read('miniprogram/pages/pool/detail.wxml');
 const apiUtils = read('miniprogram/utils/api.js');
 
 assert.ok(bundleLib.includes('attachOrderToBundle') && bundleLib.includes('removeOrderFromBundle'), 'bundle core helpers missing');
-assert.ok(bundleLib.includes('openBundleSlotId') && !bundleLib.includes('transaction.collection(\'shipment_bundles\').where'), 'bundle attach should use slot doc lookup, not transaction where');
+assert.ok(bundleLib.includes('openBundleDocId') && !bundleLib.includes('transaction.collection(\'shipment_bundles\').where'), 'bundle attach should use deterministic doc lookup, not transaction where');
 assert.ok(bundleLib.includes('computeAddressKey') && bundleLib.includes('shipBundlePendingOrders'), 'bundle ship helpers missing');
 assert.ok(driftPolicy.includes('inflightLimit: 5') && driftPolicy.includes('BUNDLE_MAX_ORDERS = 5'), 'drift policy bundle constants missing');
 assert.ok(driftPolicy.includes('isLightweightBook'), 'lightweight helper missing');
@@ -40,6 +40,7 @@ assert.ok(driftHandler.includes('bundleId') && driftHandler.includes('shipBundle
 assert.ok(driftHandler.includes('siblings:') && driftHandler.includes('bundleSeq'), 'order detail should expose bundle siblings');
 assert.ok(poolHandler.includes('sameGiverPool') && poolHandler.includes('lightweightHint'), 'pool detail should expose bundle hints');
 assert.ok(routes.includes("'drift.bundleDetail'") && routes.includes('已有 5 单未收货，请先完成在途漂流'), 'routes should expose bundle detail and 5-order limit');
+assert.ok(routes.includes('bundleP1: true'), 'health route should expose bundle deployment marker');
 
 assert.ok(givenJs.includes('buildDisplayItems') && givenJs.includes('bundleId'), 'given page should group bundles');
 assert.ok(givenWxml.includes('合并 {{item.orderCount}} 本') && givenWxml.includes('data-bundle-id'), 'given list should show bundle cards');
@@ -54,19 +55,19 @@ assert.ok(apiUtils.includes('getBundleDetail') && apiUtils.includes('shipBundle'
 
 const {
   computeAddressKey,
-  openBundleSlotId,
+  openBundleDocId,
   pickMergeCandidate,
 } = require('../cloudfunctions/api/lib/shipmentBundle');
 const keyA = computeAddressKey({ name: '张三', phone: '13800000000', region: '广东省 深圳市 南山区', detail: '科技园' });
-const keyB = computeAddressKey({ name: '张三', phone: '13800000000', region: '广东省 深圳市 南山区', detail: '科技园' });
-assert.strictEqual(keyA, keyB, 'address key should be stable');
+const keyB = computeAddressKey({ name: ' 张三 ', phone: '13800000000', region: '广东省 深圳市 南山区', detail: '科技园' });
+assert.strictEqual(keyA, keyB, 'address key should be stable after trim');
 assert.strictEqual(
-  openBundleSlotId('giver1', 'receiver1', keyA),
-  openBundleSlotId('giver1', 'receiver1', keyB),
-  'open bundle slot id should be stable',
+  openBundleDocId('giver1', 'receiver1', keyA),
+  openBundleDocId('giver1', 'receiver1', keyB),
+  'open bundle doc id should be stable',
 );
 const now = '2026-06-23T12:00:00.000Z';
-assert.ok(pickMergeCandidate([{ orderIds: ['o1'], updatedAt: now }], now), 'recent open bundle should merge');
-assert.ok(!pickMergeCandidate([{ orderIds: ['o1', 'o2', 'o3', 'o4', 'o5'], updatedAt: now }], now), 'full bundle should not merge');
+assert.ok(pickMergeCandidate([{ status: 'OPEN', orderIds: ['o1'], updatedAt: now }], now), 'recent open bundle should merge');
+assert.ok(!pickMergeCandidate([{ status: 'OPEN', orderIds: ['o1', 'o2', 'o3', 'o4', 'o5'], updatedAt: now }], now), 'full bundle should not merge');
 
 console.log('shipment bundle contract ok');

@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { uid, nowIso } = require('./utils');
+const { nowIso } = require('./utils');
 const { addHours } = require('./driftPolicy');
 const {
   BUNDLE_MERGE_WINDOW_HOURS,
@@ -13,7 +13,7 @@ function normalizeAddressSnapshot(address = {}) {
   return {
     name: String(address.name || address.userName || '').trim(),
     phone: String(address.phone || address.telNumber || '').trim(),
-    region,
+    region: String(region || '').trim(),
     detail: String(address.detail || address.detailInfo || '').trim(),
   };
 }
@@ -28,106 +28,82 @@ function computeAddressKey(addressSnapshot = {}) {
   return crypto.createHash('sha256').update(payload).digest('hex').slice(0, 32);
 }
 
-function openBundleSlotId(giverId, receiverId, addressKey) {
+function openBundleDocId(giverId, receiverId, addressKey) {
   const digest = crypto.createHash('sha256').update(`${giverId}|${receiverId}|${addressKey}`).digest('hex');
-  return `slot_${digest.slice(0, 28)}`;
+  return `obnd_${digest.slice(0, 28)}`;
+}
+
+function canMergeOpenBundle(bundle = {}, nowIsoStr) {
+  if (!bundle || bundle.status !== 'OPEN') return false;
+  const count = (bundle.orderIds || []).length;
+  if (count >= BUNDLE_MAX_ORDERS) return false;
+  const windowStart = addHours(nowIsoStr, -BUNDLE_MERGE_WINDOW_HOURS);
+  const updatedAt = bundle.updatedAt || bundle.createdAt || '';
+  return updatedAt >= windowStart;
 }
 
 function pickMergeCandidate(bundles = [], nowIsoStr) {
-  const windowStart = addHours(nowIsoStr, -BUNDLE_MERGE_WINDOW_HOURS);
-  return bundles.find((bundle) => {
-    const count = (bundle.orderIds || []).length;
-    if (count >= BUNDLE_MAX_ORDERS) return false;
-    const updatedAt = bundle.updatedAt || bundle.createdAt || '';
-    return updatedAt >= windowStart;
-  }) || null;
+  return bundles.find((bundle) => canMergeOpenBundle(bundle, nowIsoStr)) || null;
 }
 
-async function readOpenBundleCandidate(transaction, order, now) {
-  const addressKey = computeAddressKey(order.addressSnapshot);
-  const slotId = openBundleSlotId(order.giverId, order.receiverId, addressKey);
-  const slotSnap = await transaction.collection('shipment_bundles').doc(slotId).get();
-  const slot = slotSnap.data;
-  if (!slot || !slot.bundleId) return null;
-  const bundleSnap = await transaction.collection('shipment_bundles').doc(slot.bundleId).get();
-  const bundle = bundleSnap.data;
-  if (!bundle || bundle.status !== 'OPEN') return null;
-  return pickMergeCandidate([{ ...bundle, _id: slot.bundleId }], now);
-}
 
-async function upsertOpenBundleSlot(transaction, order, bundleId, now) {
-  const addressKey = computeAddressKey(order.addressSnapshot);
-  const slotId = openBundleSlotId(order.giverId, order.receiverId, addressKey);
-  const slotSnap = await transaction.collection('shipment_bundles').doc(slotId).get();
-  if (slotSnap.data) {
-    await transaction.collection('shipment_bundles').doc(slotId).update({
-      data: { bundleId, updatedAt: now },
-    });
-    return;
-  }
-  await transaction.collection('shipment_bundles').doc(slotId).set({
-    data: {
-      type: 'OPEN_SLOT',
-      bundleId,
-      giverId: order.giverId,
-      receiverId: order.receiverId,
-      addressKey,
-      updatedAt: now,
-      createdAt: now,
-    },
+async function writeOrderBundleMeta(transaction, orderId, bundleId, bundleSeq) {
+  await transaction.collection('drift_orders').doc(orderId).update({
+    data: { bundleId, bundleSeq },
   });
-}
-
-async function clearOpenBundleSlot(transaction, bundle = {}) {
-  if (!bundle.giverId || !bundle.receiverId || !bundle.addressKey) return;
-  const slotId = openBundleSlotId(bundle.giverId, bundle.receiverId, bundle.addressKey);
-  try {
-    await transaction.collection('shipment_bundles').doc(slotId).remove();
-  } catch (err) {
-    // slot may already be gone
-  }
 }
 
 async function attachOrderToBundle(transaction, order, _) {
   const now = nowIso();
   const addressKey = computeAddressKey(order.addressSnapshot);
-  const candidate = await readOpenBundleCandidate(transaction, order, now);
+  const bundleDocId = openBundleDocId(order.giverId, order.receiverId, addressKey);
+  const bundleSnap = await transaction.collection('shipment_bundles').doc(bundleDocId).get();
+  const existing = bundleSnap.data;
+  const candidate = existing
+    ? pickMergeCandidate([{ ...existing, _id: bundleDocId }], now)
+    : null;
 
   if (candidate && candidate._id) {
     const bundleOrderCount = (candidate.orderIds || []).length + 1;
-    await transaction.collection('shipment_bundles').doc(candidate._id).update({
+    await transaction.collection('shipment_bundles').doc(bundleDocId).update({
       data: {
         orderIds: _.push(order._id),
         updatedAt: now,
       },
     });
-    await upsertOpenBundleSlot(transaction, order, candidate._id, now);
-    await transaction.collection('drift_orders').doc(order._id).update({
-      data: { bundleId: candidate._id, bundleSeq: bundleOrderCount },
-    });
-    return { merged: true, bundleId: candidate._id, bundleOrderCount };
+    await writeOrderBundleMeta(transaction, order._id, bundleDocId, bundleOrderCount);
+    return { merged: true, bundleId: bundleDocId, bundleOrderCount };
   }
 
-  const bundleId = uid();
-  await transaction.collection('shipment_bundles').doc(bundleId).set({
-    data: {
-      giverId: order.giverId,
-      receiverId: order.receiverId,
-      addressKey,
-      addressSnapshot: normalizeAddressSnapshot(order.addressSnapshot),
-      orderIds: [order._id],
-      status: 'OPEN',
-      trackingNo: '',
-      expressCompany: '',
-      createdAt: now,
-      updatedAt: now,
-    },
-  });
-  await upsertOpenBundleSlot(transaction, order, bundleId, now);
-  await transaction.collection('drift_orders').doc(order._id).update({
-    data: { bundleId, bundleSeq: 1 },
-  });
-  return { merged: false, bundleId, bundleOrderCount: 1 };
+  const bundleOrderCount = 1;
+  const payload = {
+    giverId: order.giverId,
+    receiverId: order.receiverId,
+    addressKey,
+    addressSnapshot: normalizeAddressSnapshot(order.addressSnapshot),
+    orderIds: [order._id],
+    status: 'OPEN',
+    trackingNo: '',
+    expressCompany: '',
+    updatedAt: now,
+  };
+  if (existing) {
+    await transaction.collection('shipment_bundles').doc(bundleDocId).update({
+      data: {
+        ...payload,
+        createdAt: existing.createdAt || now,
+      },
+    });
+  } else {
+    await transaction.collection('shipment_bundles').doc(bundleDocId).set({
+      data: {
+        ...payload,
+        createdAt: now,
+      },
+    });
+  }
+  await writeOrderBundleMeta(transaction, order._id, bundleDocId, bundleOrderCount);
+  return { merged: false, bundleId: bundleDocId, bundleOrderCount };
 }
 
 async function removeOrderFromBundle(transaction, order, _) {
@@ -141,7 +117,6 @@ async function removeOrderFromBundle(transaction, order, _) {
     await transaction.collection('shipment_bundles').doc(order.bundleId).update({
       data: { status: 'DISSOLVED', orderIds: [], updatedAt: now },
     });
-    await clearOpenBundleSlot(transaction, bundle);
     return;
   }
   await transaction.collection('shipment_bundles').doc(order.bundleId).update({
@@ -207,7 +182,6 @@ async function shipBundlePendingOrders(transaction, {
       updatedAt: now,
     },
   });
-  await clearOpenBundleSlot(transaction, bundle);
   return shippedIds;
 }
 
@@ -222,7 +196,8 @@ function earliestShipDeadline(orders = []) {
 module.exports = {
   normalizeAddressSnapshot,
   computeAddressKey,
-  openBundleSlotId,
+  openBundleDocId,
+  canMergeOpenBundle,
   pickMergeCandidate,
   attachOrderToBundle,
   removeOrderFromBundle,

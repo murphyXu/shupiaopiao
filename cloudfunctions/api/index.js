@@ -87,7 +87,7 @@ const ROUTES = {
   'admin.export': (data, openid) => admin.exportMetrics(openid, data),
   'admin.rebuild': (data, openid) => admin.rebuild(openid, data),
 
-  'health': () => ok({ service: 'shupiaopiao-cloud', version: '1.0.0' }),
+  'health': () => ok({ service: 'shupiaopiao-cloud', version: '1.0.0', bundleP1: true }),
   'system.initDb': async () => {
     const { ensureCollections } = require('./lib/collections');
     const db = cloud.database();

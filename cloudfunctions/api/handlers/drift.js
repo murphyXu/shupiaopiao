@@ -18,6 +18,7 @@ const {
   loadBundleByRef,
   shipBundlePendingOrders,
   earliestShipDeadline,
+  normalizeAddressSnapshot,
   BUNDLE_MAX_ORDERS,
 } = require('../lib/shipmentBundle');
 
@@ -113,18 +114,6 @@ function normalizeImageMap(data) {
 
 function normalizeConditionIssues(value) {
   return [...new Set((Array.isArray(value) ? value : []).filter((key) => CONDITION_ISSUE_LABELS[key]))];
-}
-
-function normalizeAddressSnapshot(address = {}) {
-  const region = Array.isArray(address.region)
-    ? address.region.filter(Boolean).join(' ')
-    : String(address.region || address.regionName || '').trim();
-  return {
-    name: address.name || address.userName || '',
-    phone: address.phone || address.telNumber || '',
-    region,
-    detail: address.detail || address.detailInfo || '',
-  };
 }
 
 function hasAddressSnapshot(address = {}) {
