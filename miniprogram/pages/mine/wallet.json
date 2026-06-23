@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "公益积分明细" }
+{
+  "navigationBarTitleText": "公益积分明细",
+  "usingComponents": {
+    "earn-point-guide-modal": "/components/earn-point-guide-modal/index"
+  }
+}

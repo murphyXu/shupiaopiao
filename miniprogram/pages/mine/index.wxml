@@ -9,7 +9,7 @@
         <view wx:else class="edit-profile guest-login-tag">去登录</view>
       </view>
       <view class="muted sub">
-        <block wx:if="{{loggedIn}}">信用积分 {{user.creditScore}} · 公益积分 {{user.coinBalance}}</block>
+        <block wx:if="{{loggedIn}}">信用积分 {{user.creditScore}} · 公益积分 {{user.availableCoin}}</block>
         <block wx:else>登录后查看积分与漂流记录</block>
       </view>
     </view>
@@ -17,7 +17,7 @@
 
   <view class="mine-stat-row">
     <view class="mine-stat-card public-points-card" hover-class="mine-stat-card-hover" bindtap="goWallet">
-      <view class="stat-num">{{loggedIn ? user.coinBalance : '--'}}</view>
+      <view class="stat-num">{{loggedIn ? user.availableCoin : '--'}}</view>
       <view class="stat-label">公益积分</view>
       <view class="stat-tip">{{loggedIn ? '站内流转' : '登录后查看'}}</view>
     </view>

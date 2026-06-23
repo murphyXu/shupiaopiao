@@ -2,6 +2,36 @@
   margin-bottom: 32rpx;
 }
 
+.wallet-hero-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.hero-muted {
+  color: #fff;
+  opacity: 0.88;
+}
+
+.wallet-earn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-width: 132rpx;
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  color: #0C7A4B;
+  font-size: 22rpx;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 8rpx 18rpx rgba(12, 122, 75, 0.16);
+}
+
 .tx-item .row {
   display: flex;
   justify-content: space-between;
@@ -22,6 +52,12 @@
 
 .amount.minus {
   color: #ff4d4f;
+  font-weight: 700;
+  font-size: 30rpx;
+}
+
+.amount.neutral {
+  color: #52675c;
   font-weight: 700;
   font-size: 30rpx;
 }

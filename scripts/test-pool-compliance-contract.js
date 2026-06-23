@@ -13,6 +13,7 @@ const publishJs = read('miniprogram/pages/drift/publish.js');
 const poolDetailWxml = read('miniprogram/pages/pool/detail.wxml');
 const poolDetailJs = read('miniprogram/pages/pool/detail.js');
 const poolIndexWxml = read('miniprogram/pages/pool/index.wxml');
+const poolIndexJs = read('miniprogram/pages/pool/index.js');
 const claimWxml = read('miniprogram/pages/drift/claim.wxml');
 const claimJs = read('miniprogram/pages/drift/claim.js');
 const claimJson = read('miniprogram/pages/drift/claim.json');
@@ -47,5 +48,13 @@ assert.ok(claimJs.includes("wx.showToast({ title: '申请已提交'"), 'claim su
 assert.ok(claimJson.includes('申请接漂'), 'claim page title should use application wording');
 
 assert.ok(poolIndexWxml.includes('我接漂') && poolIndexWxml.includes('我想漂'), 'pool stats should use current-user drift application wording');
+assert.ok(poolHandler.includes('INVALID_DRIFT_STATUSES') && poolHandler.includes("_.nin(INVALID_DRIFT_STATUSES)"), 'pool stats should exclude cancelled/rejected drifts from given count');
+assert.ok(poolHandler.includes("status: _.neq('CANCELLED')"), 'pool stats should exclude cancelled orders from received count');
+assert.ok(poolIndexJs.includes('onShareAppMessage'), 'pool home should support sharing to friends');
+assert.ok(poolIndexWxml.includes('item.isMine') && poolIndexWxml.includes('我的赠书'), 'pool list should mark own drift cards');
+assert.ok(poolDetailWxml.includes('item.canClaim') && poolDetailWxml.includes('item.isMine'), 'pool detail should gate claim action for own drift');
+assert.ok(poolDetailWxml.includes('mine-actions') && poolDetailWxml.includes('mine-only-btn'), 'pool detail should center own-drift action button');
+assert.ok(poolDetailJs.includes('!this.data.item.canClaim'), 'pool detail should block claim navigation for own drift');
+assert.ok(poolIndexWxml.includes('binderror="onCoverError"') && poolIndexWxml.includes('data-nested-key="book"'), 'pool list should recover book cover display failures');
 
 console.log('pool compliance contract ok');

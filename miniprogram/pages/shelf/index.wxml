@@ -22,14 +22,10 @@
     <view class="share-exit-btn">回到我的书架</view>
   </view>
 
-  <view class="stat-row" bindtap="goDashboard">
+  <view class="stat-row shelf-stat-row" bindtap="goDashboard">
     <view class="stat-card">
       <text class="num">{{dashboard.totalBooks}}</text>
       <text class="label">藏书</text>
-    </view>
-    <view class="stat-card">
-      <text class="num">{{dashboard.monthNew}}</text>
-      <text class="label">本月新增</text>
     </view>
     <view class="stat-card">
       <text class="num">¥{{dashboard.totalValue}}</text>

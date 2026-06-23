@@ -29,6 +29,8 @@ const redeemJs = read('miniprogram/pages/shelf/redeem-capacity.js');
 const redeemWxml = read('miniprogram/pages/shelf/redeem-capacity.wxml');
 assert.ok(shelfJs.includes('goRedeemCapacity') && shelfWxml.includes('bindtap="goRedeemCapacity"'), 'shelf page should navigate to capacity redeem page');
 assert.ok(redeemWxml.includes('type="number"') && redeemJs.includes('redeemCount'), 'redeem page should allow manual quantity input');
+assert.ok(redeemWxml.includes('1 公益积分可兑换') && redeemWxml.includes('capacityPerCoin'), 'redeem page should show coin-to-capacity ratio');
+assert.ok(redeemJs.includes('shelfCapacityPerCoin') && redeemJs.includes('coinCostForCapacity'), 'redeem page should derive coin cost from capacity ratio');
 assert.ok(apiUtils.includes('redeemShelfCapacity') && redeemJs.includes('redeemShelfCapacity(this.data.redeemCount)'), 'redeem page should submit selected quantity to api');
 
 assert.ok(shelfJs.includes("itemList: ['扫码录入', '手动添加']"), 'shelf add menu should remove search entry to avoid external API usage');

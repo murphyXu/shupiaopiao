@@ -50,11 +50,13 @@ const shipWxml = readOptional('miniprogram/pages/drift/ship.wxml');
 assert.ok(shipWxml.includes('<picker') && shipWxml.includes('运单号') && shipWxml.includes('到付'), 'ship page should use a picker and explicit COD copy');
 assert.ok(shipWxml.includes('收件信息') && shipWxml.includes('去寄快递'), 'ship page should expose address and express jump actions');
 assert.ok(drift.includes('claim_unfreeze') && drift.includes('settleOrder'), 'cancel or settlement missing');
+assert.ok(drift.includes('function normalizeOrderRecord') && drift.includes('normalizeOrderRecord(orderSnap.data, orderId)'), 'doc lookup should hydrate order id before cancel updates');
+assert.ok(drift.includes('resolveOrderCoinValue') && drift.includes('buildRevokePublishRewardEffects'), 'cancel should resolve coin value and merge giver reward rollback');
 assert.ok(drift.includes('maintainDriftOrders') && drift.includes('autoCompleteAt'), 'maintenance missing');
 
 assert.ok(routes.includes("'drift.dispute'") && routes.includes("'drift.resolveDispute'"), 'dispute routes missing');
 assert.ok(drift.includes('DISPUTE_RESTRICTED') && drift.includes('user.disputeRestricted'), 'restricted dispute users should be blocked by backend');
 assert.ok(drift.includes('!user.disputeRestricted') && drift.includes('canDispute'), 'restricted dispute users should not see dispute action');
-assert.ok(drift.includes("order.status !== 'DONE'") && drift.includes('`${order._id}-${user._id}`'), 'one review per participant missing');
+assert.ok(drift.includes("normalizedOrder.status !== 'DONE'") && drift.includes('`${normalizedOrder._id}-${user._id}`'), 'one review per participant missing');
 
 console.log('drift fulfillment contract ok');

@@ -12,7 +12,11 @@
 
   <view class="card section">
     <view class="section-title">积分规则</view>
-    <view class="desc">公益积分用于站内图书漂流流转，不具备现金属性，不可提现、转让或交易。\n\n获得公益积分：首次有效上漂可获得上漂奖励，每位用户仅奖励一次；邀请书友完成有效书籍录入或参与漂流活动后，邀请人可获得 2 公益积分，累计最高 10 公益积分；完成赠书等共建行为也可能获得页面提示的公益积分奖励。\n\n使用公益积分：申请接漂时会先占用相应公益积分，完成收货后再记录扣除；取消漂流后会退回已获得的上漂奖励。\n\n信用积分用于记录漂流履约情况。按时寄出、确认收货、完成漂流有助于保持良好信用；无故取消、超时未寄、弃件或经核实违约会影响信用积分，并可能限制后续接漂。\n\n已接漂未收货达到上限时，需要先完成在途漂流，再申请新的漂流图书。</view>
+    <view class="desc">{{pointRules.intro}}</view>
+    <block wx:for="{{pointRules.sections}}" wx:key="title">
+      <view class="rule-subtitle">{{item.title}}</view>
+      <view class="desc rule-body">{{item.body}}</view>
+    </block>
   </view>
 
   <view class="card section">

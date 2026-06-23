@@ -16,7 +16,6 @@ const MAX_SHELF_NAME = 12;
 const BACK_TOP_BOOK_THRESHOLD = 20;
 const DEFAULT_DASHBOARD = {
   totalBooks: 0,
-  monthNew: 0,
   totalValue: 0,
   shelfLimit: 100,
   remainingCapacity: 100,

@@ -27,6 +27,7 @@ const ROUTES = {
   'books.search': (data) => books.search(data),
   'books.detail': (data) => books.detail(data),
   'books.updateCover': (data) => books.updateCover(data),
+  'books.cacheRemoteCover': (data) => books.cacheRemoteCover(data),
 
   'shelf.list': (data, openid) => shelf.list(openid, data),
   'shelf.add': (data, openid) => shelf.add(openid, data),
@@ -130,6 +131,7 @@ exports.main = async (event) => {
     if (err.message === 'SHIP_DEADLINE_EXPIRED') return (result = fail(409, '寄出期限已到，请刷新记录状态'));
     if (err.message === 'DISPUTE_RESTRICTED') return (result = fail(403, '申诉功能暂时受限，请先完成当前漂流记录'));
     if (err.message === 'ACCOUNTING_VERSION_UNSUPPORTED') return (result = fail(409, '旧记录账务待迁移，请联系管理员'));
+    if (err.errCode === -501007 || err.errCode === 501007) return (result = fail(400, '数据库参数错误，请稍后重试'));
     if (err.code === 'CONTENT_RISK' || err.code === 'CONTENT_CHECK_FAILED') return (result = fail(400, err.message));
     return (result = fail(500, err.message || '服务器错误'));
   } finally {

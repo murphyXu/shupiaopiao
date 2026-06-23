@@ -42,16 +42,15 @@
   <view id="pool-list" class="grid-2 pool-grid">
     <view wx:for="{{list}}" wx:key="id" class="pool-card" data-id="{{item.id}}" bindtap="goDetail">
       <view class="cover-frame">
-        <image class="book-cover" src="{{item.book.cover}}" mode="aspectFit" />
+        <image class="book-cover" src="{{item.book.cover}}" mode="aspectFit" binderror="onCoverError" data-index="{{index}}" data-list-key="list" data-nested-key="book" data-isbn="{{item.book.isbn}}" />
       </view>
       <view class="book-title">{{item.book.title}}</view>
       <view class="row-meta">
         <text class="coin">流转积分 {{item.coinValue}}</text>
         <text class="pill">{{item.categoryLabel}}</text>
       </view>
-      <view class="apply-action" data-id="{{item.id}}" catchtap="goApply">
-        申请接漂
-      </view>
+      <view wx:if="{{item.isMine}}" class="apply-action mine" data-mine="1" catchtap="goApply">我的赠书</view>
+      <view wx:else class="apply-action" data-id="{{item.id}}" catchtap="goApply">申请接漂</view>
     </view>
   </view>
   <view wx:if="{{!list.length}}" class="empty">漂流池暂无图书，来做第一个赠书人吧</view>
@@ -61,3 +60,9 @@
     <text class="publish-text">上漂赠书</text>
   </view>
 </view>
+
+<earn-point-guide-modal
+  wx:if="{{showEarnGuideModal}}"
+  guide="{{earnGuide}}"
+  bind:close="hideEarnPointGuide"
+  bind:confirm="confirmEarnPointGuide" />

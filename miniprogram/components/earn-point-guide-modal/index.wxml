@@ -1,0 +1,18 @@
+<view class="earn-guide-mask" catchtap="onClose">
+  <view class="earn-guide-dialog" catchtap="noop">
+    <view class="earn-guide-title">{{guide.title}}</view>
+    <view class="earn-guide-subtitle">按步骤完成后，积分会自动记录到账</view>
+
+    <view class="earn-guide-sections">
+      <view wx:for="{{guide.sections}}" wx:key="title" class="earn-guide-section">
+        <view class="earn-guide-section-title">{{item.title}}</view>
+        <view wx:for="{{item.items}}" wx:for-item="line" wx:key="*this" class="earn-guide-line">{{line}}</view>
+      </view>
+    </view>
+
+    <view class="earn-guide-actions">
+      <view class="earn-guide-btn secondary" catchtap="onClose">知道了</view>
+      <view class="earn-guide-btn primary" catchtap="onConfirm">去上漂</view>
+    </view>
+  </view>
+</view>

@@ -41,7 +41,7 @@ function findLabel(list, key, fallback = '') {
 const CONDITIONS = [
   { key: 'new', label: '全新' },
   { key: 'like_new', label: '9成新' },
-  { key: 'good', label: '八成新' },
+  { key: 'good', label: '8成新' },
   { key: 'seven_new', label: '7成新' },
   { key: 'below_seven', label: '7成新以下' },
 ];

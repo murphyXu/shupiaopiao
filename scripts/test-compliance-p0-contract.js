@@ -40,8 +40,11 @@ assert.ok(!bookDetailWxml.includes('reportNote') && !bookDetailWxml.includes('�
 const settingsWxml = read('miniprogram/pages/mine/settings.wxml');
 assert.ok(!settingsWxml.includes('地址信息加密存储'), 'privacy copy should not claim encryption if storage is plaintext');
 assert.ok(settingsWxml.includes('仅用于领取漂流图书'), 'privacy copy should state address purpose');
-assert.ok(settingsWxml.includes('积分规则') && settingsWxml.includes('公益积分') && settingsWxml.includes('信用积分'), 'settings should explain public points and credit points to normal users');
-assert.ok(settingsWxml.includes('取消漂流后会退回') && settingsWxml.includes('先完成在途漂流'), 'settings should explain user-facing point rollback and in-flight claim limit');
+assert.ok(settingsWxml.includes('积分规则') && settingsWxml.includes('pointRules.sections'), 'settings should explain public points and credit points to normal users');
+const pointRulesLib = read('miniprogram/utils/pointRules.js');
+assert.ok(pointRulesLib.includes('公益积分 · 加分') && pointRulesLib.includes('信用积分 · 扣分'), 'settings point rules should list user-facing earn and penalty standards');
+assert.ok(pointRulesLib.includes('发货前取消上漂') && pointRulesLib.includes('已接漂未收货最多'), 'settings should explain user-facing point rollback and in-flight claim limit');
+assert.ok(pointRulesLib.includes('shelfCapacityPerCoin: 10'), 'point rules should define shelf capacity redeem ratio');
 assert.ok(!settingsWxml.includes('publishRewardCap') && !settingsWxml.includes('inflightLimit') && !settingsWxml.includes('REPORT_HIDE_THRESHOLD'), 'settings should not expose internal strategy names or thresholds');
 
 const mineWxml = read('miniprogram/pages/mine/index.wxml');

@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "漂流广场"
+  "navigationBarTitleText": "漂流广场",
+  "usingComponents": {
+    "earn-point-guide-modal": "/components/earn-point-guide-modal/index"
+  }
 }

@@ -2,6 +2,7 @@ const { ok, fail } = require('../lib/utils');
 const { db, _, formatBook, getBookById, requireUser } = require('../lib/db');
 const { normalizeIsbn, isValidIsbn } = require('../lib/bookCatalog');
 const { resolveByIsbn, searchBooks } = require('../lib/bookLookup');
+const { cacheRemoteBookCover } = require('../lib/coverCache');
 
 const SCAN_LOOKUP_LIMIT = 300;
 
@@ -95,4 +96,19 @@ async function updateCover(data) {
   return ok({ isbn, cover });
 }
 
-module.exports = { byIsbn, search, detail, updateCover };
+async function cacheRemoteCover(data) {
+  try {
+    return ok(await cacheRemoteBookCover(db, data));
+  } catch (err) {
+    if (err.message === 'INVALID_ISBN' || err.message === 'COVER_URL_NOT_ALLOWED') {
+      return fail(400, '封面地址无效');
+    }
+    if (err.message === 'BOOK_NOT_FOUND') return fail(404, '图书不存在');
+    console.warn('[books.cacheRemoteCover]', err.message || err);
+    return fail(502, '封面缓存失败');
+  }
+}
+
+module.exports = {
+  byIsbn, search, detail, updateCover, cacheRemoteCover,
+};

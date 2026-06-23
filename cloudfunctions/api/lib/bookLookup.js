@@ -20,10 +20,37 @@ function isGenericCategory(category) {
   return !category || ['图书', '童书', '其他', '未分类'].includes(String(category).trim());
 }
 
+function needsCoverMetadata(book) {
+  const cover = String((book && book.cover) || '').trim();
+  if (cover.startsWith('cloud://')) return false;
+  if (String((book && book.coverRemote) || '').trim()) return false;
+  if (/^https?:\/\//.test(cover)) return false;
+  const isbn = normalizeIsbn(book && book.isbn);
+  return isValidIsbn(isbn);
+}
+
 function needsProviderRefresh(book) {
   const isbn = normalizeIsbn(book && book.isbn);
   if (!isValidIsbn(isbn)) return false;
-  return !book.listPrice || isGenericCategory(book.category);
+  return !book.listPrice || isGenericCategory(book.category) || needsCoverMetadata(book);
+}
+
+async function refreshBookCoverMetadata(db, book) {
+  if (!needsCoverMetadata(book)) return book;
+  const external = await providers.refreshByIsbn(book.isbn);
+  if (!external) return book;
+  return upsertBook(db, external) || book;
+}
+
+async function refreshBooksCoverMetadata(db, booksMap = {}, limit = 6) {
+  const targets = Object.values(booksMap).filter(needsCoverMetadata).slice(0, limit);
+  if (!targets.length) return booksMap;
+  const next = { ...booksMap };
+  for (const book of targets) {
+    const updated = await refreshBookCoverMetadata(db, book);
+    if (updated && updated._id) next[updated._id] = updated;
+  }
+  return next;
 }
 
 async function refreshCachedBook(db, book) {
@@ -143,6 +170,9 @@ async function searchBooks(db, keyword, size = 20) {
 module.exports = {
   upsertBook,
   needsProviderRefresh,
+  needsCoverMetadata,
+  refreshBookCoverMetadata,
+  refreshBooksCoverMetadata,
   resolveByIsbn,
   searchBooks,
 };

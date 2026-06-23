@@ -1,13 +1,5 @@
 const DEFAULT_COVER = '/assets/covers/default.png';
 
-const CATALOG_ISBNS = new Set([
-  '9787533256739', '9787506282174', '9787533251413', '9787533251420',
-  '9787533251437', '9787506282181', '9787533251444', '9787506282198',
-  '9787111544937', '9787020002207', '9787532747735', '9787506282204',
-  '9787544258560', '9787539172768', '9787533254368', '9787505615556',
-  '9787535046123', '9787533258687', '9787544727099', '9787532748388',
-]);
-
 function isCloudCover(cover) {
   return typeof cover === 'string' && cover.startsWith('cloud://');
 }
@@ -16,25 +8,15 @@ function isRemoteCover(cover) {
   return typeof cover === 'string' && /^https?:\/\//.test(cover);
 }
 
-function localCoverByIsbn(isbn) {
-  const clean = String(isbn || '').replace(/[^0-9X]/gi, '');
-  if (clean && CATALOG_ISBNS.has(clean)) {
-    return `/assets/covers/${clean}.png`;
-  }
-  return '';
+function httpsUrl(url) {
+  return String(url || '').replace(/^http:\/\//, 'https://');
 }
 
 function displayCover(cover, isbn, coverRemote) {
   if (isCloudCover(cover)) return cover;
-  if (isRemoteCover(coverRemote)) return coverRemote;
-  if (isRemoteCover(cover)) return cover;
-  if (typeof cover === 'string' && cover.startsWith('local:')) {
-    const local = localCoverByIsbn(cover.slice(6));
-    if (local) return local;
-  }
-  const local = localCoverByIsbn(isbn);
-  if (local) return local;
-  if (typeof cover === 'string' && cover.startsWith('/assets/')) return cover;
+  const remote = httpsUrl(coverRemote || '');
+  if (isRemoteCover(remote)) return remote;
+  if (isRemoteCover(cover)) return httpsUrl(cover);
   return DEFAULT_COVER;
 }
 
@@ -63,26 +45,57 @@ function normalizeBooksDeep(value) {
   return next;
 }
 
-function onCoverError(e) {
-  const {
-    index, listKey, single, isbn,
-  } = e.currentTarget.dataset;
-  const fallback = localCoverByIsbn(isbn) || DEFAULT_COVER;
+function readBookFromContext(ctx, { single, listKey, index, nestedKey }) {
   if (single) {
-    this.setData({ [`${single}.cover`]: fallback });
+    const parts = single.split('.');
+    return parts.reduce((value, part) => (value ? value[part] : null), ctx.data) || null;
+  }
+  if (index === undefined || index === '') return null;
+  const list = ctx.data[listKey || 'list'] || [];
+  const item = list[index];
+  if (!item) return null;
+  return nestedKey ? item[nestedKey] : item;
+}
+
+function applyCoverField(ctx, { single, listKey, index, nestedKey }, cover) {
+  if (single) {
+    ctx.setData({ [`${single}.cover`]: cover });
     return;
   }
   if (index === undefined || index === '') return;
-  const key = listKey || 'list.books';
-  this.setData({ [`${key}[${index}].cover`]: fallback });
+  const key = listKey || 'list';
+  const field = nestedKey ? `${key}[${index}].${nestedKey}.cover` : `${key}[${index}].cover`;
+  ctx.setData({ [field]: cover });
+}
+
+function onCoverError(e) {
+  const { cacheRemoteCover, shouldCacheRemoteCover, remoteCoverUrl } = require('./coverRefresh');
+  const {
+    index, listKey, single, isbn, nestedKey,
+  } = e.currentTarget.dataset;
+  const ctx = this;
+  const book = readBookFromContext(ctx, {
+    single, listKey, index, nestedKey,
+  }) || { isbn, coverRemote: '' };
+  const remote = remoteCoverUrl(book);
+
+  const applyResolvedCover = (cover) => {
+    if (cover) applyCoverField(ctx, { single, listKey, index, nestedKey }, cover);
+    else if (remote) applyCoverField(ctx, { single, listKey, index, nestedKey }, remote);
+    else applyCoverField(ctx, { single, listKey, index, nestedKey }, DEFAULT_COVER);
+  };
+
+  if (shouldCacheRemoteCover(book)) {
+    cacheRemoteCover(book).then(applyResolvedCover);
+    return;
+  }
+  applyResolvedCover('');
 }
 
 module.exports = {
   DEFAULT_COVER,
-  CATALOG_ISBNS,
   isCloudCover,
   isRemoteCover,
-  localCoverByIsbn,
   displayCover,
   normalizeBook,
   normalizeBooksDeep,

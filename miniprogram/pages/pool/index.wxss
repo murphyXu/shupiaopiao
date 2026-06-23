@@ -221,6 +221,12 @@
   font-weight: 700;
 }
 
+.apply-action.mine {
+  color: #7b8a82;
+  background: #f0f5f1;
+  border-color: #e6eee9;
+}
+
 .pool-publish-entry {
   position: fixed;
   left: 50%;

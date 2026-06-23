@@ -1,18 +1,51 @@
 const { env } = require('../config/index');
 const { normalizeBooksDeep, normalizeBook } = require('./cover');
-const { cacheRemoteCover, cacheRemoteCovers } = require('./coverRefresh');
+const {
+  cacheRemoteCover, cacheRemoteCovers, applyCoverUpdates,
+} = require('./coverRefresh');
 
-function enrichData(action, data) {
+const POOL_COVER_ACTIONS = new Set(['pool.list', 'pool.detail', 'pool.wants']);
+
+function poolBooksFromData(data) {
+  if (!data) return [];
+  if (Array.isArray(data.list)) return data.list.map((item) => item.book).filter(Boolean);
+  if (data.book) return [data.book];
+  return [];
+}
+
+async function enrichPoolCovers(data) {
+  let enriched = normalizeBooksDeep(data);
+  let coverPass = 0;
+  const { shouldCacheRemoteCover } = require('./coverRefresh');
+  while (coverPass < 8) {
+    const books = poolBooksFromData(enriched);
+    if (!books.some(shouldCacheRemoteCover)) break;
+    const updates = await cacheRemoteCovers(books, 12);
+    if (!Object.keys(updates).length) break;
+    if (Array.isArray(enriched.list)) {
+      enriched = { ...enriched, list: applyCoverUpdates(enriched.list, updates, 'book') };
+    } else if (enriched.book) {
+      enriched = applyCoverUpdates([enriched], updates, 'book')[0];
+    }
+    coverPass += 1;
+  }
+  return enriched;
+}
+
+async function enrichData(action, data) {
   if (!data) return data;
   if (action === 'books.search') {
     const list = (data.list || []).map(normalizeBook);
-    cacheRemoteCovers(list);
+    await cacheRemoteCovers(list);
     return { ...data, list };
   }
   if (action === 'books.isbn' || action === 'books.detail') {
     const book = normalizeBook(data);
-    cacheRemoteCover(book);
-    return book;
+    const cover = await cacheRemoteCover(book);
+    return cover ? { ...book, cover } : book;
+  }
+  if (POOL_COVER_ACTIONS.has(action)) {
+    return enrichPoolCovers(data);
   }
   return normalizeBooksDeep(data);
 }
@@ -22,10 +55,10 @@ function call(action, data = {}, options = {}) {
     wx.cloud.callFunction({
       name: 'api',
       data: { action, data },
-    }).then((res) => {
+    }).then(async (res) => {
       const result = res.result || {};
       if (result.code === 0) {
-        resolve(enrichData(action, result.data));
+        resolve(await enrichData(action, result.data));
       } else if (result.code === 401) {
         wx.removeStorageSync('userInfo');
         const msg = result.msg || '请先登录';

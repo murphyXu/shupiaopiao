@@ -10,7 +10,7 @@ const CONDITION_FACTORS = {
 const CONDITION_LABELS = {
   new: '全新',
   like_new: '9成新',
-  good: '八成新',
+  good: '8成新',
   seven_new: '7成新',
   below_seven: '7成新以下',
   fair: '有笔记',

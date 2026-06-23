@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const { requireLogin } = require('../../utils/util');
+const { onCoverError } = require('../../utils/cover');
 
 Page({
   data: { item: null },
@@ -14,11 +15,19 @@ Page({
   },
 
   goClaim() {
+    if (!this.data.item || !this.data.item.canClaim) {
+      wx.showToast({ title: '不能接漂自己赠送的书', icon: 'none' });
+      return;
+    }
     if (!requireLogin('申请接漂需登录，以便管理漂流记录与公益积分')) return;
     wx.navigateTo({ url: `/pages/drift/claim?driftId=${this.driftId}` });
   },
 
   async toggleWant() {
+    if (this.data.item && this.data.item.isMine) {
+      wx.showToast({ title: '不能想要接漂自己赠送的书', icon: 'none' });
+      return;
+    }
     if (!requireLogin('登录后可标记想要接漂')) return;
     try {
       const result = await api.togglePoolWant(this.driftId);
@@ -47,4 +56,6 @@ Page({
       },
     });
   },
+
+  onCoverError,
 });

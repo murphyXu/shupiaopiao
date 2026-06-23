@@ -4,6 +4,18 @@ const { setTabBarIndex } = require('../../utils/tab-bar');
 const api = require('../../utils/api');
 const { trackPageView, track } = require('../../utils/track');
 
+function normalizeMineUser(user = {}) {
+  const balance = Number(user.coinBalance) || 0;
+  const frozen = Number(user.coinFrozen) || 0;
+  const available = user.availableCoin === undefined
+    ? balance - frozen
+    : Number(user.availableCoin);
+  return {
+    ...user,
+    availableCoin: Math.max(Number(available) || 0, 0),
+  };
+}
+
 Page({
   behaviors: [safeAreaBehavior],
   data: {
@@ -30,10 +42,10 @@ Page({
       this.setData({ loggedIn: false, user: {} });
       return;
     }
-    const user = wx.getStorageSync('userInfo') || {};
+    const user = normalizeMineUser(wx.getStorageSync('userInfo') || {});
     this.setData({ loggedIn: true, user });
     getApp().fetchUser().then((u) => {
-      const nextUser = u || user;
+      const nextUser = normalizeMineUser(u || user);
       this.setData({ user: nextUser });
       this.loadDriftSummary();
     }).catch(() => {});

@@ -2,6 +2,7 @@ const { ok, fail } = require('../lib/utils');
 const {
   db, _, requireUser, getBookById, getBooksByIds, getUsersByIds, formatBook, safeQuery, getUserByOpenid,
 } = require('../lib/db');
+const { refreshBooksCoverMetadata, refreshBookCoverMetadata } = require('../lib/bookLookup');
 const { CONDITION_LABELS } = require('../lib/pricing');
 const { normalizeBookCategory } = require('../lib/bookCategory');
 const { availableCoin } = require('../lib/driftPolicy');
@@ -18,6 +19,7 @@ const CATEGORY_LABELS = {
 };
 
 const REPORT_HIDE_THRESHOLD = 3;
+const INVALID_DRIFT_STATUSES = ['CANCELLED', 'REJECTED'];
 
 function classifyCategory(book = {}) {
   const sourceCategory = normalizeBookCategory(book.category, book);
@@ -34,6 +36,30 @@ function classifyCategory(book = {}) {
 
 function wantIdFor(userId, driftId) {
   return `${userId}_${driftId}`;
+}
+
+function isCloudCover(cover = '') {
+  return typeof cover === 'string' && cover.startsWith('cloud://');
+}
+
+function isRemoteCover(cover = '') {
+  return typeof cover === 'string' && /^https?:\/\//.test(cover);
+}
+
+function normalizeHttps(url = '') {
+  return String(url || '').replace(/^http:\/\//, 'https://');
+}
+
+function formatPoolBook(book) {
+  const formatted = formatBook(book);
+  if (isCloudCover(formatted.cover)) return formatted;
+  if (isRemoteCover(formatted.coverRemote)) {
+    return { ...formatted, cover: normalizeHttps(formatted.coverRemote) };
+  }
+  if (isRemoteCover(formatted.cover)) {
+    return { ...formatted, cover: normalizeHttps(formatted.cover) };
+  }
+  return formatted;
 }
 
 async function getWantedDriftIds(userId, driftIds = []) {
@@ -59,9 +85,25 @@ async function hiddenDriftIdsByReports(driftIds = []) {
   return new Set(Object.keys(counts).filter((id) => counts[id] >= REPORT_HIDE_THRESHOLD));
 }
 
+async function hiddenDriftIdsByCancelledOrders(driftIds = []) {
+  const ids = [...new Set(driftIds.filter(Boolean))];
+  if (!ids.length) return new Set();
+  const { data: rows } = await safeQuery('drift_orders', (col) =>
+    col.where({
+      driftId: _.in(ids),
+      status: 'CANCELLED',
+      cancelledBy: _.in(['GIVER', 'SYSTEM']),
+    }).limit(500).get());
+  return new Set(rows.map((row) => row.driftId).filter(Boolean));
+}
+
 async function filterVisibleDrifts(drifts = []) {
-  const hiddenIds = await hiddenDriftIdsByReports(drifts.map((drift) => drift._id));
-  return drifts.filter((drift) => !hiddenIds.has(drift._id));
+  const driftIds = drifts.map((drift) => drift._id);
+  const [hiddenIds, cancelledIds] = await Promise.all([
+    hiddenDriftIdsByReports(driftIds),
+    hiddenDriftIdsByCancelledOrders(driftIds),
+  ]);
+  return drifts.filter((drift) => !hiddenIds.has(drift._id) && !cancelledIds.has(drift._id));
 }
 
 async function formatWantedList(user) {
@@ -78,7 +120,8 @@ async function formatWantedList(user) {
   const activeDrifts = await filterVisibleDrifts(wantRows.map((row) => driftMap[row.driftId]).filter(Boolean));
   if (!activeDrifts.length) return [];
 
-  const books = await getBooksByIds(activeDrifts.map((drift) => drift.bookId));
+  let books = await getBooksByIds(activeDrifts.map((drift) => drift.bookId));
+  books = await refreshBooksCoverMetadata(db, books, 8);
   const users = await getUsersByIds(activeDrifts.map((drift) => drift.userId));
   return activeDrifts
     .filter((drift) => books[drift.bookId])
@@ -88,6 +131,16 @@ async function formatWantedList(user) {
 async function countWanted(userId) {
   const list = await formatWantedList({ _id: userId });
   return list.length;
+}
+
+async function countGivenDrifts(userId) {
+  if (!userId) return 0;
+  const { data: rows } = await safeQuery('drifts', (col) => col.where({
+    userId,
+    status: _.nin(INVALID_DRIFT_STATUSES),
+  }).limit(500).get());
+  const cancelledIds = await hiddenDriftIdsByCancelledOrders(rows.map((row) => row._id));
+  return rows.filter((row) => !cancelledIds.has(row._id)).length;
 }
 
 async function getWantDoc(userId, driftId) {
@@ -125,7 +178,7 @@ function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds =
     wanted,
     category,
     categoryLabel: CATEGORY_LABELS[category] || CATEGORY_LABELS.other,
-    book: formatBook(book),
+    book: formatPoolBook(book),
     giver: {
       nickname: isAnonymous ? '匿名书友' : giver.nickname,
       avatar: isAnonymous ? '' : giver.avatar,
@@ -147,11 +200,12 @@ async function list(data, openid) {
   const drifts = await filterVisibleDrifts(rawDrifts);
   const bookIds = drifts.map((d) => d.bookId);
   const userIds = drifts.map((d) => d.userId);
-  const [books, users, wantedDriftIds] = await Promise.all([
+  const [rawBooks, users, wantedDriftIds] = await Promise.all([
     getBooksByIds(bookIds),
     getUsersByIds(userIds),
     getWantedDriftIds(user ? user._id : '', drifts.map((d) => d._id)),
   ]);
+  const books = await refreshBooksCoverMetadata(db, rawBooks, 8);
 
   let list = drifts
     .filter((d) => books[d.bookId])
@@ -179,12 +233,15 @@ async function stats(openid) {
     givenCount: 0, receivedCount: 0, wantCount: 0, availableCoin: 0,
   });
   const [
-    { total: givenCount },
+    givenCount,
     { total: receivedCount },
     activeWantedCount,
   ] = await Promise.all([
-    safeQuery('drifts', (col) => col.where({ userId: user._id }).count()),
-    safeQuery('drift_orders', (col) => col.where({ receiverId: user._id }).count()),
+    countGivenDrifts(user._id),
+    safeQuery('drift_orders', (col) => col.where({
+      receiverId: user._id,
+      status: _.neq('CANCELLED'),
+    }).count()),
     countWanted(user._id),
   ]);
   return ok({
@@ -200,7 +257,8 @@ async function detail(data, openid) {
   if (!drift) return fail(404, '漂流书不存在');
   const visibleDrifts = await filterVisibleDrifts([drift]);
   if (!visibleDrifts.length) return fail(404, '漂流书不存在');
-  const book = await getBookById(drift.bookId);
+  let book = await getBookById(drift.bookId);
+  if (book) book = await refreshBookCoverMetadata(db, book);
   const { data: giverList } = await db.collection('users').where({ _id: drift.userId }).get();
   const giver = giverList[0] || { nickname: '书友', avatar: '', creditScore: 100 };
   const user = openid ? await getUserByOpenid(openid) : null;

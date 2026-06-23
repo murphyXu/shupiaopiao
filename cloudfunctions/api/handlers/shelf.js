@@ -7,7 +7,7 @@ const { cleanBookTitle } = require('../lib/bookLookupPolicy');
 const { normalizeIsbn } = require('../lib/bookCatalog');
 const { normalizeBookCategory } = require('../lib/bookCategory');
 const { assertSafeTextFields } = require('../lib/contentSecurity');
-const { availableCoin } = require('../lib/driftPolicy');
+const { availableCoin, SHELF_CAPACITY_PER_COIN } = require('../lib/driftPolicy');
 
 const READING_STATUS_LABELS = {
   reading: '在读',
@@ -28,6 +28,7 @@ const BOOK_CLASS_LABELS = {
 
 const DEFAULT_LOCATION = { key: 'shelf_1', name: '默认书架 1' };
 const ACTIVE_SHELF_DRIFT_STATUSES = ['PENDING_REVIEW', 'IN_POOL', 'CLAIMED'];
+const CLAIMED_SHELF_DRIFT_STATUSES = ['CLAIMED'];
 const CANCELABLE_SHELF_DRIFT_STATUSES = ['PENDING_REVIEW', 'IN_POOL'];
 const SHELF_DRIFT_STATUS_LABELS = {
   PENDING_REVIEW: '待审核',
@@ -155,6 +156,38 @@ async function activeDriftsByShelfBook(userId, shelfBookIds = []) {
   return map;
 }
 
+async function completedDriftShelfIds(userId, shelfBookIds = []) {
+  const ids = shelfBookIds.filter(Boolean);
+  if (!ids.length) return new Set();
+  const { data: drifts } = await db.collection('drifts').where({
+    userId,
+    shelfBookId: db.command.in(ids),
+    status: 'COMPLETED',
+  }).limit(500).get();
+  return new Set(drifts.map((drift) => drift.shelfBookId).filter(Boolean));
+}
+
+async function claimedDriftShelfIds(userId, shelfBookIds = []) {
+  const ids = shelfBookIds.filter(Boolean);
+  if (!ids.length) return new Set();
+  const { data: drifts } = await db.collection('drifts').where({
+    userId,
+    shelfBookId: db.command.in(ids),
+    status: db.command.in(CLAIMED_SHELF_DRIFT_STATUSES),
+  }).limit(500).get();
+  return new Set(drifts.map((drift) => drift.shelfBookId).filter(Boolean));
+}
+
+async function filterCountableShelfRows(userId, rows = []) {
+  if (!rows.length) return [];
+  const shelfBookIds = rows.map((row) => row._id);
+  const [claimedIds, completedIds] = await Promise.all([
+    claimedDriftShelfIds(userId, shelfBookIds),
+    completedDriftShelfIds(userId, shelfBookIds),
+  ]);
+  return rows.filter((row) => !claimedIds.has(row._id) && !completedIds.has(row._id));
+}
+
 async function enrichBookPrices(bookList = []) {
   const isbns = bookList.map((book) => normalizeIsbn(book.isbn)).filter(Boolean);
   if (!isbns.length) return bookList;
@@ -167,6 +200,37 @@ async function enrichBookPrices(bookList = []) {
     if (!cached || !cached.medianPrice) return book;
     return { ...book, listPrice: `¥${cached.medianPrice}`, listPriceSource: 'pricing_cache' };
   });
+}
+
+async function booksByIdsWithPrices(bookIds = []) {
+  const ids = [...new Set(bookIds.filter(Boolean))];
+  if (!ids.length) return {};
+  const books = await getBooksByIds(ids);
+  const enriched = await enrichBookPrices(Object.values(books));
+  const map = {};
+  enriched.forEach((book) => { map[book._id] = book; });
+  return map;
+}
+
+function listPriceForBook(book = {}) {
+  return parseListPrice(book.listPrice);
+}
+
+async function buildCollectionStats(userId, allShelfRows = []) {
+  const books = await booksByIdsWithPrices(allShelfRows.map((row) => row.bookId));
+  const validRows = allShelfRows.filter((row) => books[row.bookId]);
+  const countableRows = await filterCountableShelfRows(userId, validRows);
+  let totalListPrice = 0;
+  countableRows.forEach((row) => {
+    const price = listPriceForBook(books[row.bookId] || {});
+    if (price > 0) totalListPrice += price;
+  });
+  return {
+    totalBooks: countableRows.length,
+    totalValue: formatPriceTotal(totalListPrice),
+    totalListPrice: formatPriceTotal(totalListPrice),
+    occupiedSlots: validRows.length,
+  };
 }
 
 async function list(openid, data) {
@@ -361,55 +425,48 @@ async function remove(openid, data) {
 async function dashboard(openid) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
-  const { total } = await db.collection('shelf_books').where({ userId: user._id }).count();
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
   const { data: allShelf } = await db.collection('shelf_books').where({ userId: user._id }).get();
-  const monthNew = allShelf.filter((s) => new Date(s.createdAt) >= monthStart).length;
-
-  const bookIds = [...new Set(allShelf.map((row) => row.bookId).filter(Boolean))];
-  const books = await getBooksByIds(bookIds);
-  const totalListPrice = formatPriceTotal(allShelf.reduce((sum, row) => (
-    sum + parseListPrice((books[row.bookId] || {}).listPrice)
-  ), 0));
+  const stats = await buildCollectionStats(user._id, allShelf);
   const shelfLimit = getShelfLimit(user);
   return ok({
-    totalBooks: total,
-    monthNew,
-    totalValue: totalListPrice,
-    totalListPrice,
+    totalBooks: stats.totalBooks,
+    totalValue: stats.totalValue,
+    totalListPrice: stats.totalListPrice,
     shelfLimit,
-    remainingCapacity: Math.max(shelfLimit - total, 0),
+    remainingCapacity: Math.max(shelfLimit - stats.occupiedSlots, 0),
   });
 }
 
 async function redeemCapacity(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
-  const count = Math.min(Math.max(Math.floor(Number(data.count) || 1), 1), 100);
-  if (availableCoin(user) < count) return fail(400, '可用公益积分不足，暂不能兑换书架额度');
+  const capacity = Math.min(Math.max(Math.floor(Number(data.count) || SHELF_CAPACITY_PER_COIN), SHELF_CAPACITY_PER_COIN), 100);
+  if (capacity % SHELF_CAPACITY_PER_COIN !== 0) {
+    return fail(400, `兑换数量须为 ${SHELF_CAPACITY_PER_COIN} 本的整数倍`);
+  }
+  const coinCost = capacity / SHELF_CAPACITY_PER_COIN;
+  if (availableCoin(user) < coinCost) return fail(400, '可用公益积分不足，暂不能兑换书架额度');
 
-  const nextLimit = getShelfLimit(user) + count;
+  const nextLimit = getShelfLimit(user) + capacity;
   await db.collection('users').doc(user._id).update({
     data: {
-      coinBalance: db.command.inc(-count),
+      coinBalance: db.command.inc(-coinCost),
       shelfLimit: nextLimit,
     },
   });
   await db.collection('coin_transactions').doc(uid()).set({
     data: {
       userId: user._id,
-      amount: -count,
+      amount: -coinCost,
       type: 'shelf_capacity_redeem',
       refId: '',
-      description: `兑换书架容量 +${count} 本`,
+      description: `兑换书架容量 +${capacity} 本`,
       createdAt: nowIso(),
     },
   });
   const used = await getShelfUsage(user._id);
   return ok({
-    balance: (Number(user.coinBalance) || 0) - count,
+    balance: (Number(user.coinBalance) || 0) - coinCost,
     shelfLimit: nextLimit,
     remainingCapacity: Math.max(nextLimit - used, 0),
   });
@@ -429,7 +486,14 @@ async function publicList(data) {
     pricedBooks.forEach((book) => { books[book._id] = book; });
   }
   const list = rows.filter((row) => books[row.bookId]).map((row) => formatShelfBook(row, books[row.bookId]));
-  const totalListPrice = formatPriceTotal(list.reduce((sum, row) => sum + parseListPrice(row.book.listPrice), 0));
+  const pricedBooks = await enrichBookPrices(Object.values(books));
+  const pricedMap = {};
+  pricedBooks.forEach((book) => { pricedMap[book._id] = book; });
+  let totalListPrice = 0;
+  list.forEach((row) => {
+    const price = listPriceForBook(pricedMap[row.bookId] || row.book || {});
+    if (price > 0) totalListPrice += price;
+  });
   return ok({
     owner: {
       id: user._id,
@@ -440,9 +504,8 @@ async function publicList(data) {
     list,
     dashboard: {
       totalBooks: list.length,
-      monthNew: 0,
-      totalValue: totalListPrice,
-      totalListPrice,
+      totalValue: formatPriceTotal(totalListPrice),
+      totalListPrice: formatPriceTotal(totalListPrice),
       shelfLimit: list.length,
       remainingCapacity: 0,
     },

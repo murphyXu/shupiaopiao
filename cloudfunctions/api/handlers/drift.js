@@ -26,6 +26,67 @@ function isAdminOpenid(openid) {
   return String(process.env.ADMIN_OPENIDS || '').split(',').map((item) => item.trim()).filter(Boolean).includes(openid);
 }
 
+function normalizeOrderRecord(order, orderId) {
+  if (!order) return null;
+  return { ...order, _id: order._id || orderId };
+}
+
+async function resolveOrderCoinValue(transaction, order) {
+  let coinValue = Number(order.coinValue);
+  if (Number.isFinite(coinValue) && coinValue >= 0) return coinValue;
+  if (!order.driftId) return 0;
+  const driftSnap = await transaction.collection('drifts').doc(order.driftId).get();
+  coinValue = Number(driftSnap.data && driftSnap.data.coinValue);
+  return Number.isFinite(coinValue) && coinValue >= 0 ? coinValue : 0;
+}
+
+function buildRevokePublishRewardEffects(drift, driftId, now, reason = '取消漂流退回上漂奖励') {
+  const effects = { userPatch: {}, driftPatch: null, coinEvents: [], resolvedDriftId: '' };
+  if (!drift || drift.publishRewardGranted !== true || drift.publishRewardRevoked === true) return effects;
+  const resolvedDriftId = driftId || drift._id || drift.id || '';
+  if (!resolvedDriftId) return effects;
+  const credited = Math.max(Number(
+    drift.publishRewardCredited === undefined ? drift.publishRewardAmount : drift.publishRewardCredited,
+  ) || 0, 0);
+  const offset = Math.max(Number(drift.publishRewardOffset) || 0, 0);
+  if (!credited && !offset) return effects;
+  if (credited) effects.userPatch.coinBalance = _.inc(-credited);
+  if (offset) effects.userPatch.coinPenaltyPending = _.inc(offset);
+  effects.driftPatch = { publishRewardRevoked: true, publishRewardRevokedAt: now };
+  effects.resolvedDriftId = resolvedDriftId;
+  if (credited) {
+    effects.coinEvents.push({
+      userId: drift.userId,
+      refId: resolvedDriftId,
+      type: 'publish_reward_revoke',
+      balanceDelta: -credited,
+      frozenDelta: 0,
+      description: reason,
+    });
+  }
+  if (offset) {
+    effects.coinEvents.push({
+      userId: drift.userId,
+      refId: resolvedDriftId,
+      type: 'penalty_offset_restore',
+      balanceDelta: 0,
+      frozenDelta: 0,
+      description: '取消漂流恢复历史待抵扣',
+    });
+  }
+  return effects;
+}
+
+async function applyRevokePublishReward(transaction, drift, driftId, now, reason = '取消漂流退回上漂奖励') {
+  const effects = buildRevokePublishRewardEffects(drift, driftId, now, reason);
+  if (!effects.driftPatch) return effects.userPatch;
+  await transaction.collection('drifts').doc(effects.resolvedDriftId).update({ data: effects.driftPatch });
+  for (const event of effects.coinEvents) {
+    await writeCoinEvent(transaction, { ...event, createdAt: now });
+  }
+  return effects.userPatch;
+}
+
 function parseListPrice(value) {
   const match = String(value || '').replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
   return match ? Number(match[1]) : 0;
@@ -172,42 +233,11 @@ async function grantPublishReward(userId, driftId) {
   });
 }
 
-async function revokePublishReward(transaction, drift, now, reason = '取消漂流退回上漂奖励') {
-  if (!drift || drift.publishRewardGranted !== true || drift.publishRewardRevoked === true) return;
-  const driftId = drift._id || drift.id;
-  if (!driftId) return;
-  const credited = Math.max(Number(
-    drift.publishRewardCredited === undefined ? drift.publishRewardAmount : drift.publishRewardCredited,
-  ) || 0, 0);
-  const offset = Math.max(Number(drift.publishRewardOffset) || 0, 0);
-  if (!credited && !offset) return;
-  const userPatch = {};
-  if (credited) userPatch.coinBalance = _.inc(-credited);
-  if (offset) userPatch.coinPenaltyPending = _.inc(offset);
+async function revokePublishReward(transaction, drift, now, reason = '取消漂流退回上漂奖励', driftId = '') {
+  const userPatch = await applyRevokePublishReward(transaction, drift, driftId || drift._id || drift.id || '', now, reason);
   if (Object.keys(userPatch).length) {
     await transaction.collection('users').doc(drift.userId).update({ data: userPatch });
   }
-  await transaction.collection('drifts').doc(driftId).update({
-    data: { publishRewardRevoked: true, publishRewardRevokedAt: now },
-  });
-  if (credited) await writeCoinEvent(transaction, {
-    userId: drift.userId,
-    refId: driftId,
-    type: 'publish_reward_revoke',
-    balanceDelta: -credited,
-    frozenDelta: 0,
-    description: reason,
-    createdAt: now,
-  });
-  if (offset) await writeCoinEvent(transaction, {
-    userId: drift.userId,
-    refId: driftId,
-    type: 'penalty_offset_restore',
-    balanceDelta: 0,
-    frozenDelta: 0,
-    description: '取消漂流恢复历史待抵扣',
-    createdAt: now,
-  });
 }
 
 async function publish(openid, data) {
@@ -421,9 +451,9 @@ async function ship(openid, data) {
   const now = nowIso();
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(data.orderId).get();
-    let order = orderSnap.data;
+    let order = normalizeOrderRecord(orderSnap.data, data.orderId);
     if (!order || order.giverId !== user._id) throw new Error('ORDER_NOT_FOUND');
-    const migrated = await ensureAccountingV2(transaction, order, _);
+    const migrated = await ensureAccountingV2(transaction, order, _, data.orderId);
     order = migrated.order;
     if (order.status !== 'PENDING_SHIP') throw new Error('INVALID_STATUS');
     if (order.shipDeadlineAt && order.shipDeadlineAt <= now) throw new Error('SHIP_DEADLINE_EXPIRED');
@@ -435,38 +465,67 @@ async function ship(openid, data) {
   return ok({ orderId: data.orderId, status: 'SHIPPED' });
 }
 
+function driftPatchAfterOrderCancel(role, now, reason = '') {
+  const base = { activeOrderId: '' };
+  if (role === 'RECEIVER') return { ...base, status: 'IN_POOL' };
+  return {
+    ...base,
+    status: 'CANCELLED',
+    cancelReason: reason,
+    cancelledAt: now,
+  };
+}
+
 async function cancelOrderById(orderId, actor, reason = '') {
   const now = nowIso();
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(orderId).get();
-    let order = orderSnap.data;
+    let order = normalizeOrderRecord(orderSnap.data, orderId);
     if (!order) throw new Error('ORDER_NOT_FOUND');
     if (order.status === 'CANCELLED') return;
-    const migrated = await ensureAccountingV2(transaction, order, _);
+    const migrated = await ensureAccountingV2(transaction, order, _, orderId);
     order = migrated.order;
     if (order.status !== 'PENDING_SHIP') throw new Error('INVALID_STATUS');
+    const coinValue = await resolveOrderCoinValue(transaction, order);
+    order = { ...order, coinValue };
     const role = actor.system ? 'SYSTEM' : (actor.userId === order.receiverId ? 'RECEIVER' : (actor.userId === order.giverId ? 'GIVER' : ''));
     const creditChange = cancelCreditChange(role);
     if (!creditChange) throw new Error('FORBIDDEN');
     const driftSnap = role === 'GIVER' || role === 'SYSTEM'
       ? await transaction.collection('drifts').doc(order.driftId).get()
       : { data: null };
-    const receiverPatch = { coinFrozen: _.inc(-Number(order.coinValue)) };
+
+    const receiverPatch = { coinFrozen: _.inc(-coinValue) };
     if (order.activeCounted === true) receiverPatch.activeClaimCount = _.inc(-1);
+    if (creditChange.target === 'receiver') receiverPatch.creditScore = _.inc(creditChange.delta);
     await transaction.collection('users').doc(order.receiverId).update({ data: receiverPatch });
-    const creditUserId = creditChange.target === 'receiver' ? order.receiverId : order.giverId;
-    await transaction.collection('users').doc(creditUserId).update({ data: { creditScore: _.inc(creditChange.delta) } });
+
+    if (creditChange.target === 'giver') {
+      const giverPatch = { creditScore: _.inc(creditChange.delta) };
+      if (driftSnap.data) {
+        const revokePatch = await applyRevokePublishReward(
+          transaction,
+          driftSnap.data,
+          order.driftId,
+          now,
+          role === 'SYSTEM' ? '超时取消退回上漂奖励' : '取消漂流退回上漂奖励',
+        );
+        Object.assign(giverPatch, revokePatch);
+      }
+      await transaction.collection('users').doc(order.giverId).update({ data: giverPatch });
+    }
+
     await transaction.collection('drift_orders').doc(order._id).update({
       data: { status: 'CANCELLED', activeCounted: false, cancelledBy: role, cancelReason: reason, cancelledAt: now },
     });
-    await transaction.collection('drifts').doc(order.driftId).update({ data: { status: 'IN_POOL', activeOrderId: '' } });
-    if (driftSnap.data) {
-      await revokePublishReward(transaction, driftSnap.data, now, role === 'SYSTEM' ? '超时取消退回上漂奖励' : '取消漂流退回上漂奖励');
-    }
+    await transaction.collection('drifts').doc(order.driftId).update({
+      data: driftPatchAfterOrderCancel(role, now, reason),
+    });
     await writeCoinEvent(transaction, {
       userId: order.receiverId, refId: order._id, type: 'claim_unfreeze', balanceDelta: 0,
-      frozenDelta: -Number(order.coinValue), description: '取消接漂释放占用积分', createdAt: now,
+      frozenDelta: -coinValue, description: '取消接漂释放占用积分', createdAt: now,
     });
+    const creditUserId = creditChange.target === 'receiver' ? order.receiverId : order.giverId;
     await writeCreditEvent(transaction, {
       userId: creditUserId, refId: order._id, reasonCode: role === 'SYSTEM' ? 'SHIP_TIMEOUT' : `${role}_CANCEL`,
       delta: creditChange.delta, reason: role === 'SYSTEM' ? '72 小时未寄出' : '发货前取消漂流', createdAt: now,
@@ -478,6 +537,7 @@ async function cancelOrderById(orderId, actor, reason = '') {
 async function cancel(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
+  if (!data.orderId) return fail(400, '缺少漂流记录');
   await cancelOrderById(data.orderId, { userId: user._id }, String(data.reason || '').trim());
   return ok({ orderId: data.orderId, status: 'CANCELLED' });
 }
@@ -500,7 +560,7 @@ async function cancelOpen(openid, data) {
         cancelledAt: now,
       },
     });
-    await revokePublishReward(transaction, drift, now);
+    await revokePublishReward(transaction, drift, now, '取消漂流退回上漂奖励', driftId);
   });
   return ok({ driftId, status: 'CANCELLED' });
 }
@@ -509,11 +569,11 @@ async function settleOrder(orderId, completionType, actorUserId = '') {
   const now = nowIso();
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(orderId).get();
-    let order = orderSnap.data;
+    let order = normalizeOrderRecord(orderSnap.data, orderId);
     if (!order) throw new Error('ORDER_NOT_FOUND');
     if (completionType === 'USER' && actorUserId !== order.receiverId) throw new Error('FORBIDDEN');
     if (order.status === 'DONE') return;
-    const migrated = await ensureAccountingV2(transaction, order, _);
+    const migrated = await ensureAccountingV2(transaction, order, _, orderId);
     order = migrated.order;
     if (completionType === 'ADMIN') {
       if (order.status !== 'DISPUTED') throw new Error('INVALID_STATUS');
@@ -557,16 +617,17 @@ async function addReceivedBook(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   const { data: order } = await db.collection('drift_orders').doc(data.orderId).get();
-  if (!order || order.receiverId !== user._id || order.status !== 'DONE') return fail(404, '已完成的漂流记录不存在');
-  const { data: existing } = await db.collection('shelf_books').where({ userId: user._id, sourceOrderId: order._id }).limit(1).get();
+  const normalizedOrder = normalizeOrderRecord(order, data.orderId);
+  if (!normalizedOrder || normalizedOrder.receiverId !== user._id || normalizedOrder.status !== 'DONE') return fail(404, '已完成的漂流记录不存在');
+  const { data: existing } = await db.collection('shelf_books').where({ userId: user._id, sourceOrderId: normalizedOrder._id }).limit(1).get();
   if (existing.length) return ok({ id: existing[0]._id, existed: true });
   const { total } = await db.collection('shelf_books').where({ userId: user._id }).count();
   const shelfLimit = Math.max(Number(user.shelfLimit) || DEFAULT_SHELF_LIMIT, DEFAULT_SHELF_LIMIT);
   if (total >= shelfLimit) return fail(400, '书架容量已满，请先整理书架');
-  const { data: drift } = await db.collection('drifts').doc(order.driftId).get();
-  const id = `received-${order._id}`;
+  const { data: drift } = await db.collection('drifts').doc(normalizedOrder.driftId).get();
+  const id = `received-${normalizedOrder._id}`;
   await db.collection('shelf_books').doc(id).set({
-    data: { userId: user._id, bookId: drift.bookId, source: 'drift_received', sourceOrderId: order._id, category: 'want_read', readingStatus: 'want_read', status: 'unread', rating: 0, note: '', createdAt: nowIso() },
+    data: { userId: user._id, bookId: drift.bookId, source: 'drift_received', sourceOrderId: normalizedOrder._id, category: 'want_read', readingStatus: 'want_read', status: 'unread', rating: 0, note: '', createdAt: nowIso() },
   });
   return ok({ id, existed: false });
 }
@@ -582,9 +643,9 @@ async function dispute(openid, data) {
   const disputeId = uid();
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(data.orderId).get();
-    let order = orderSnap.data;
+    let order = normalizeOrderRecord(orderSnap.data, data.orderId);
     if (!order || ![order.giverId, order.receiverId].includes(user._id)) throw new Error('ORDER_NOT_FOUND');
-    const migrated = await ensureAccountingV2(transaction, order, _);
+    const migrated = await ensureAccountingV2(transaction, order, _, data.orderId);
     order = migrated.order;
     if (order.status !== 'SHIPPED') throw new Error('INVALID_STATUS');
     await transaction.collection('drift_disputes').doc(disputeId).set({ data: { orderId: order._id, createdBy: user._id, reason, images: data.images || [], status: 'OPEN', createdAt: nowIso() } });
@@ -606,9 +667,9 @@ async function refundDispute(orderId, action, options = {}) {
   const now = nowIso();
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(orderId).get();
-    let order = orderSnap.data;
+    let order = normalizeOrderRecord(orderSnap.data, orderId);
     if (!order) throw new Error('ORDER_NOT_FOUND');
-    const migrated = await ensureAccountingV2(transaction, order, _);
+    const migrated = await ensureAccountingV2(transaction, order, _, orderId);
     order = migrated.order;
     if (order.status !== 'DISPUTED') throw new Error('INVALID_STATUS');
     const receiverPatch = { coinFrozen: _.inc(-Number(order.coinValue)) };
@@ -662,7 +723,7 @@ async function resolveDispute(openid, data) {
   else if (normalizedAction === 'INVALID') {
     await db.runTransaction(async (transaction) => {
       const orderSnap = await transaction.collection('drift_orders').doc(disputeRow.orderId).get();
-      const order = orderSnap.data;
+      const order = normalizeOrderRecord(orderSnap.data, disputeRow.orderId);
       if (!order || order.status !== 'DISPUTED') throw new Error('INVALID_STATUS');
       const userSnap = await transaction.collection('users').doc(disputeRow.createdBy).get();
       const nextInvalidCount = (Number(userSnap.data.invalidDisputeCount) || 0) + 1;
@@ -687,9 +748,10 @@ async function review(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   const { data: order } = await db.collection('drift_orders').doc(data.orderId).get();
-  if (!order || order.status !== 'DONE' || ![order.giverId, order.receiverId].includes(user._id)) return fail(400, '当前漂流记录不可评价');
-  const toUser = order.giverId === user._id ? order.receiverId : order.giverId;
-  const reviewId = `${order._id}-${user._id}`;
+  const normalizedOrder = normalizeOrderRecord(order, data.orderId);
+  if (!normalizedOrder || normalizedOrder.status !== 'DONE' || ![normalizedOrder.giverId, normalizedOrder.receiverId].includes(user._id)) return fail(400, '当前漂流记录不可评价');
+  const toUser = normalizedOrder.giverId === user._id ? normalizedOrder.receiverId : normalizedOrder.giverId;
+  const reviewId = `${normalizedOrder._id}-${user._id}`;
   let existing = null;
   try {
     const snapshot = await db.collection('reviews').doc(reviewId).get();
@@ -699,7 +761,7 @@ async function review(openid, data) {
   }
   if (existing) return fail(409, '每人每笔漂流只能评价一次');
   const rating = Math.max(1, Math.min(5, Number(data.rating) || 5));
-  await db.collection('reviews').doc(reviewId).set({ data: { orderId: order._id, fromUser: user._id, toUser, rating, createdAt: nowIso() } });
+  await db.collection('reviews').doc(reviewId).set({ data: { orderId: normalizedOrder._id, fromUser: user._id, toUser, rating, createdAt: nowIso() } });
   return ok({ reviewId });
 }
 
@@ -736,7 +798,7 @@ async function migrateLegacyAccounting(openid, data = {}) {
     try {
       await db.runTransaction(async (transaction) => {
         const snap = await transaction.collection('drift_orders').doc(row._id).get();
-        const result = await ensureAccountingV2(transaction, snap.data, _);
+        const result = await ensureAccountingV2(transaction, snap.data, _, row._id);
         if (result.migrated) migrated += 1;
       });
     } catch (err) { failed.push({ id: row._id, error: err.message }); }

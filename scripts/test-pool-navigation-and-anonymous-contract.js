@@ -9,7 +9,9 @@ function read(relativePath) {
 const poolJs = read('miniprogram/pages/pool/index.js');
 const poolWxml = read('miniprogram/pages/pool/index.wxml');
 const poolWxss = read('miniprogram/pages/pool/index.wxss');
+const utilJs = read('miniprogram/utils/util.js');
 const apiIndex = read('cloudfunctions/api/index.js');
+const pricingJs = read('cloudfunctions/api/lib/pricing.js');
 const publishJs = read('miniprogram/pages/drift/publish.js');
 const publishWxml = read('miniprogram/pages/drift/publish.wxml');
 const driftHandler = read('cloudfunctions/api/handlers/drift.js');
@@ -39,6 +41,8 @@ assert.ok(poolJs.includes('filterModes') && poolJs.includes('按品类') && pool
 assert.ok(poolJs.includes('valueTabs') && poolJs.includes('conditionTabs'), 'pool should define value and condition secondary filters');
 assert.ok(poolWxml.includes('primary-tabs') && poolWxml.includes('secondaryTabs'), 'pool should render two-level filters');
 assert.ok(poolJs.includes('filterList') && poolJs.includes('activeValue') && poolJs.includes('activeCondition'), 'pool should filter list by active value or condition');
+assert.ok(utilJs.includes("{ key: 'good', label: '8成新' }") && !utilJs.includes("{ key: 'good', label: '八成新' }"), 'pool condition filter should label good condition as 8成新');
+assert.ok(pricingJs.includes("good: '8成新'") && !pricingJs.includes("good: '八成新'"), 'pool item condition labels should use 8成新');
 
 assert.ok(publishJs.includes('isAnonymous') && publishJs.includes('toggleAnonymous'), 'publish page should support anonymous drift toggle');
 assert.ok(publishWxml.includes('匿名漂流') && publishWxml.includes('toggleAnonymous'), 'publish page should render anonymous drift option');

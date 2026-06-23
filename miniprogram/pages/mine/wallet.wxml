@@ -1,8 +1,11 @@
 <view class="page">
   <view class="hero-coin balance-card">
-    <view class="hero-label">可用公益积分</view>
+    <view class="wallet-hero-head">
+      <view class="hero-label">可用公益积分</view>
+      <view class="wallet-earn-action" bindtap="showEarnPointGuide">获得积分</view>
+    </view>
     <view class="hero-num">{{available}}</view>
-    <view class="muted">占用中 {{frozen}} · 总记录值 {{balance}}</view>
+    <view class="hero-muted">占用中 {{frozen}} · 总记录值 {{balance}}</view>
   </view>
 
   <view wx:for="{{transactions}}" wx:key="id" class="card tx-item">
@@ -12,10 +15,17 @@
         <view class="muted time">{{item.createdAt}}</view>
       </view>
       <view>
-        <view class="amount {{item.balanceDelta > 0 ? 'plus' : 'minus'}}">余额 {{item.balanceDelta > 0 ? '+' : ''}}{{item.balanceDelta}}</view>
+        <view class="amount {{item.balanceDelta > 0 ? 'plus' : (item.balanceDelta < 0 ? 'minus' : 'neutral')}}">余额 {{item.balanceAfter}}</view>
+        <view wx:if="{{item.balanceDelta}}" class="muted">变动 {{item.balanceDelta > 0 ? '+' : ''}}{{item.balanceDelta}}</view>
         <view wx:if="{{item.frozenDelta}}" class="muted">占用 {{item.frozenDelta > 0 ? '+' : ''}}{{item.frozenDelta}}</view>
       </view>
     </view>
   </view>
   <view wx:if="{{!transactions.length}}" class="empty">暂无收支记录</view>
 </view>
+
+<earn-point-guide-modal
+  wx:if="{{showEarnGuideModal}}"
+  guide="{{earnGuide}}"
+  bind:close="hideEarnPointGuide"
+  bind:confirm="confirmEarnPointGuide" />

@@ -1,10 +1,37 @@
 const api = require('../../utils/api');
+const { RULES } = require('../../utils/pointRules');
+
+const CAPACITY_PER_COIN = RULES.shelfCapacityPerCoin;
+const MAX_REDEEM_CAPACITY = 100;
+
+function maxRedeemCapacity(balance) {
+  return Math.min(Math.max(Math.floor(Number(balance) || 0), 0) * CAPACITY_PER_COIN, MAX_REDEEM_CAPACITY);
+}
+
+function normalizeCapacity(value, balance) {
+  const max = maxRedeemCapacity(balance);
+  const raw = Math.min(Math.max(Math.floor(Number(value) || 0), 0), max);
+  if (raw < CAPACITY_PER_COIN) return 0;
+  return Math.floor(raw / CAPACITY_PER_COIN) * CAPACITY_PER_COIN;
+}
+
+function coinCostForCapacity(capacity) {
+  return capacity / CAPACITY_PER_COIN;
+}
+
+function defaultRedeemCount(balance) {
+  const max = maxRedeemCapacity(balance);
+  if (max < CAPACITY_PER_COIN) return 0;
+  return Math.min(CAPACITY_PER_COIN, max);
+}
 
 Page({
   data: {
     loading: true,
     balance: 0,
-    redeemCount: 1,
+    redeemCount: CAPACITY_PER_COIN,
+    coinCost: 1,
+    capacityPerCoin: CAPACITY_PER_COIN,
     dashboard: {
       shelfLimit: 100,
       remainingCapacity: 100,
@@ -24,10 +51,12 @@ Page({
         api.getWalletBalance(),
       ]);
       const balance = Math.max(Number(wallet.balance) || 0, 0);
+      const redeemCount = defaultRedeemCount(balance);
       this.setData({
         dashboard,
         balance,
-        redeemCount: balance > 0 ? 1 : 0,
+        redeemCount,
+        coinCost: coinCostForCapacity(redeemCount),
       });
     } catch (e) {
       console.error(e);
@@ -38,19 +67,25 @@ Page({
 
   onCountInput(e) {
     const balance = Math.max(Number(this.data.balance) || 0, 0);
-    const value = Math.floor(Number(e.detail.value) || 0);
-    const redeemCount = Math.min(Math.max(value, 0), balance, 100);
-    this.setData({ redeemCount });
+    const redeemCount = normalizeCapacity(e.detail.value, balance);
+    this.setData({
+      redeemCount,
+      coinCost: coinCostForCapacity(redeemCount),
+    });
   },
 
   setQuickCount(e) {
-    const count = Number(e.currentTarget.dataset.count) || 1;
+    const count = Number(e.currentTarget.dataset.count) || CAPACITY_PER_COIN;
     const balance = Math.max(Number(this.data.balance) || 0, 0);
-    this.setData({ redeemCount: Math.min(count, balance, 100) });
+    const redeemCount = normalizeCapacity(count, balance);
+    this.setData({
+      redeemCount,
+      coinCost: coinCostForCapacity(redeemCount),
+    });
   },
 
   async submitRedeem() {
-    if (this.data.redeemCount < 1) {
+    if (this.data.redeemCount < CAPACITY_PER_COIN) {
       wx.showToast({ title: '请输入兑换数量', icon: 'none' });
       return;
     }

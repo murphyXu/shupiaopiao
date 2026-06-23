@@ -1,7 +1,7 @@
 <view class="page">
   <view class="card quota-card">
     <view class="quota-title">兑换书架额度</view>
-    <view class="muted">1 公益积分可兑换 1 本可收藏额度</view>
+    <view class="muted">1 公益积分可兑换 {{capacityPerCoin}} 本可收藏额度</view>
     <view class="quota-grid">
       <view>
         <view class="quota-num">{{dashboard.remainingCapacity}}</view>
@@ -25,11 +25,11 @@
       <text>本</text>
     </view>
     <view class="quick-row">
-      <view class="quick-chip" data-count="1" bindtap="setQuickCount">+1</view>
-      <view class="quick-chip" data-count="5" bindtap="setQuickCount">+5</view>
-      <view class="quick-chip" data-count="10" bindtap="setQuickCount">+10</view>
+      <view class="quick-chip" data-count="10" bindtap="setQuickCount">10 本</view>
+      <view class="quick-chip" data-count="50" bindtap="setQuickCount">50 本</view>
+      <view class="quick-chip" data-count="100" bindtap="setQuickCount">100 本</view>
     </view>
-    <view class="cost-line">需消耗 {{redeemCount}} 公益积分，兑换后上限 {{dashboard.shelfLimit + redeemCount}} 本</view>
+    <view class="cost-line">需消耗 {{coinCost}} 公益积分，兑换后上限 {{dashboard.shelfLimit + redeemCount}} 本</view>
   </view>
 
   <view class="btn-primary" bindtap="submitRedeem">确认兑换</view>

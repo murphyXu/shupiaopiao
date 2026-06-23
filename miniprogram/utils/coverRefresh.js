@@ -1,5 +1,3 @@
-const { CATALOG_ISBNS, localCoverByIsbn } = require('./cover');
-
 const remoteCoverTasks = {};
 
 function isCloudCover(cover) {
@@ -36,37 +34,21 @@ function cloudCoverPath(isbn, url) {
   return `book-covers/${clean}.${ext}`;
 }
 
-function downloadRemoteCover(url) {
-  return new Promise((resolve, reject) => {
-    wx.downloadFile({
-      url,
-      success(res) {
-        if (res.statusCode && res.statusCode >= 400) {
-          reject(new Error(`DOWNLOAD_${res.statusCode}`));
-          return;
-        }
-        resolve(res.tempFilePath);
-      },
-      fail: reject,
-    });
-  });
-}
-
 function cacheRemoteCover(book) {
   if (!shouldCacheRemoteCover(book)) return Promise.resolve(null);
   const isbn = cleanIsbn(book.isbn);
   const url = remoteCoverUrl(book);
   if (remoteCoverTasks[isbn]) return remoteCoverTasks[isbn];
 
-  remoteCoverTasks[isbn] = downloadRemoteCover(url)
-    .then((filePath) => wx.cloud.uploadFile({
-      cloudPath: cloudCoverPath(isbn, url),
-      filePath,
-    }))
-    .then((res) => wx.cloud.callFunction({
-      name: 'api',
-      data: { action: 'books.updateCover', data: { isbn, cover: res.fileID } },
-    }).then(() => res.fileID))
+  remoteCoverTasks[isbn] = wx.cloud.callFunction({
+    name: 'api',
+    data: { action: 'books.cacheRemoteCover', data: { isbn, coverRemote: url } },
+  })
+    .then((res) => {
+      const result = res.result || {};
+      if (result.code !== 0) throw new Error(result.msg || 'CACHE_REMOTE_COVER_FAILED');
+      return result.data && result.data.cover ? result.data.cover : null;
+    })
     .catch((err) => {
       console.warn('[covers] remote cache skipped', isbn, err);
       return null;
@@ -77,49 +59,31 @@ function cacheRemoteCover(book) {
   return remoteCoverTasks[isbn];
 }
 
+function applyCoverUpdates(items, updates = {}, nestedKey = 'book') {
+  const map = updates || {};
+  if (!Object.keys(map).length) return items;
+  return (items || []).map((item) => {
+    const target = nestedKey ? item[nestedKey] : item;
+    if (!target) return item;
+    const isbn = cleanIsbn(target.isbn);
+    const cover = map[isbn];
+    if (!cover) return item;
+    if (nestedKey) return { ...item, [nestedKey]: { ...target, cover } };
+    return { ...target, cover };
+  });
+}
+
 function cacheRemoteCovers(books, limit = 3) {
   const queue = (books || []).filter(shouldCacheRemoteCover).slice(0, limit);
-  let chain = Promise.resolve();
+  const updates = {};
+  let chain = Promise.resolve(updates);
   queue.forEach((book) => {
-    chain = chain.then(() => cacheRemoteCover(book));
+    chain = chain.then((acc) => cacheRemoteCover(book).then((cover) => {
+      if (cover) acc[cleanIsbn(book.isbn)] = cover;
+      return acc;
+    }));
   });
   return chain;
-}
-
-function uploadOneCover(isbn) {
-  const filePath = localCoverByIsbn(isbn) || '/assets/covers/default.png';
-  return wx.cloud.uploadFile({
-    cloudPath: `book-covers/${isbn}.jpg`,
-    filePath,
-  }).then((res) => wx.cloud.callFunction({
-    name: 'api',
-    data: { action: 'books.updateCover', data: { isbn, cover: res.fileID } },
-  })).then(() => isbn).catch((err) => {
-    console.warn('[covers] upload skipped', isbn, err);
-    return null;
-  });
-}
-
-function syncSeedCoversToCloud() {
-  const isbns = [...CATALOG_ISBNS];
-  let chain = Promise.resolve();
-  isbns.forEach((isbn) => {
-    chain = chain.then(() => uploadOneCover(isbn));
-  });
-  return chain.then(() => {
-    const app = getApp();
-    if (app) app.globalData.coversUpdated = true;
-  });
-}
-
-let syncPromise = null;
-
-function startCoverSyncIfNeeded() {
-  if (syncPromise) return syncPromise;
-  syncPromise = syncSeedCoversToCloud()
-    .catch((err) => console.warn('[covers] background sync failed', err))
-    .finally(() => { syncPromise = null; });
-  return syncPromise;
 }
 
 module.exports = {
@@ -128,7 +92,5 @@ module.exports = {
   cloudCoverPath,
   cacheRemoteCover,
   cacheRemoteCovers,
-  uploadOneCover,
-  syncSeedCoversToCloud,
-  startCoverSyncIfNeeded,
+  applyCoverUpdates,
 };

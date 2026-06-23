@@ -12,6 +12,7 @@ const scanWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shel
 const manualJs = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shelf/manual-add.js'), 'utf8');
 const manualWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shelf/manual-add.wxml'), 'utf8');
 const manualWxss = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shelf/manual-add.wxss'), 'utf8');
+const shelfHandler = fs.readFileSync(path.join(__dirname, '../cloudfunctions/api/handlers/shelf.js'), 'utf8');
 
 assert.ok(shelfWxml.includes('primaryTabs'), 'shelf page should render first-level navigation');
 assert.ok(shelfWxml.includes('secondaryTabs'), 'shelf page should render second-level navigation');
@@ -43,5 +44,9 @@ assert.ok(manualWxml.includes('ISBN（选填）') && manualWxml.includes('出版
 assert.ok(!manualWxml.includes('chooseCover') && !manualJs.includes('chooseCover') && !manualWxml.includes('添加封面'), 'manual add should not expose user cover upload for review');
 assert.ok(!manualWxml.includes('简介/备注') && !manualWxml.includes('textarea') && !manualJs.includes('onSummary'), 'manual add should not expose free-form summary or remark');
 assert.ok(/min-height:\s*88rpx/.test(manualWxss) && manualWxss.includes('.form-control'), 'manual add inputs should use adapted form controls');
+assert.ok(shelfHandler.includes('validRows') && shelfHandler.includes('books[row.bookId]'), 'shelf dashboard should count only shelf books with valid catalog records');
+assert.ok(shelfHandler.includes('filterCountableShelfRows') && shelfHandler.includes('CLAIMED_SHELF_DRIFT_STATUSES') && shelfHandler.includes('claimedDriftShelfIds'), 'shelf dashboard should exclude claimed drifts from collection stats');
+assert.ok(shelfHandler.includes("status: 'COMPLETED'") && shelfHandler.includes('completedDriftShelfIds'), 'shelf dashboard should exclude drifted-away shelf rows from collection stats');
+assert.ok(shelfHandler.includes('buildCollectionStats'), 'shelf dashboard should use shared collection stats builder');
 
 console.log('shelf ui contract ok');

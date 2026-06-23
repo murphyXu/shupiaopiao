@@ -9,11 +9,7 @@ let callFunctionCalls = [];
 global.wx = {
   downloadFile(options) {
     downloadCalls.push(options);
-    if (options.url.includes('fail')) {
-      options.fail(new Error('download fail'));
-      return;
-    }
-    options.success({ statusCode: 200, tempFilePath: '/tmp/cover.jpg' });
+    options.fail(new Error('client download should not be used for remote covers'));
   },
   cloud: {
     uploadFile(options) {
@@ -22,7 +18,12 @@ global.wx = {
     },
     callFunction(options) {
       callFunctionCalls.push(options);
-      return Promise.resolve({ result: { code: 0 } });
+      if (options.data.data.coverRemote && options.data.data.coverRemote.includes('fail')) {
+        return Promise.resolve({ result: { code: 500, msg: 'download fail' } });
+      }
+      return Promise.resolve({
+        result: { code: 0, data: { cover: 'cloud://env/book-covers/9787559855022.jpg' } },
+      });
     },
   },
 };
@@ -54,17 +55,24 @@ const {
     coverRemote: 'http://static.tanshuapi.com/a.jpg',
   });
   assert.strictEqual(fileID, 'cloud://env/book-covers/9787559855022.jpg');
-  assert.strictEqual(downloadCalls[0].url, 'https://static.tanshuapi.com/a.jpg');
-  assert.strictEqual(uploadCalls[0].cloudPath, 'book-covers/9787559855022.jpg');
+  assert.strictEqual(downloadCalls.length, 0);
+  assert.strictEqual(uploadCalls.length, 0);
   assert.deepStrictEqual(callFunctionCalls[0].data, {
-    action: 'books.updateCover',
-    data: { isbn: '9787559855022', cover: 'cloud://env/book-covers/9787559855022.jpg' },
+    action: 'books.cacheRemoteCover',
+    data: { isbn: '9787559855022', coverRemote: 'https://static.tanshuapi.com/a.jpg' },
   });
 
-  const skipped = await cacheRemoteCover({
-    isbn: '9787559855022',
-    coverRemote: 'https://static.tanshuapi.com/fail.jpg',
-  });
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  let skipped;
+  try {
+    skipped = await cacheRemoteCover({
+      isbn: '9787559855022',
+      coverRemote: 'https://static.tanshuapi.com/fail.jpg',
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
   assert.strictEqual(skipped, null);
 
   downloadCalls = [];
@@ -75,9 +83,15 @@ const {
     { isbn: '9787559855023', coverRemote: 'https://static.tanshuapi.com/b.jpg' },
     { isbn: '9787559855024', coverRemote: 'https://static.tanshuapi.com/c.jpg' },
   ], 2);
-  assert.strictEqual(downloadCalls.length, 2);
-  assert.strictEqual(uploadCalls.length, 2);
+  assert.strictEqual(downloadCalls.length, 0);
+  assert.strictEqual(uploadCalls.length, 0);
   assert.strictEqual(callFunctionCalls.length, 2);
+
+  const { applyCoverUpdates } = require('../miniprogram/utils/coverRefresh');
+  const patched = applyCoverUpdates([
+    { id: 'drift-1', book: { isbn: '9787559855022', cover: 'https://static.tanshuapi.com/a.jpg' } },
+  ], { 9787559855022: 'cloud://env/book-covers/9787559855022.jpg' }, 'book');
+  assert.strictEqual(patched[0].book.cover, 'cloud://env/book-covers/9787559855022.jpg');
 
   console.log('remote cover cache ok');
 })();

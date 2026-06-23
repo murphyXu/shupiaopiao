@@ -67,17 +67,30 @@
 }
 
 .page {
-  padding-bottom: 160rpx;
+  padding-bottom: 200rpx;
+}
+
+.tip {
+  margin-bottom: 40rpx;
 }
 
 .fixed-actions {
   position: fixed;
   left: 44rpx;
   right: 44rpx;
-  bottom: 48rpx;
+  bottom: calc(48rpx + env(safe-area-inset-bottom));
   display: grid;
   grid-template-columns: 220rpx 1fr;
   gap: 18rpx;
+}
+
+.fixed-actions.mine-actions {
+  left: 0;
+  right: 0;
+  bottom: calc(56rpx + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  padding: 0 44rpx;
 }
 
 .fixed-actions .btn-ghost,
@@ -85,6 +98,16 @@
   padding: 26rpx 12rpx;
   border-radius: 30rpx;
   font-size: 28rpx;
+}
+
+.mine-only-btn {
+  width: 360rpx;
+  max-width: 100%;
+  text-align: center;
+  color: #7b8a82;
+  background: #f0f5f1;
+  border: 1rpx solid #e6eee9;
+  box-shadow: none;
 }
 
 .want-btn.active {

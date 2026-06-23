@@ -5,6 +5,8 @@ const {
 const safeAreaBehavior = require('../../behaviors/safe-area');
 const { setTabBarIndex } = require('../../utils/tab-bar');
 const { trackPageView } = require('../../utils/track');
+const { onCoverError } = require('../../utils/cover');
+const { publishEarnGuideModal } = require('../../utils/pointRules');
 
 const FILTER_MODES = [
   { key: 'category', label: '按品类' },
@@ -62,6 +64,8 @@ Page({
     conditionTabs: CONDITION_TABS,
     activeCondition: 'all',
     claimableOnly: false,
+    showEarnGuideModal: false,
+    earnGuide: publishEarnGuideModal(),
   },
 
   onShow() {
@@ -89,7 +93,7 @@ Page({
         keyword: this.data.keyword,
         category: this.data.activeFilterMode === 'category' ? this.data.filterCategory : 'all',
         claimableOnly: this.data.claimableOnly,
-      });
+      }, { showError: false });
       this.setData({ rawList: res.list || [] });
       this.filterList();
     } catch (e) {
@@ -202,6 +206,10 @@ Page({
   },
 
   goApply(e) {
+    if (e.currentTarget.dataset.mine) {
+      wx.showToast({ title: '不能接漂自己赠送的书', icon: 'none' });
+      return;
+    }
     if (!requireLogin('申请接漂需登录，以便管理漂流记录与公益积分')) return;
     const driftId = e.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/pool/detail?id=${driftId}` });
@@ -215,25 +223,13 @@ Page({
   showEarnPointGuide() {
     if (!requireLogin('登录后可查看和获得公益积分')) return;
     wx.showActionSheet({
-      itemList: ['上漂一本书', '了解首赠', '邀请书友'],
+      itemList: ['上漂一本书', '邀请书友'],
       success: (res) => {
         if (res.tapIndex === 0) {
-          this.goPublish();
+          this.setData({ earnGuide: publishEarnGuideModal(), showEarnGuideModal: true });
           return;
         }
         if (res.tapIndex === 1) {
-          wx.showModal({
-            title: '首赠奖励',
-            content: '首次完成一次赠书后，系统会按规则记录首赠公益积分；平时把书上漂，也是在为书友共建可流转的好书。',
-            confirmText: '去上漂',
-            cancelText: '知道了',
-            success: (modalRes) => {
-              if (modalRes.confirm) this.goPublish();
-            },
-          });
-          return;
-        }
-        if (res.tapIndex === 2) {
           wx.switchTab({
             url: '/pages/mine/index',
             success: () => wx.showToast({ title: '在邀请书友共建处发出邀请', icon: 'none' }),
@@ -243,7 +239,26 @@ Page({
     });
   },
 
+  hideEarnPointGuide() {
+    this.setData({ showEarnGuideModal: false });
+  },
+
+  confirmEarnPointGuide() {
+    this.hideEarnPointGuide();
+    this.goPublish();
+  },
+
   goGuide() {
     wx.navigateTo({ url: '/pages/drift/guide' });
+  },
+
+  onCoverError,
+
+  onShareAppMessage() {
+    const user = wx.getStorageSync('userInfo') || {};
+    return {
+      title: '来书漂漂漂流广场，挑一本好书',
+      path: `/pages/pool/index?inviterId=${user.id || ''}`,
+    };
   },
 });

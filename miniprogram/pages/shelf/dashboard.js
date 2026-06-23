@@ -4,7 +4,6 @@ Page({
   data: {
     dashboard: {
       totalBooks: 0,
-      monthNew: 0,
       totalValue: 0,
       shelfLimit: 100,
       remainingCapacity: 100,

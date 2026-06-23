@@ -4,6 +4,8 @@ const STAGES = {
   mature: { signupBonus: 0, firstGiveBonus: 0, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 2 },
 };
 
+const SHELF_CAPACITY_PER_COIN = 10;
+
 const CONDITION_FACTORS = {
   new: 1.5,
   like_new: 1,
@@ -64,6 +66,7 @@ function splitViolationPenalty(penalty, available) {
 
 module.exports = {
   STAGES,
+  SHELF_CAPACITY_PER_COIN,
   CONDITION_FACTORS,
   policyForStage,
   calculateCoinValue,

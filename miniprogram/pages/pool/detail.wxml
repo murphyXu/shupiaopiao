@@ -1,6 +1,6 @@
 <view class="page" wx:if="{{item}}">
   <view class="shot-frame">
-    <image src="{{item.book.cover}}" mode="aspectFit" class="slide-img" />
+    <image src="{{item.book.cover}}" mode="aspectFit" class="slide-img" binderror="onCoverError" data-single="item.book" data-isbn="{{item.book.isbn}}" />
   </view>
 
   <view class="card">
@@ -26,8 +26,9 @@
 
   <view class="tip">运费采用快递到付，由接漂方与快递公司线下结算，平台不收取任何费用。</view>
 
-  <view class="fixed-actions">
-    <view class="btn-ghost want-btn {{item.wanted ? 'active' : ''}}" bindtap="toggleWant">{{item.wanted ? '已想要' : '想要接漂'}}</view>
-    <view class="btn-primary claim-btn" bindtap="goClaim">申请接漂</view>
+  <view class="fixed-actions {{item.isMine ? 'mine-actions' : ''}}">
+    <view wx:if="{{!item.isMine}}" class="btn-ghost want-btn {{item.wanted ? 'active' : ''}}" bindtap="toggleWant">{{item.wanted ? '已想要' : '想要接漂'}}</view>
+    <view wx:if="{{item.canClaim}}" class="btn-primary claim-btn" bindtap="goClaim">申请接漂</view>
+    <view wx:elif="{{item.isMine}}" class="btn-ghost claim-btn mine-only-btn">我的赠书</view>
   </view>
 </view>

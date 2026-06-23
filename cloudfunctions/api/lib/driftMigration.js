@@ -1,7 +1,10 @@
 const ACTIVE_LEGACY_STATUSES = new Set(['PENDING_SHIP', 'SHIPPED', 'DISPUTED']);
 
-async function ensureAccountingV2(transaction, order, command) {
+async function ensureAccountingV2(transaction, order, command, orderId = '') {
   if (!order) throw new Error('ORDER_NOT_FOUND');
+  const resolvedId = order._id || orderId;
+  if (!resolvedId) throw new Error('ORDER_NOT_FOUND');
+  order = { ...order, _id: resolvedId };
   if (order.accountingVersion === 2) return { migrated: false, order };
   if (order.accountingVersion !== undefined && order.accountingVersion !== null) {
     throw new Error('ACCOUNTING_VERSION_UNSUPPORTED');
@@ -50,7 +53,7 @@ async function ensureAccountingV2(transaction, order, command) {
       createdAt: new Date().toISOString(),
     },
   });
-  return { migrated: true, order: { ...order, accountingVersion: 2, activeCounted: true } };
+  return { migrated: true, order: { ...order, accountingVersion: 2, activeCounted: true, coinValue } };
 }
 
 module.exports = { ACTIVE_LEGACY_STATUSES, ensureAccountingV2 };

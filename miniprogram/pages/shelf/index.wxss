@@ -77,6 +77,17 @@
   white-space: nowrap;
 }
 
+.shelf-stat-row {
+  margin-bottom: 36rpx;
+}
+
+.shelf-stat-row .stat-card {
+  min-height: 132rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .shelf-search {
   display: flex;
   align-items: center;

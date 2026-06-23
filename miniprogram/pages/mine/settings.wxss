@@ -1,4 +1,6 @@
 .page { padding: 24rpx; }
 .section-title { font-size: 30rpx; font-weight: 700; margin-bottom: 12rpx; }
+.rule-subtitle { font-size: 28rpx; font-weight: 600; color: #333; margin-top: 24rpx; }
 .desc { font-size: 26rpx; line-height: 1.8; color: #555; white-space: pre-line; margin-top: 12rpx; }
+.rule-body { margin-top: 8rpx; padding-left: 8rpx; }
 .page .btn-ghost { margin-top: 30rpx; }
