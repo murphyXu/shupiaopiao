@@ -14,7 +14,6 @@ const { writeCoinEvent, writeCreditEvent, writeOrderEvent } = require('../lib/dr
 const { ensureAccountingV2 } = require('../lib/driftMigration');
 const { ensureCollection } = require('../lib/collections');
 const {
-  attachOrderToBundle,
   loadBundleAttachPlan,
   applyBundleAttachPlan,
   removeOrderFromBundle,
