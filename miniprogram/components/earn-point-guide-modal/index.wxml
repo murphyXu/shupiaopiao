@@ -6,7 +6,10 @@
     <view class="earn-guide-sections">
       <view wx:for="{{guide.sections}}" wx:key="title" class="earn-guide-section">
         <view class="earn-guide-section-title">{{item.title}}</view>
-        <view wx:for="{{item.items}}" wx:for-item="line" wx:key="*this" class="earn-guide-line">{{line}}</view>
+        <view wx:for="{{item.items}}" wx:for-item="line" wx:key="*this" class="earn-guide-line">
+          <text class="earn-guide-dot"></text>
+          <text class="earn-guide-line-text">{{line}}</text>
+        </view>
       </view>
     </view>
 

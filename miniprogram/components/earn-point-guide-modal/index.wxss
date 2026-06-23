@@ -61,21 +61,27 @@
 }
 
 .earn-guide-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
   margin-top: 12rpx;
   color: #405449;
   font-size: 25rpx;
   line-height: 1.55;
 }
 
-.earn-guide-line::before {
-  content: "";
-  display: inline-block;
+.earn-guide-dot {
+  flex-shrink: 0;
   width: 8rpx;
   height: 8rpx;
-  margin-right: 12rpx;
+  margin-top: 15rpx;
   border-radius: 50%;
   background: #2FBE77;
-  vertical-align: 4rpx;
+}
+
+.earn-guide-line-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .earn-guide-actions {
