@@ -12,6 +12,7 @@ const {
 } = require('../lib/driftPolicy');
 const { writeCoinEvent, writeCreditEvent, writeOrderEvent } = require('../lib/driftAccounting');
 const { ensureAccountingV2 } = require('../lib/driftMigration');
+const { ensureCollection } = require('../lib/collections');
 const {
   attachOrderToBundle,
   removeOrderFromBundle,
@@ -320,6 +321,8 @@ async function claim(openid, data) {
   const now = nowIso();
   let driftForInvite = null;
   let bundleResult = { merged: false, bundleOrderCount: 1 };
+
+  await ensureCollection(db, 'shipment_bundles');
 
   await db.runTransaction(async (transaction) => {
     const [userSnap, driftSnap, addressSnap] = await Promise.all([

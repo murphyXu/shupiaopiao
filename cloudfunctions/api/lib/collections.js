@@ -53,4 +53,23 @@ async function ensureCollections(db) {
   return { created, skipped, total: COLLECTIONS.length };
 }
 
-module.exports = { COLLECTIONS, ensureCollections, isCollectionMissing, isAlreadyExists };
+async function ensureCollection(db, name) {
+  if (typeof db.createCollection !== 'function') {
+    throw new Error('wx-server-sdk 版本过低，请重新上传云函数（云端安装依赖）');
+  }
+  try {
+    await db.createCollection(name);
+    return { name, created: true };
+  } catch (err) {
+    if (isAlreadyExists(err)) return { name, created: false };
+    throw err;
+  }
+}
+
+module.exports = {
+  COLLECTIONS,
+  ensureCollections,
+  ensureCollection,
+  isCollectionMissing,
+  isAlreadyExists,
+};
