@@ -12,7 +12,10 @@ const { validateTrackingNo } = require('../../utils/trackingNo');
 Page({
   data: {
     loading: true,
+    isBundle: false,
+    bundleCount: 1,
     detail: null,
+    bundleDetail: null,
     regionText: '',
     deadlineText: '',
     expressCompanies: EXPRESS_COMPANIES,
@@ -24,7 +27,8 @@ Page({
   },
 
   onLoad(options) {
-    this.orderId = options.orderId;
+    this.orderId = options.orderId || '';
+    this.bundleId = options.bundleId || '';
     this.lastCopiedAt = 0;
   },
 
@@ -33,13 +37,39 @@ Page({
   },
 
   async load() {
-    if (!this.orderId) {
+    if (!this.orderId && !this.bundleId) {
       wx.showToast({ title: '漂流记录不存在', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 800);
       return;
     }
     this.setData({ loading: true });
     try {
+      if (this.bundleId) {
+        const bundleDetail = await api.getBundleDetail({ bundleId: this.bundleId });
+        if (!bundleDetail.actions || !bundleDetail.actions.canShip) {
+          const firstOrder = (bundleDetail.orders || [])[0];
+          if (firstOrder && firstOrder.id) {
+            wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${firstOrder.id}&role=given` });
+          } else {
+            wx.navigateBack();
+          }
+          return;
+        }
+        const address = (bundleDetail.bundle && bundleDetail.bundle.addressSnapshot) || {};
+        const bundleCount = (bundleDetail.bundle && bundleDetail.bundle.orderCount) || (bundleDetail.orders || []).length;
+        this.setData({
+          isBundle: true,
+          bundleCount,
+          bundleDetail,
+          detail: { order: { addressSnapshot: address, book: (bundleDetail.orders || [])[0] && (bundleDetail.orders || [])[0].book } },
+          regionText: formatRegion(address.region),
+          deadlineText: formatShipDeadlineRemaining(bundleDetail.bundle && bundleDetail.bundle.shipDeadlineAt),
+          loading: false,
+        });
+        wx.setNavigationBarTitle({ title: `合并寄出 · ${bundleCount} 本` });
+        return;
+      }
+
       const detail = await api.getOrderDetail(this.orderId, 'given');
       const order = detail.order || {};
       if (order.status !== 'PENDING_SHIP') {
@@ -48,11 +78,15 @@ Page({
       }
       const address = order.addressSnapshot || {};
       this.setData({
+        isBundle: false,
+        bundleCount: 1,
         detail,
+        bundleDetail: null,
         regionText: formatRegion(address.region),
         deadlineText: formatShipDeadlineRemaining(order.shipDeadlineAt),
         loading: false,
       });
+      wx.setNavigationBarTitle({ title: '发货' });
     } catch (err) {
       console.error(err);
       this.setData({ loading: false });
@@ -145,7 +179,11 @@ Page({
       content: '发货前取消将释放接漂方占用积分，并记录信用积分变化。是否继续？',
       success: async (res) => {
         if (!res.confirm) return;
-        await api.cancelOrder(this.orderId, '取消漂流');
+        const firstOrder = this.data.isBundle
+          ? ((this.data.bundleDetail && this.data.bundleDetail.orders) || [])[0]
+          : null;
+        const orderId = firstOrder ? firstOrder.id : this.orderId;
+        await api.cancelOrder(orderId, '取消漂流');
         wx.navigateBack();
       },
     });
@@ -161,6 +199,20 @@ Page({
     }
     this.setData({ submitting: true });
     try {
+      if (this.bundleId) {
+        await api.shipBundle({
+          bundleId: this.bundleId,
+          expressCompany,
+          trackingNo: check.normalized,
+        });
+        const firstOrder = ((this.data.bundleDetail && this.data.bundleDetail.orders) || [])[0];
+        if (firstOrder && firstOrder.id) {
+          wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${firstOrder.id}&role=given` });
+        } else {
+          wx.navigateBack();
+        }
+        return;
+      }
       await api.shipOrder(this.orderId, {
         expressCompany,
         trackingNo: check.normalized,

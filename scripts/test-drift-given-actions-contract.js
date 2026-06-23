@@ -23,11 +23,11 @@ assert.ok(givenWxml.includes('class="order-action primary"') && givenWxml.includ
 assert.ok(givenWxml.includes('去发货 ›') && !givenWxml.includes('查看寄送信息') && !givenWxml.includes('>查看详情<'), 'given list should use unified ship entry');
 assert.ok(!givenWxml.includes('bindtap="copyShippingInfo"') && givenWxml.includes('bindtap="cancel"') && givenWxml.includes('取消漂流'), 'given list should expose cancellation without list-level copy');
 assert.ok(givenWxss.includes('.order-action') && givenWxss.includes('.order-action.primary') && givenWxss.includes('.order-action.danger'), 'given list should define consistent action button styles');
-assert.ok(!givenJs.includes('copyShippingInfo') && givenJs.includes('/pages/drift/ship?orderId='), 'given list should navigate to ship page instead of copying address');
+assert.ok(!givenJs.includes('copyShippingInfo') && (givenJs.includes('/pages/drift/ship?orderId=') || givenJs.includes('/pages/drift/ship?bundleId=')), 'given list should navigate to ship page instead of copying address');
 assert.ok(givenJs.includes('复制地址去寄快递'), 'given list hint should explain ship page flow');
 assert.ok(givenJs.includes('cancel(e)') && givenJs.includes('api.cancelOrder(orderId') && givenJs.includes('this.onShow()'), 'given cancellation should call cancel API and refresh list');
 assert.ok(givenJs.includes('canCancelOpen') && givenJs.includes('cancelOpenDrift(e)') && givenJs.includes('api.cancelOpenDrift(driftId'), 'given list should cancel unclaimed drift-only records');
-assert.ok(givenWxml.includes('bindtap="cancelOpenDrift"') && givenWxml.includes('item.canCancelOpen'), 'given list should expose cancel action before a drift is claimed');
+assert.ok(givenWxml.includes('bindtap="cancelOpenDrift"') && (givenWxml.includes('item.canCancelOpen') || givenWxml.includes('item.order.canCancelOpen')), 'given list should expose cancel action before a drift is claimed');
 assert.ok(givenJs.includes('viewDetail(e)') && givenJs.includes("if (!orderId || String(orderId).startsWith('drift-'))"), 'given detail navigation should keep invalid id guard');
 assert.ok(givenJs.includes('role=given') && receivedJs.includes('role=received'), 'order detail navigation should pass source role for fallback loading');
 assert.ok(detailJs.includes('this.role') && detailJs.includes('api.getOrderDetail(this.orderId, this.role)'), 'order detail page should pass role into detail loader');

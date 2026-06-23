@@ -48,6 +48,7 @@ const ROUTES = {
   'drift.claim': (data, openid) => drift.claim(openid, data),
   'drift.orders': (data, openid) => drift.orders(openid, data),
   'drift.orderDetail': (data, openid) => drift.orderDetail(openid, data),
+  'drift.bundleDetail': (data, openid) => drift.bundleDetail(openid, data),
   'drift.detail': (data, openid) => drift.orderDetail(openid, data),
   'drift.ship': (data, openid) => drift.ship(openid, data),
   'drift.cancel': (data, openid) => drift.cancel(openid, data),
@@ -121,7 +122,7 @@ exports.main = async (event) => {
   } catch (err) {
     console.error(`[api] ${action}`, err);
     if (err.message === 'INSUFFICIENT_COINS') return (result = fail(400, '可用公益积分不足'));
-    if (err.message === 'INFLIGHT_LIMIT') return (result = fail(400, '已有 2 单未收货，请先完成在途漂流'));
+    if (err.message === 'INFLIGHT_LIMIT') return (result = fail(400, '已有 5 单未收货，请先完成在途漂流'));
     if (err.message === 'ALREADY_CLAIMED') return (result = fail(409, '该书已被其他书友接漂'));
     if (err.message === 'SELF_CLAIM') return (result = fail(400, '不能接漂自己赠送的书'));
     if (err.message === 'ADDRESS_NOT_FOUND') return (result = fail(404, '收货地址不存在'));

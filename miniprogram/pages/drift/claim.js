@@ -63,8 +63,12 @@ Page({
       return;
     }
     try {
-      await api.claimDrift(this.driftId, this.data.address.id);
-      wx.showToast({ title: '申请已提交' });
+      const result = await api.claimDrift(this.driftId, this.data.address.id);
+      if (result.merged) {
+        wx.showToast({ title: '已与上一本合并寄出', icon: 'none' });
+      } else {
+        wx.showToast({ title: '申请已提交' });
+      }
       setTimeout(() => wx.redirectTo({ url: '/pages/drift/received' }), 1000);
     } catch (e) {
       console.error(e);

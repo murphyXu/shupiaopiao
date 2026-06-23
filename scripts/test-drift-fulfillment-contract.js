@@ -41,11 +41,11 @@ assert.ok(drift.includes('shelfBookId') && drift.includes('calculateCoinValue'),
 assert.ok(drift.includes('runTransaction') && drift.includes('coinFrozen') && drift.includes('shipDeadlineAt'), 'claim must lock and freeze');
 assert.ok(claimWxml.includes('可用公益积分') && claimWxml.includes('占用'), 'claim occupation copy missing');
 assert.ok(drift.includes('policy().inflightLimit') && drift.includes('INFLIGHT_LIMIT'), 'claim should enforce current in-flight limit');
-assert.ok(routes.includes('已有 2 单未收货，请先完成在途漂流') && claimWxml.includes('同时未收货最多 2 单'), 'claim limit copy should explain the two-order in-flight cap');
+assert.ok(routes.includes('已有 5 单未收货，请先完成在途漂流') && claimWxml.includes('同时未收货最多 5 单'), 'claim limit copy should explain the five-order in-flight cap');
 
 assert.ok(routes.includes("'drift.orderDetail'") && routes.includes("'drift.cancel'"), 'fulfillment routes missing');
 assert.ok(appJson.includes('pages/drift/order-detail') && appJson.includes('pages/drift/ship'), 'fulfillment pages missing');
-assert.ok(!givenJs.includes('showActionSheet') && givenJs.includes('/pages/drift/ship?orderId='), 'ship must use dedicated page');
+assert.ok(givenJs.includes('/pages/drift/ship?orderId=') || givenJs.includes('/pages/drift/ship?bundleId='), 'ship must use dedicated page');
 const shipWxml = readOptional('miniprogram/pages/drift/ship.wxml');
 assert.ok(shipWxml.includes('<picker') && shipWxml.includes('运单号') && shipWxml.includes('到付'), 'ship page should use a picker and explicit COD copy');
 assert.ok(shipWxml.includes('收件信息') && shipWxml.includes('去寄快递'), 'ship page should expose address and express jump actions');

@@ -1,10 +1,21 @@
+const BUNDLE_MERGE_WINDOW_HOURS = 48;
+const BUNDLE_MAX_ORDERS = 5;
+const LIGHTWEIGHT_COIN_THRESHOLD = 3;
+const LIGHTWEIGHT_PRICE_THRESHOLD = 20;
+
 const STAGES = {
-  cold: { signupBonus: 0, firstGiveBonus: 10, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 2 },
-  cycle: { signupBonus: 0, firstGiveBonus: 5, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 2 },
-  mature: { signupBonus: 0, firstGiveBonus: 0, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 2 },
+  cold: { signupBonus: 0, firstGiveBonus: 10, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5 },
+  cycle: { signupBonus: 0, firstGiveBonus: 5, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5 },
+  mature: { signupBonus: 0, firstGiveBonus: 0, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5 },
 };
 
 const SHELF_CAPACITY_PER_COIN = 10;
+
+function isLightweightBook(book = {}) {
+  const coin = Number(book.coinValue) || 0;
+  const price = Number(book.listPrice) || 0;
+  return coin <= LIGHTWEIGHT_COIN_THRESHOLD || price <= LIGHTWEIGHT_PRICE_THRESHOLD;
+}
 
 const CONDITION_FACTORS = {
   new: 1.5,
@@ -65,6 +76,10 @@ function splitViolationPenalty(penalty, available) {
 }
 
 module.exports = {
+  BUNDLE_MERGE_WINDOW_HOURS,
+  BUNDLE_MAX_ORDERS,
+  LIGHTWEIGHT_COIN_THRESHOLD,
+  LIGHTWEIGHT_PRICE_THRESHOLD,
   STAGES,
   SHELF_CAPACITY_PER_COIN,
   CONDITION_FACTORS,
@@ -73,6 +88,7 @@ module.exports = {
   availableCoin,
   addHours,
   addDays,
+  isLightweightBook,
   cancelCreditChange,
   applyPendingPenalty,
   splitViolationPenalty,

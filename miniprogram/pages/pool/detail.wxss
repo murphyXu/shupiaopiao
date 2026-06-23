@@ -114,3 +114,20 @@
   background: #2FBE77;
   color: #fff;
 }
+
+.pill.lightweight,
+.lightweight {
+  background: #EAFBF2;
+  color: #0C7A4B;
+}
+
+.same-giver-card {
+  background: #EAFBF2;
+  border: 1rpx solid #c8efd9;
+}
+
+.same-giver-label {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0C7A4B;
+}

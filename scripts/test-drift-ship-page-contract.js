@@ -20,7 +20,8 @@ assert.ok(shipJson.includes('"发货"'), 'ship page title should be 发货');
 assert.ok(givenWxml.includes('去发货 ›') && !givenWxml.includes('查看寄送信息') && !givenWxml.includes('录入快递单号'), 'given list should use single ship entry');
 assert.ok(!givenJs.includes('copyShippingInfo'), 'given list should not copy shipping info locally');
 
-assert.ok(shipJs.includes("api.getOrderDetail(this.orderId, 'given')"), 'ship page should load order detail for giver');
+assert.ok(shipJs.includes("api.getOrderDetail(this.orderId, 'given')") || shipJs.includes('api.getBundleDetail'), 'ship page should load order or bundle detail for giver');
+assert.ok(shipJs.includes('options.bundleId') && shipJs.includes('shipBundle'), 'ship page should support bundle shipping');
 assert.ok(shipJs.includes("order.status !== 'PENDING_SHIP'"), 'ship page should redirect when order is not pending ship');
 assert.ok(shipJs.includes('openExpressSheet') && shipJs.includes('copyAndOpenExpress'), 'ship page should expose express jump flow');
 assert.ok(shipJs.includes('lastCopiedAt') && shipJs.includes('3000'), 'ship page should debounce clipboard copy within 3 seconds');

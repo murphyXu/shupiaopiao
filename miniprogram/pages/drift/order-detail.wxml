@@ -10,6 +10,16 @@
     <view wx:if="{{detail.order.expressCompany}}">{{detail.order.expressCompany}} {{detail.order.trackingNo}}</view>
   </view>
   <view wx:if="{{detail.order.addressSnapshot}}" class="card"><view class="label">寄送地址</view><view>{{detail.order.addressSnapshot.name}} {{detail.order.addressSnapshot.phone}}</view><view>{{detail.order.addressSnapshot.region}} {{detail.order.addressSnapshot.detail}}</view></view>
+  <view wx:if="{{detail.bundle && detail.bundle.siblings && detail.bundle.siblings.length}}" class="card bundle-card">
+    <view class="label">同包裹其他图书</view>
+    <view wx:for="{{detail.bundle.siblings}}" wx:key="id" class="bundle-sibling row">
+      <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
+      <view class="info">
+        <view class="title">{{item.book.title}}</view>
+        <view class="muted">第 {{item.bundleSeq}} 本 · {{statusMap[item.status]}}</view>
+      </view>
+    </view>
+  </view>
   <view class="note-box">物流采用快递到付，平台不收取任何费用。接漂占用的公益积分在完成后记录扣除。</view>
   <view wx:if="{{detail.fallback}}" class="note-box">当前云函数版本未提供完整详情接口，已展示基础信息；请上传最新 api 云函数后查看完整寄送地址和处理动作。</view>
   <button wx:if="{{detail.actions.canShip && detail.order.addressSnapshot}}" class="btn-primary" bindtap="copyShippingInfo">复制收件信息</button>

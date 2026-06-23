@@ -61,5 +61,16 @@
   color: #C0442E;
   background: #FFF1ED;
 }
+.bundle-badge {
+  margin-left: 12rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: #EAFBF2;
+  color: #0C7A4B;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+.bundle-row { margin-top: 12rpx; }
+.receiver-line { margin-top: 12rpx; }
 
 .logistics { margin-top: 12rpx; font-size: 24rpx; color: #2FBE77; }

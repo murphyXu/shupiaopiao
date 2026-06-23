@@ -5,7 +5,7 @@ const {
 const { refreshBooksCoverMetadata, refreshBookCoverMetadata } = require('../lib/bookLookup');
 const { CONDITION_LABELS } = require('../lib/pricing');
 const { normalizeBookCategory } = require('../lib/bookCategory');
-const { availableCoin } = require('../lib/driftPolicy');
+const { availableCoin, isLightweightBook } = require('../lib/driftPolicy');
 
 const CATEGORY_LABELS = {
   children: '童书',
@@ -263,7 +263,25 @@ async function detail(data, openid) {
   const giver = giverList[0] || { nickname: '书友', avatar: '', creditScore: 100 };
   const user = openid ? await getUserByOpenid(openid) : null;
   const wantedDriftIds = await getWantedDriftIds(user ? user._id : '', [drift._id]);
-  return ok(formatPoolItem(drift, book, giver, user ? user._id : '', wantedDriftIds));
+  const { data: sameGiverDrifts } = await safeQuery('drifts', (col) =>
+    col.where({ userId: drift.userId, status: 'IN_POOL', _id: _.neq(drift._id) }).limit(20).get());
+  const visibleSameGiver = await filterVisibleDrifts(sameGiverDrifts);
+  const sameGiverCount = visibleSameGiver.length;
+  const isAnonymous = !!drift.isAnonymous;
+  const sameGiverPool = sameGiverCount ? {
+    count: sameGiverCount,
+    label: isAnonymous ? `同一书友还有 ${sameGiverCount} 本可接` : `还有 ${sameGiverCount} 本在漂`,
+    anonymous: isAnonymous,
+  } : null;
+  const lightweightHint = isLightweightBook({
+    coinValue: drift.coinValue,
+    listPrice: book ? book.listPrice : drift.listPrice,
+  });
+  return ok({
+    ...formatPoolItem(drift, book, giver, user ? user._id : '', wantedDriftIds),
+    sameGiverPool,
+    lightweightHint,
+  });
 }
 
 async function toggleWant(openid, data) {

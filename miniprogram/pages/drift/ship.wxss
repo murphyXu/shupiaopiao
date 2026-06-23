@@ -36,6 +36,12 @@
 .tracking-error { margin-top: 12rpx; font-size: 24rpx; color: #C0442E; line-height: 1.5; }
 .tracking-hint { margin-top: 16rpx; font-size: 24rpx; color: #9aa8a0; line-height: 1.5; }
 .submit-btn { margin-top: 8rpx; }
+.bundle-title {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #15211B;
+  margin-bottom: 20rpx;
+}
 .submit-btn[disabled] {
   background: #c8d9cf;
   color: #fff;

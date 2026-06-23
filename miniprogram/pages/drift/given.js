@@ -31,8 +31,36 @@ function withProgress(list = []) {
   }));
 }
 
+function buildDisplayItems(orders = []) {
+  const seenBundles = new Set();
+  const items = [];
+  orders.forEach((order) => {
+    if (order.status === 'PENDING_SHIP' && order.bundleId && !seenBundles.has(order.bundleId)) {
+      const bundleOrders = orders.filter((row) => row.bundleId === order.bundleId && row.status === 'PENDING_SHIP');
+      if (bundleOrders.length > 1) {
+        seenBundles.add(order.bundleId);
+        items.push({
+          kind: 'bundle',
+          displayId: `bundle-${order.bundleId}`,
+          bundleId: order.bundleId,
+          orderCount: bundleOrders.length,
+          orders: bundleOrders,
+          status: 'PENDING_SHIP',
+          receiverNickname: bundleOrders[0].receiverNickname,
+          progressText: `合并 ${bundleOrders.length} 本待寄出`,
+          progressHint: '复制地址去寄快递，一次填单号即可',
+        });
+        return;
+      }
+    }
+    if (order.bundleId && seenBundles.has(order.bundleId)) return;
+    items.push({ kind: 'single', displayId: order.id, order });
+  });
+  return items;
+}
+
 Page({
-  data: { orders: [], pendingShipCount: 0, statusMap: ORDER_STATUS, statusFilter: '' },
+  data: { displayItems: [], pendingShipCount: 0, statusMap: ORDER_STATUS, statusFilter: '' },
 
   onLoad(options) {
     this.setData({ statusFilter: options.status || '' });
@@ -42,14 +70,19 @@ Page({
     api.getOrders('given', this.data.statusFilter || undefined).then((res) => {
       const orders = withProgress(res.list || []);
       this.setData({
-        orders,
+        displayItems: buildDisplayItems(orders),
         pendingShipCount: orders.filter((order) => order.status === 'PENDING_SHIP').length,
       });
     });
   },
 
   ship(e) {
+    const bundleId = e.currentTarget.dataset.bundleId;
     const orderId = e.currentTarget.dataset.id;
+    if (bundleId) {
+      wx.navigateTo({ url: `/pages/drift/ship?bundleId=${bundleId}` });
+      return;
+    }
     wx.navigateTo({ url: `/pages/drift/ship?orderId=${orderId}` });
   },
 

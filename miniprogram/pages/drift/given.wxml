@@ -4,28 +4,50 @@
     <view class="reminder-sub">请确认漂流出去并及时寄出，填写运单号后领取方可查看进展。</view>
   </view>
 
-  <view wx:for="{{orders}}" wx:key="id" class="card order-card">
-    <view class="header">
-      <text class="badge status">{{statusMap[item.status]}}</text>
-    </view>
-    <view class="row">
-      <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
-      <view class="info">
-        <view class="title">{{item.book.title}}</view>
-        <view wx:if="{{item.receiverNickname}}" class="muted">领书方：{{item.receiverNickname}}</view>
-        <view wx:else class="muted">{{statusMap[item.status] || item.status}}</view>
-        <view wx:if="{{item.conditionIssueLabels && item.conditionIssueLabels.length}}" class="muted">品相：{{item.conditionLabel}} · {{item.conditionIssueText}}</view>
-        <view wx:else class="muted">品相：{{item.conditionLabel}}</view>
+  <view wx:for="{{displayItems}}" wx:key="displayId" class="card order-card">
+    <block wx:if="{{item.kind === 'bundle'}}">
+      <view class="header">
+        <text class="badge status">待寄出</text>
+        <text class="bundle-badge">合并 {{item.orderCount}} 本</text>
       </view>
-    </view>
-    <view class="progress-box">
-      <view class="progress-text">{{item.progressText}}</view>
-      <view wx:if="{{item.progressHint}}" class="progress-hint">{{item.progressHint}}</view>
-    </view>
-    <view wx:if="{{item.status === 'PENDING_SHIP'}}" class="order-action primary" data-id="{{item.id}}" bindtap="ship">去发货 ›</view>
-    <view wx:if="{{item.status === 'PENDING_SHIP' && item.receiverId}}" class="order-action danger" data-id="{{item.id}}" bindtap="cancel">取消漂流</view>
-    <view wx:if="{{item.canCancelOpen}}" class="order-action danger" data-drift-id="{{item.driftId}}" bindtap="cancelOpenDrift">取消漂流</view>
-    <view wx:if="{{item.trackingNo}}" class="logistics" data-no="{{item.trackingNo}}" data-company="{{item.expressCompany}}" bindtap="viewLogistics">物流：{{item.expressCompany}} {{item.trackingNo}} ›</view>
+      <view wx:for="{{item.orders}}" wx:for-item="bookOrder" wx:key="id" class="row bundle-row">
+        <image class="book-cover-sm" src="{{bookOrder.book.cover}}" mode="aspectFill" />
+        <view class="info">
+          <view class="title">{{bookOrder.book.title}}</view>
+          <view class="muted">第 {{bookOrder.bundleSeq}} 本</view>
+        </view>
+      </view>
+      <view wx:if="{{item.receiverNickname}}" class="muted receiver-line">领书方：{{item.receiverNickname}}</view>
+      <view class="progress-box">
+        <view class="progress-text">{{item.progressText}}</view>
+        <view class="progress-hint">{{item.progressHint}}</view>
+      </view>
+      <view class="order-action primary" data-bundle-id="{{item.bundleId}}" bindtap="ship">去发货 ›</view>
+    </block>
+
+    <block wx:else>
+      <view class="header">
+        <text class="badge status">{{statusMap[item.order.status]}}</text>
+      </view>
+      <view class="row">
+        <image class="book-cover-sm" src="{{item.order.book.cover}}" mode="aspectFill" />
+        <view class="info">
+          <view class="title">{{item.order.book.title}}</view>
+          <view wx:if="{{item.order.receiverNickname}}" class="muted">领书方：{{item.order.receiverNickname}}</view>
+          <view wx:else class="muted">{{statusMap[item.order.status] || item.order.status}}</view>
+          <view wx:if="{{item.order.conditionIssueLabels && item.order.conditionIssueLabels.length}}" class="muted">品相：{{item.order.conditionLabel}} · {{item.order.conditionIssueText}}</view>
+          <view wx:else class="muted">品相：{{item.order.conditionLabel}}</view>
+        </view>
+      </view>
+      <view class="progress-box">
+        <view class="progress-text">{{item.order.progressText}}</view>
+        <view wx:if="{{item.order.progressHint}}" class="progress-hint">{{item.order.progressHint}}</view>
+      </view>
+      <view wx:if="{{item.order.status === 'PENDING_SHIP'}}" class="order-action primary" data-id="{{item.order.id}}" bindtap="ship">去发货 ›</view>
+      <view wx:if="{{item.order.status === 'PENDING_SHIP' && item.order.receiverId}}" class="order-action danger" data-id="{{item.order.id}}" bindtap="cancel">取消漂流</view>
+      <view wx:if="{{item.order.canCancelOpen}}" class="order-action danger" data-drift-id="{{item.order.driftId}}" bindtap="cancelOpenDrift">取消漂流</view>
+      <view wx:if="{{item.order.trackingNo}}" class="logistics" data-no="{{item.order.trackingNo}}" data-company="{{item.order.expressCompany}}" bindtap="viewLogistics">物流：{{item.order.expressCompany}} {{item.order.trackingNo}} ›</view>
+    </block>
   </view>
-  <view wx:if="{{!orders.length}}" class="empty">暂无赠出记录</view>
+  <view wx:if="{{!displayItems.length}}" class="empty">暂无赠出记录</view>
 </view>

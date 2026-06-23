@@ -4,6 +4,7 @@
     <view class="info">
       <view class="title">{{item.book.title}}</view>
       <text class="badge">流转积分 {{item.coinValue}}</text>
+      <text wx:if="{{item.lightweightHint}}" class="pill lightweight">轻量</text>
     </view>
   </view>
 
@@ -27,7 +28,7 @@
     <text class="muted">占用中 {{frozen}}</text>
   </view>
 
-  <view class="note-box">申请成功后将占用 {{item.coinValue}} 公益积分，完成接漂时才从总记录值中扣除；同时未收货最多 2 单，请先完成在途漂流。</view>
+  <view class="note-box">申请成功后将占用 {{item.coinValue}} 公益积分，完成接漂时才从总记录值中扣除；同时未收货最多 5 单，请先完成在途漂流。</view>
 
   <view class="btn-accent" bindtap="confirm">确认申请</view>
 </view>

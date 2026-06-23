@@ -9,11 +9,17 @@
     <view class="row-meta">
       <text class="coin big">流转积分 {{item.coinValue}}</text>
       <text class="pill">{{item.conditionLabel}}</text>
+      <text wx:if="{{item.lightweightHint}}" class="pill lightweight">轻量</text>
     </view>
     <view wx:if="{{item.conditionIssueLabels && item.conditionIssueLabels.length}}" class="issue-row">
       <text wx:for="{{item.conditionIssueLabels}}" wx:key="*this" class="pill issue-pill">{{item}}</text>
     </view>
     <view class="report-link" bindtap="reportItem">举报</view>
+  </view>
+
+  <view wx:if="{{item.sameGiverPool}}" class="card same-giver-card">
+    <view class="same-giver-label">{{item.sameGiverPool.label}}</view>
+    <view class="muted">凑单通常只需一次到付运费</view>
   </view>
 
   <view class="card giver">

@@ -1,4 +1,13 @@
 .page { padding: 24rpx; }
 .order-card .row { display: flex; gap: 16rpx; margin-top: 12rpx; }
+.bundle-badge {
+  margin-left: 12rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: #EAFBF2;
+  color: #0C7A4B;
+  font-size: 22rpx;
+  font-weight: 600;
+}
 .btn-accent.small, .btn-ghost.small { margin-top: 16rpx; padding: 14rpx; font-size: 26rpx; }
 .logistics { margin-top: 12rpx; font-size: 24rpx; color: #2FBE77; }

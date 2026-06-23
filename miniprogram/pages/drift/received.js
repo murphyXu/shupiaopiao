@@ -1,6 +1,19 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
 
+function withBundleBadge(orders = []) {
+  const counts = {};
+  orders.forEach((order) => {
+    if (order.bundleId) counts[order.bundleId] = (counts[order.bundleId] || 0) + 1;
+  });
+  return orders.map((order) => ({
+    ...order,
+    bundleBadge: order.bundleId && counts[order.bundleId] > 1
+      ? `同包裹 · ${counts[order.bundleId]} 本`
+      : '',
+  }));
+}
+
 Page({
   data: { orders: [], statusMap: ORDER_STATUS, statusFilter: '' },
 
@@ -9,7 +22,9 @@ Page({
   },
 
   onShow() {
-    api.getOrders('received', this.data.statusFilter || undefined).then((res) => this.setData({ orders: res.list || [] }));
+    api.getOrders('received', this.data.statusFilter || undefined).then((res) => {
+      this.setData({ orders: withBundleBadge(res.list || []) });
+    });
   },
 
   async confirm(e) {

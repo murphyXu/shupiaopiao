@@ -7,6 +7,7 @@ const COLLECTIONS = [
   'drifts',
   'drift_wants',
   'drift_orders',
+  'shipment_bundles',
   'drift_disputes',
   'drift_order_events',
   'coin_transactions',

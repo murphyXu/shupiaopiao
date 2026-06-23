@@ -2,7 +2,18 @@
   <view wx:if="{{loading}}" class="empty">加载中…</view>
 
   <block wx:elif="{{detail}}">
-    <view class="card row book-card">
+    <view wx:if="{{isBundle}}" class="bundle-title">合并寄出 · {{bundleCount}} 本</view>
+
+    <block wx:if="{{isBundle}}">
+      <view wx:for="{{bundleDetail.orders}}" wx:key="id" class="card row book-card">
+        <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
+        <view class="info">
+          <view class="title">{{item.book.title}}</view>
+          <text class="badge">第 {{item.bundleSeq}} 本</text>
+        </view>
+      </view>
+    </block>
+    <view wx:else class="card row book-card">
       <image class="book-cover-sm" src="{{detail.order.book.cover}}" mode="aspectFill" />
       <view class="info">
         <view class="title">{{detail.order.book.title}}</view>
@@ -13,7 +24,7 @@
 
     <view wx:if="{{deadlineText}}" class="deadline-card">
       <view class="deadline-title">⏱ {{deadlineText}}</view>
-      <view class="deadline-sub">到付件，运费由领书方承担</view>
+      <view class="deadline-sub">到付件，运费由领书方承担{{isBundle ? '；凑单通常只需一次运费' : ''}}</view>
     </view>
 
     <view wx:if="{{detail.order.addressSnapshot}}" class="card address-card">
@@ -23,8 +34,8 @@
       <view class="address-detail">{{regionText}} {{detail.order.addressSnapshot.detail}}</view>
       <view class="privacy-note">地址仅用于本次到付寄件，请勿外传</view>
       <view class="action-row">
-        <view class="btn-ghost action-btn" bindtap="copyShippingInfo">复制收件信息</view>
-        <view class="btn-primary action-btn" bindtap="openExpressSheet">去寄快递 ›</view>
+        <button class="btn-ghost action-btn" bindtap="copyShippingInfo">复制收件信息</button>
+        <button class="btn-primary action-btn" bindtap="openExpressSheet">去寄快递 ›</button>
       </view>
     </view>
 

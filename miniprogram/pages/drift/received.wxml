@@ -2,6 +2,7 @@
   <view wx:for="{{orders}}" wx:key="id" class="card order-card">
     <view class="header">
       <text class="badge status">{{statusMap[item.status]}}</text>
+      <text wx:if="{{item.bundleBadge}}" class="bundle-badge">{{item.bundleBadge}}</text>
     </view>
     <view class="row">
       <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" />
