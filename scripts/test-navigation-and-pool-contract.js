@@ -10,6 +10,7 @@ const shelfWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/she
 const poolJs = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/pool/index.js'), 'utf8');
 const poolWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/pool/index.wxml'), 'utf8');
 const poolWxss = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/pool/index.wxss'), 'utf8');
+const commonWxss = fs.readFileSync(path.join(__dirname, '../miniprogram/styles/common.wxss'), 'utf8');
 const poolHandler = fs.readFileSync(path.join(__dirname, '../cloudfunctions/api/handlers/pool.js'), 'utf8');
 
 assert.strictEqual(appJson.pages[0], 'pages/pool/index', 'default launch page should be drift pool');
@@ -35,8 +36,8 @@ assert.ok(shelfWxml.includes('>编辑名称</view>') && !shelfWxml.includes('>�
 
 assert.ok(poolWxml.includes('secondaryTabs') && poolJs.includes('filterModes'), 'pool page should render two-level category/value/condition tabs');
 assert.ok(!/I 文学|C 社科|Z 童书/.test(fs.readFileSync(path.join(__dirname, '../miniprogram/utils/util.js'), 'utf8')), 'pool category labels should use Chinese short names without CLC prefixes');
-assert.ok(poolWxml.includes('cover-frame') && poolWxml.includes('mode="aspectFit"'), 'pool cover should adapt uploaded images');
-assert.ok(poolWxss.includes('.cover-frame'), 'pool cover frame should be styled');
+assert.ok(poolWxml.includes('grid-book-cover-frame') && poolWxml.includes('mode="aspectFit"'), 'pool cover should adapt uploaded images');
+assert.ok(commonWxss.includes('.grid-book-cover-frame'), 'pool cover frame should be styled in shared styles');
 assert.ok(poolJs.includes('filterCategory') && poolJs.includes('activeValue') && poolJs.includes('activeCondition'), 'pool page should filter by category, value, and condition');
 assert.ok(poolHandler.includes('category') && !poolHandler.includes('ageRange) list'), 'pool handler should filter by book category instead of age');
 

@@ -26,6 +26,12 @@ assert.ok(shelfHandler.includes('assertSafeTextFields'), 'shelf metadata text sh
 assert.ok(!shelfHandler.includes('data.cover') && !shelfHandler.includes('data.summary'), 'manual shelf add should not accept user cover or free-form summary');
 assert.ok(authHandler.includes('assertSafeTextFields'), 'profile nickname and shelf name should run content checks');
 
+const apiConfig = read('cloudfunctions/api/config.json');
+assert.ok(
+  apiConfig.includes('security.msgSecCheck') && apiConfig.includes('security.mediaCheckAsync'),
+  'api cloud function should declare content security openapi permissions',
+);
+
 assert.ok(fs.existsSync(reportHandlerPath), 'report handler should exist');
 const reportHandler = read('cloudfunctions/api/handlers/report.js');
 assert.ok(reportHandler.includes("db.collection('reports')"), 'reports should be stored in reports collection');
@@ -45,11 +51,16 @@ const pointRulesLib = read('miniprogram/utils/pointRules.js');
 assert.ok(pointRulesLib.includes('公益积分 · 加分') && pointRulesLib.includes('信用积分 · 扣分'), 'settings point rules should list user-facing earn and penalty standards');
 assert.ok(pointRulesLib.includes('发货前取消上漂') && pointRulesLib.includes('已接漂未收货最多'), 'settings should explain user-facing point rollback and in-flight claim limit');
 assert.ok(pointRulesLib.includes('shelfCapacityPerCoin: 10'), 'point rules should define shelf capacity redeem ratio');
+assert.ok(pointRulesLib.includes('inviteLifetimeTimes: 5') && pointRulesLib.includes('不设单日上限') && !pointRulesLib.includes('inviteDailyCap'), 'invite reward rules should cap at five times with no daily limit');
 assert.ok(!settingsWxml.includes('publishRewardCap') && !settingsWxml.includes('inflightLimit') && !settingsWxml.includes('REPORT_HIDE_THRESHOLD'), 'settings should not expose internal strategy names or thresholds');
 
 const mineWxml = read('miniprogram/pages/mine/index.wxml');
+const mineJs = read('miniprogram/pages/mine/index.js');
 assert.ok(!mineWxml.includes('邀请成功可得 5 公益积分'), 'mine page should not use direct invite-for-points inducement copy');
-assert.ok(mineWxml.includes('邀请规则') || mineWxml.includes('共建奖励'), 'mine page should use neutral invitation rule wording');
+assert.ok(
+  mineWxml.includes('邀请规则') || mineWxml.includes('共建奖励') || (mineWxml.includes('invite-reward') && mineJs.includes('inviteRewardSummary') && pointRulesLib.includes('共建奖励')),
+  'mine page should use neutral invitation rule wording',
+);
 assert.ok(!mineWxml.includes('充值') && !mineWxml.includes('提现'), 'mine page should avoid recharge and withdrawal wording');
 assert.ok(dbLib.includes('settleInviteReward'), 'invite reward should be settled after meaningful interaction');
 assert.ok(!dbLib.includes('rewardInviter(inviterId, id)'), 'new user login should not immediately grant invite reward');

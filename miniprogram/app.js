@@ -8,6 +8,8 @@ App({
     userInfo: null,
     system: null,
     coversUpdated: false,
+    pendingShipBadge: '',
+    pendingShipCount: 0,
   },
 
   captureInvite(options = {}) {
@@ -47,6 +49,10 @@ App({
     try {
       if (options.scene !== undefined) track.setContext({ scene: options.scene });
     } catch (e) { /* 埋点静默 */ }
+    try {
+      const { refreshTabBarPendingShip } = require('./utils/tab-bar');
+      refreshTabBarPendingShip();
+    } catch (e) { /* 角标刷新静默 */ }
   },
 
   onHide() {

@@ -1,9 +1,22 @@
 const api = require('../../utils/api');
 const { requireLogin } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
+const { trackPageView } = require('../../utils/track');
+const { driftShare } = require('../../utils/share');
+
+const SUMMARY_FOLD_THRESHOLD = 96;
+
+function buildSummaryView(summary = '') {
+  const text = String(summary || '').trim();
+  return {
+    summaryText: text || '暂无简介',
+    summaryNeedsFold: text.length > SUMMARY_FOLD_THRESHOLD,
+    summaryExpanded: false,
+  };
+}
 
 Page({
-  data: { item: null },
+  data: { item: null, summaryText: '', summaryNeedsFold: false, summaryExpanded: false },
 
   onLoad(options) {
     this.driftId = options.id;
@@ -11,7 +24,16 @@ Page({
   },
 
   loadDetail() {
-    return api.getPoolDetail(this.driftId).then((item) => this.setData({ item }));
+    return api.getPoolDetail(this.driftId).then((item) => {
+      const book = item.book || {};
+      this.setData({ item, ...buildSummaryView(book.summary) });
+      trackPageView('pool/detail', {
+        driftId: this.driftId,
+        bookId: item.bookId,
+        category: item.category,
+        author: item.book && item.book.author,
+      });
+    });
   },
 
   goClaim() {
@@ -64,4 +86,20 @@ Page({
   },
 
   onCoverError,
+
+  toggleSummary() {
+    this.setData({ summaryExpanded: !this.data.summaryExpanded });
+  },
+
+  onShareAppMessage() {
+    const item = this.data.item || {};
+    const book = item.book || {};
+    const user = wx.getStorageSync('userInfo') || {};
+    return driftShare({
+      title: book.title,
+      driftId: this.driftId || item.id,
+      inviterId: user.id,
+      cover: book.cover,
+    });
+  },
 });

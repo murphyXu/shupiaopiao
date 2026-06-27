@@ -1,0 +1,43 @@
+<view class="page" style="padding-top: {{navPaddingTop}}px;">
+  <view class="header">
+    <text class="title">数据明细</text>
+    <text class="subtitle">行为事件与业务流水 · 仅管理员可见</text>
+  </view>
+
+  <view wx:if="{{loading && !list.length}}" class="state">加载中…</view>
+
+  <view wx:elif="{{denied}}" class="state denied">
+    <text class="state-emoji">🔒</text>
+    <text>无权访问，请在云函数环境变量 ADMIN_OPENIDS 中配置你的 openid</text>
+  </view>
+
+  <block wx:else>
+    <view class="tabs">
+      <view
+        wx:for="{{tabs}}"
+        wx:key="key"
+        class="tab {{tab === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchTab"
+      >{{item.label}}</view>
+    </view>
+
+    <picker mode="selector" range="{{dayOptions}}" range-key="label" value="{{dayIndex}}" bindchange="pickDay">
+      <view class="day-picker">日期：{{dayOptions[dayIndex].label}}（{{day}}）▾</view>
+    </picker>
+
+    <view wx:if="{{!list.length && !loading}}" class="state empty">当日暂无记录</view>
+
+    <view class="list">
+      <view wx:for="{{list}}" wx:key="id" class="row">
+        <text class="row-title">{{item.title}}</text>
+        <text class="row-meta">{{item.meta}}</text>
+        <text wx:if="{{item.detail}}" class="row-detail">{{item.detail}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{loadingMore}}" class="footer">加载更多…</view>
+    <view wx:elif="{{hasMore}}" class="footer">上拉加载更多</view>
+    <view wx:else class="footer">已加载全部</view>
+  </block>
+</view>

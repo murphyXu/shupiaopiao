@@ -1,8 +1,10 @@
-const { ok, fail } = require('../lib/utils');
+const { ok, fail, nowIso } = require('../lib/utils');
 const { db, _, formatBook, getBookById, requireUser } = require('../lib/db');
 const { normalizeIsbn, isValidIsbn } = require('../lib/bookCatalog');
 const { resolveByIsbn, searchBooks } = require('../lib/bookLookup');
 const { cacheRemoteBookCover } = require('../lib/coverCache');
+const { assertSafeTextFields } = require('../lib/contentSecurity');
+const { buildBookMetadataPatch } = require('../lib/bookMetadata');
 
 const SCAN_LOOKUP_LIMIT = 300;
 
@@ -109,6 +111,30 @@ async function cacheRemoteCover(data) {
   }
 }
 
+async function updateMetadata(openid, data) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  const shelfBookId = String(data.shelfBookId || '').trim();
+  if (!shelfBookId) return fail(400, '缺少书架记录');
+
+  const { data: row } = await db.collection('shelf_books').doc(shelfBookId).get();
+  if (!row || row.userId !== user._id) return fail(404, '书架记录不存在');
+
+  const book = await getBookById(row.bookId);
+  if (!book) return fail(404, '图书不存在');
+
+  const built = buildBookMetadataPatch(data);
+  if (built.error) return fail(400, built.error);
+
+  await assertSafeTextFields(openid, built.textFields);
+
+  await db.collection('books').doc(book._id).update({
+    data: { ...built.patch, updatedAt: nowIso() },
+  });
+  const updated = await getBookById(book._id);
+  return ok(await formatBookWithPrice(updated));
+}
+
 module.exports = {
-  byIsbn, search, detail, updateCover, cacheRemoteCover,
+  byIsbn, search, detail, updateCover, cacheRemoteCover, updateMetadata,
 };

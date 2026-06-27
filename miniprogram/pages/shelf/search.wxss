@@ -1,6 +1,13 @@
 .page { padding: 24rpx; }
 .search-bar { display: flex; gap: 16rpx; align-items: center; }
-.search-bar input { flex: 1; }
+.search-bar input {
+  flex: 1;
+  height: 76rpx;
+  min-height: 76rpx;
+  font-size: 28rpx;
+  line-height: 76rpx;
+  color: #15211B;
+}
 .search-btn { padding: 16rpx 28rpx; font-size: 26rpx; }
 .loading-card { text-align: center; background: linear-gradient(135deg, #fff, #f2fff8); }
 .loading-title { font-size: 30rpx; color: #15211B; font-weight: 700; }

@@ -1,0 +1,40 @@
+@import "./publish.wxss";
+
+.scan-card {
+  padding-bottom: 8rpx;
+}
+.scan-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+.scan-tip {
+  margin-top: 8rpx;
+  font-size: 23rpx;
+}
+.scan-btn {
+  flex-shrink: 0;
+  padding: 12rpx 24rpx;
+  font-size: 24rpx;
+}
+.session-note {
+  margin-top: 16rpx;
+  font-size: 23rpx;
+}
+.lookup-error {
+  margin-top: 12rpx;
+  color: #ff4d4f;
+  font-size: 24rpx;
+}
+.empty-scan {
+  text-align: center;
+  padding: 36rpx 24rpx;
+}
+.scan-start {
+  margin-top: 24rpx;
+}
+.isbn-line {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+}

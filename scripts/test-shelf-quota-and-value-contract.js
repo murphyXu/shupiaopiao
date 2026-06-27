@@ -27,9 +27,9 @@ assert.ok(miniApi.includes('redeemShelfCapacity'), 'frontend api should wrap she
 assert.ok(shelfWxml.includes('剩余可收藏') && shelfWxml.includes('dashboard.remainingCapacity'), 'shelf header should show remaining collectible slots');
 assert.ok(!shelfWxml.includes('/ 上限') && !shelfWxml.includes('dashboard.shelfLimit'), 'shelf home header should only show remaining collectible slots');
 assert.ok(shelfWxml.includes('兑换额度') && shelfJs.includes('goRedeemCapacity'), 'shelf page should provide capacity redemption entry');
-assert.ok(shelfWxml.includes('定价合计') && dashboardWxml.includes('定价合计'), 'shelf pages should label total value as list price sum');
+assert.ok(!shelfWxml.includes('定价合计') && dashboardWxml.includes('定价合计'), 'shelf dashboard should still label total value as list price sum');
 assert.ok(!shelfWxml.includes('本月新增') && !dashboardWxml.includes('本月新增'), 'shelf stats should no longer show monthly new books');
-assert.ok(shelfWxml.includes('shelf-stat-row') && shelfWxml.includes('stat-card'), 'shelf home should keep two-card stat row layout');
+assert.ok(!shelfWxml.includes('shelf-stat-row') && !shelfWxml.includes('stat-card'), 'shelf home should not render the top stats row');
 assert.ok(shelfHandler.includes('buildCollectionStats') && shelfHandler.includes('booksByIdsWithPrices'), 'shelf dashboard should build stats from enriched per-volume rows');
 assert.ok(shelfHandler.includes('countableRows.length') && shelfHandler.includes('listPriceForBook'), 'shelf collection stats should count each shelf row and sum list prices per volume');
 

@@ -1,11 +1,15 @@
 const { env } = require('../config/index');
-const { normalizeBooksDeep, normalizeBook } = require('./cover');
+const { normalizeBooksDeep, normalizeBook, needsCoverResolve } = require('./cover');
 const {
-  cacheRemoteCover, cacheRemoteCovers, applyCoverUpdates,
+  cacheRemoteCover, cacheRemoteCovers, applyCoverUpdates, cleanIsbn,
 } = require('./coverRefresh');
+const { readResolvedCoverIsbns, rememberResolvedCoverIsbn } = require('./coverResolveCache');
 
 const POOL_COVER_ACTIONS = new Set(['pool.list', 'pool.detail', 'pool.wants']);
+const SHELF_COVER_ACTIONS = new Set(['shelf.list', 'shelf.public']);
 const ORDER_COVER_ACTIONS = new Set(['drift.orders', 'drift.orderDetail', 'drift.bundleDetail']);
+const LIST_COVER_RESOLVE_LIMIT = 6;
+const REMOTE_COVER_CACHE_MAX_PASSES = 16;
 
 function collectNestedBooks(data, books = []) {
   if (!data || typeof data !== 'object') return books;
@@ -92,13 +96,82 @@ function applyOrderCoverUpdates(data, updates) {
   return enriched;
 }
 
+function shelfBooksFromData(data) {
+  if (!data || !Array.isArray(data.list)) return [];
+  return data.list.map((item) => item.book).filter(Boolean);
+}
+
+function applyShelfCoverUpdates(data, updates) {
+  if (!data || !Object.keys(updates).length) return data;
+  if (!Array.isArray(data.list)) return data;
+  return { ...data, list: applyCoverUpdates(data.list, updates, 'book') };
+}
+
+function collectIsbnsNeedingCover(data, resolvedIsbns = new Set()) {
+  const isbns = [];
+  const seen = new Set();
+  const pushBook = (book) => {
+    if (!needsCoverResolve(book)) return;
+    const isbn = cleanIsbn(book.isbn);
+    if (!isbn || seen.has(isbn) || resolvedIsbns.has(isbn)) return;
+    seen.add(isbn);
+    isbns.push(isbn);
+  };
+  if (Array.isArray(data.list)) {
+    data.list.forEach((item) => pushBook(item.book || item));
+  }
+  if (data.book) pushBook(data.book);
+  return isbns;
+}
+
+function applyResolvedBooks(data, bookByIsbn = {}) {
+  if (!data || !Object.keys(bookByIsbn).length) return data;
+  const patchBook = (book) => {
+    if (!book) return book;
+    const fresh = bookByIsbn[cleanIsbn(book.isbn)];
+    return fresh ? normalizeBook({ ...book, ...fresh }) : book;
+  };
+  let next = data;
+  if (Array.isArray(next.list)) {
+    next = {
+      ...next,
+      list: next.list.map((item) => (item.book
+        ? { ...item, book: patchBook(item.book) }
+        : patchBook(item))),
+    };
+  }
+  if (next.book) next = { ...next, book: patchBook(next.book) };
+  return next;
+}
+
+async function resolveMissingCovers(data, limit = LIST_COVER_RESOLVE_LIMIT) {
+  const resolvedIsbns = readResolvedCoverIsbns();
+  const isbns = collectIsbnsNeedingCover(data, resolvedIsbns).slice(0, limit);
+  if (!isbns.length) return data;
+  const bookByIsbn = {};
+  for (const isbn of isbns) {
+    try {
+      const book = await call('books.isbn', { isbn }, { showError: false });
+      if (book && book.isbn) {
+        bookByIsbn[cleanIsbn(book.isbn)] = book;
+        if (book.coverRemote || (book.cover && String(book.cover).startsWith('cloud://'))) {
+          rememberResolvedCoverIsbn(isbn);
+        }
+      }
+    } catch (err) {
+      console.warn('[covers] isbn resolve skipped', isbn, err);
+    }
+  }
+  return applyResolvedBooks(data, bookByIsbn);
+}
+
 async function enrichRemoteCovers(data, booksFromData, applyUpdates) {
   let enriched = normalizeBooksDeep(data);
   let coverPass = 0;
   const { shouldCacheRemoteCover } = require('./coverRefresh');
-  while (coverPass < 8) {
-    const books = booksFromData(enriched);
-    if (!books.some(shouldCacheRemoteCover)) break;
+  while (coverPass < REMOTE_COVER_CACHE_MAX_PASSES) {
+    const books = booksFromData(enriched).filter(shouldCacheRemoteCover);
+    if (!books.length) break;
     const updates = await cacheRemoteCovers(books, 12);
     if (!Object.keys(updates).length) break;
     enriched = applyUpdates(enriched, updates);
@@ -108,7 +181,13 @@ async function enrichRemoteCovers(data, booksFromData, applyUpdates) {
 }
 
 async function enrichPoolCovers(data) {
-  return enrichRemoteCovers(data, poolBooksFromData, applyPoolCoverUpdates);
+  const enriched = await enrichRemoteCovers(data, poolBooksFromData, applyPoolCoverUpdates);
+  return resolveMissingCovers(enriched);
+}
+
+async function enrichShelfCovers(data) {
+  const enriched = await enrichRemoteCovers(data, shelfBooksFromData, applyShelfCoverUpdates);
+  return resolveMissingCovers(enriched);
 }
 
 async function enrichOrderCovers(data) {
@@ -129,6 +208,9 @@ async function enrichData(action, data) {
   }
   if (POOL_COVER_ACTIONS.has(action)) {
     return enrichPoolCovers(data);
+  }
+  if (SHELF_COVER_ACTIONS.has(action)) {
+    return enrichShelfCovers(data);
   }
   if (ORDER_COVER_ACTIONS.has(action)) {
     return enrichOrderCovers(data);
@@ -166,6 +248,12 @@ function call(action, data = {}, options = {}) {
 function uploadImage(filePath) {
   const ext = (filePath.match(/\.(\w+)$/) || [, 'jpg'])[1];
   const cloudPath = `drift/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  return wx.cloud.uploadFile({ cloudPath, filePath }).then((res) => res.fileID);
+}
+
+function uploadAvatar(filePath) {
+  const ext = (filePath.match(/\.(\w+)$/) || [, 'jpg'])[1];
+  const cloudPath = `avatars/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   return wx.cloud.uploadFile({ cloudPath, filePath }).then((res) => res.fileID);
 }
 
@@ -210,6 +298,7 @@ async function getOrderDetail(orderId, sourceRole = '') {
 module.exports = {
   call,
   uploadImage,
+  uploadAvatar,
   login: (inviterId = '') => call('auth.login', { inviterId }),
   getProfile: () => call('user.profile'),
   updateProfile: (data) => call('user.updateProfile', data),
@@ -217,6 +306,7 @@ module.exports = {
   getBookDetail: (id) => call('books.detail', { id }),
   searchBooks: (keyword, page = 1) => call('books.search', { keyword, page }),
   updateBookCover: (isbn, cover) => call('books.updateCover', { isbn, cover }),
+  updateBookMetadata: (shelfBookId, data) => call('books.updateMetadata', { shelfBookId, ...data }),
   getShelfBooks: (category) => call('shelf.list', { category }),
   addShelfBook: (data) => call('shelf.add', data),
   manualAddShelfBook: (data) => call('shelf.manualAdd', data),
@@ -237,12 +327,14 @@ module.exports = {
   getPoolWants: () => call('pool.wants'),
   claimDrift: (driftId, addressId) => call('drift.claim', { driftId, addressId }),
   getOrders: (role, status) => call('drift.orders', { role, status }),
+  getDriftSummary: () => call('drift.summary'),
   getOrderDetail,
   getBundleDetail: (params) => call('drift.bundleDetail', params, { showError: false }),
   shipOrder: (orderId, data) => call('drift.ship', { orderId, ...data }),
   shipBundle: (data) => call('drift.ship', data),
   cancelOrder: (orderId, reason) => call('drift.cancel', { orderId, reason }),
   cancelOpenDrift: (driftId, reason = '') => call('drift.cancelOpen', { driftId, reason }),
+  updateOpenDrift: (driftId, data) => call('drift.updateOpen', { driftId, ...data }),
   confirmOrder: (orderId) => call('drift.confirm', { orderId }),
   addReceivedBook: (orderId) => call('drift.addReceivedBook', { orderId }),
   createDispute: (orderId, data) => call('drift.dispute', { orderId, ...data }),
@@ -254,6 +346,7 @@ module.exports = {
     remark,
   }),
   reviewOrder: (orderId, data) => call('drift.review', { orderId, ...data }),
+  reportDriftSubscribe: (data) => call('drift.reportSubscribe', data),
   getWalletBalance: () => call('wallet.balance'),
   getTransactions: (page = 1) => call('wallet.transactions', { page }),
   getCredit: () => call('credit.score'),

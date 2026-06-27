@@ -2,8 +2,8 @@ const { ok, fail, uid, nowIso } = require('../lib/utils');
 const {
   db, _, requireUser, getBookById, getBooksByIds, getUsersByIds, formatBook, settleInviteReward, DEFAULT_SHELF_LIMIT,
 } = require('../lib/db');
-const { refreshBooksCoverMetadata, refreshBookCoverMetadata } = require('../lib/bookLookup');
 const { formatDisplayBook } = require('../lib/bookCover');
+const { buildDriftTodoSummary } = require('../lib/driftTodoSummary');
 const { runAutoCheck, CONDITION_LABELS, CONDITION_ISSUE_LABELS } = require('../lib/pricing');
 const { assertSafeTextFields, assertSafeMediaFiles } = require('../lib/contentSecurity');
 const {
@@ -11,6 +11,7 @@ const {
   cancelCreditChange,
   applyPendingPenalty,
   splitViolationPenalty,
+  PUBLISH_RATE_LIMIT_STATUSES,
 } = require('../lib/driftPolicy');
 const { writeCoinEvent, writeCreditEvent, writeOrderEvent } = require('../lib/driftAccounting');
 const { ensureAccountingV2 } = require('../lib/driftMigration');
@@ -26,11 +27,15 @@ const {
   BUNDLE_MAX_ORDERS,
 } = require('../lib/shipmentBundle');
 const { normalizeShipRegion, parseRegionString } = require('../lib/shipRegion');
+const {
+  recordSubscribeGrants, notifyGiverOnClaim, sendShipRemindBatch, subscribeDebug, resendClaimNotifyForGrant,
+} = require('../lib/subscribeMessage');
 
 const REPORT_HIDE_THRESHOLD = 3;
 const ACTIVE_ORDER_STATUSES = ['PENDING_SHIP', 'SHIPPED', 'DISPUTED'];
 const ACTIVE_DRIFT_DUPLICATE_STATUSES = ['PENDING_REVIEW', 'IN_POOL', 'CLAIMED'];
 const OPEN_DRIFT_CANCEL_STATUSES = ['PENDING_REVIEW', 'IN_POOL'];
+const OPEN_DRIFT_EDIT_STATUSES = OPEN_DRIFT_CANCEL_STATUSES;
 
 function policy() {
   return policyForStage(process.env.DRIFT_STAGE || 'cold');
@@ -291,7 +296,11 @@ async function publish(openid, data) {
 
   const dayAgo = new Date(Date.now() - 86400000).toISOString();
   const [{ total: recentCount }, { total: activeDuplicateCount }] = await Promise.all([
-    db.collection('drifts').where({ userId: user._id, createdAt: _.gte(dayAgo) }).count(),
+    db.collection('drifts').where({
+      userId: user._id,
+      createdAt: _.gte(dayAgo),
+      status: _.in(PUBLISH_RATE_LIMIT_STATUSES),
+    }).count(),
     db.collection('drifts').where({ userId: user._id, shelfBookId: shelfRow._id, status: _.in(ACTIVE_DRIFT_DUPLICATE_STATUSES) }).count(),
   ]);
   const condition = data.condition || 'like_new';
@@ -325,7 +334,9 @@ async function publish(openid, data) {
     createdAt: nowIso(),
   };
   if (shipRegion) driftDoc.shipRegion = shipRegion;
-  const checkResult = runAutoCheck(driftDoc, book, user, recentCount + 1, activeDuplicateCount);
+  const checkResult = runAutoCheck(
+    driftDoc, book, user, recentCount + 1, activeDuplicateCount, policy().publishDailyLimit,
+  );
   if (activeDuplicateCount > 0) {
     const duplicateReason = checkResult.reasons.find((reason) => reason.code === 'DUPLICATE');
     return fail(409, duplicateReason ? duplicateReason.message : '该书已在漂流中，不可重复上漂');
@@ -433,6 +444,17 @@ async function claim(openid, data) {
   });
 
   if (driftForInvite) await settleInviteReward(user, 'drift_claim');
+  let subscribeNotify = { skipped: 'not_attempted' };
+  try {
+    subscribeNotify = await notifyGiverOnClaim({
+      giverId: driftForInvite.userId,
+      driftId: data.driftId,
+      orderId,
+      claimedAt: now,
+    });
+  } catch (err) {
+    subscribeNotify = { ok: false, error: err.message || String(err) };
+  }
   return ok({
     orderId,
     status: 'PENDING_SHIP',
@@ -440,6 +462,7 @@ async function claim(openid, data) {
     merged: bundleResult.merged,
     bundleOrderCount: bundleResult.bundleOrderCount,
     bundleId: bundleResult.bundleId,
+    subscribeNotify,
   });
 }
 
@@ -448,7 +471,6 @@ async function loadOrderRelations(rows) {
   const { data: drifts } = driftIds.length ? await db.collection('drifts').where({ _id: _.in(driftIds) }).get() : { data: [] };
   const driftMap = Object.fromEntries(drifts.map((item) => [item._id, item]));
   let books = await getBooksByIds(drifts.map((item) => item.bookId));
-  books = await refreshBooksCoverMetadata(db, books, Object.keys(books).length);
   const userIds = [...new Set(rows.flatMap((row) => [row.giverId, row.receiverId]).filter(Boolean))];
   const users = await getUsersByIds(userIds);
   return { driftMap, books, users };
@@ -477,8 +499,7 @@ async function givenOrders(user, data) {
   const orderedIds = new Set(rows.map((row) => row.driftId));
   const orderList = rows.filter((row) => driftMap[row.driftId]).map((row) => formatOrder(row, driftMap[row.driftId], books[driftMap[row.driftId].bookId] || {}, users[row.giverId] || user, users[row.receiverId]));
   const missing = userDrifts.filter((item) => !orderedIds.has(item._id));
-  let missingBooks = await getBooksByIds(missing.map((item) => item.bookId));
-  missingBooks = await refreshBooksCoverMetadata(db, missingBooks, missing.length);
+  const missingBooks = await getBooksByIds(missing.map((item) => item.bookId));
   const list = orderList.concat(missing.map((item) => formatDriftOnlyRecord(item, missingBooks[item.bookId], user)))
     .filter((item) => !data.status || item.status === data.status)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50);
@@ -493,8 +514,7 @@ async function orderDetail(openid, data) {
   if (!order || (![order.giverId, order.receiverId].includes(user._id) && !isAdminOpenid(openid))) return fail(404, '漂流记录不存在');
   const { data: drift } = await db.collection('drifts').doc(order.driftId).get();
   if (!drift) return fail(404, '漂流内容不存在');
-  let book = await getBookById(drift.bookId);
-  if (book) book = await refreshBookCoverMetadata(db, book);
+  const book = await getBookById(drift.bookId);
   const users = await getUsersByIds([order.giverId, order.receiverId]);
   const role = user._id === order.giverId ? 'giver' : (user._id === order.receiverId ? 'receiver' : 'admin');
   const { data: reviews } = await db.collection('reviews').where({ orderId: order._id, fromUser: user._id }).limit(1).get();
@@ -731,6 +751,56 @@ async function cancel(openid, data) {
   return ok({ orderId: data.orderId, status: 'CANCELLED' });
 }
 
+async function updateOpen(openid, data) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  const driftId = data.driftId || data.id || '';
+  if (!driftId) return fail(400, '缺少漂流记录');
+  const { data: drift } = await db.collection('drifts').doc(driftId).get();
+  if (!drift || drift.userId !== user._id) return fail(404, '漂流记录不存在');
+  if (!OPEN_DRIFT_EDIT_STATUSES.includes(drift.status)) return fail(400, '当前状态不可修改漂流信息');
+
+  const patch = {};
+  let condition = drift.condition || 'like_new';
+  if (data.condition !== undefined) {
+    condition = data.condition || 'like_new';
+    if (!CONDITION_LABELS[condition]) return fail(400, '品相档位无效');
+    patch.condition = condition;
+  }
+  if (data.conditionIssues !== undefined) {
+    const issues = normalizeConditionIssues(data.conditionIssues);
+    patch.conditionIssues = issues;
+    patch.conditionIssueLabels = conditionIssueLabels(issues);
+  }
+
+  const book = await getBookById(drift.bookId);
+  const listPrice = parseListPrice(drift.listPrice || (book && book.listPrice));
+  const systemCoinValue = calculateCoinValue(listPrice, condition);
+  patch.systemCoinValue = systemCoinValue;
+
+  const requestedCoin = data.coinValue !== undefined ? data.coinValue : drift.coinValue;
+  const coinResolution = resolveRequestedCoinValue(systemCoinValue, requestedCoin);
+  if (coinResolution.error === 'COIN_VALUE_TOO_LOW') return fail(400, '流转积分不能小于 0');
+  if (coinResolution.error === 'COIN_VALUE_TOO_HIGH') return fail(400, '流转积分不能高于系统建议值');
+  if (coinResolution.error === 'INVALID_COIN_VALUE') return fail(400, '流转积分无效');
+  if (data.coinValue !== undefined || data.condition !== undefined) {
+    patch.coinValue = coinResolution.coinValue;
+  }
+
+  if (!Object.keys(patch).length) return fail(400, '没有可更新的字段');
+  await db.collection('drifts').doc(driftId).update({ data: patch });
+  const { data: updated } = await db.collection('drifts').doc(driftId).get();
+  return ok({
+    id: driftId,
+    condition: updated.condition,
+    conditionIssues: updated.conditionIssues || [],
+    conditionIssueLabels: updated.conditionIssueLabels || conditionIssueLabels(updated.conditionIssues || []),
+    coinValue: updated.coinValue,
+    systemCoinValue: updated.systemCoinValue,
+    listPrice: updated.listPrice || listPrice,
+  });
+}
+
 async function cancelOpen(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
@@ -959,8 +1029,35 @@ async function review(openid, data) {
   return ok({ reviewId });
 }
 
+async function reportSubscribe(openid, data = {}) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  if (!data.driftId) return fail(400, '缺少 driftId');
+  if (!data.templates || typeof data.templates !== 'object') return fail(400, '缺少 templates');
+  const recorded = await recordSubscribeGrants(openid, user._id, data.driftId, data.templates);
+  return ok({ recorded });
+}
+
+async function debugSubscribe(openid, data = {}) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  const result = await subscribeDebug(user._id, data.driftId || '');
+  return ok(result);
+}
+
+async function resendSubscribe(openid, data = {}) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  if (!data.grantId) return fail(400, '缺少 grantId');
+  const { data: grant } = await db.collection('subscribe_grants').doc(data.grantId).get();
+  if (!grant || grant.userId !== user._id) return fail(404, '授权记录不存在');
+  const result = await resendClaimNotifyForGrant(data.grantId);
+  return ok({ result });
+}
+
 async function maintainDriftOrders() {
   const now = nowIso();
+  const shipReminds = await sendShipRemindBatch(now);
   const [{ data: pending }, { data: shipped }] = await Promise.all([
     db.collection('drift_orders').where({ status: 'PENDING_SHIP', shipDeadlineAt: _.lte(now) }).limit(50).get(),
     db.collection('drift_orders').where({ status: 'SHIPPED', autoCompleteAt: _.lte(now) }).limit(50).get(),
@@ -977,7 +1074,17 @@ async function maintainDriftOrders() {
       results.push({ id: order._id, action: 'AUTO_COMPLETE' });
     } catch (err) { results.push({ id: order._id, error: err.message }); }
   }
-  return ok({ processed: results.length, results });
+  return ok({ processed: results.length, results, shipReminds });
+}
+
+async function summary(openid) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  const [{ data: givenRows }, { data: receivedRows }] = await Promise.all([
+    db.collection('drift_orders').where({ giverId: user._id }).orderBy('createdAt', 'desc').limit(200).get(),
+    db.collection('drift_orders').where({ receiverId: user._id }).orderBy('createdAt', 'desc').limit(200).get(),
+  ]);
+  return ok(buildDriftTodoSummary(givenRows, receivedRows));
 }
 
 async function migrateLegacyAccounting(openid, data = {}) {
@@ -1001,7 +1108,7 @@ async function migrateLegacyAccounting(openid, data = {}) {
 }
 
 module.exports = {
-  publish, check, appeal, claim, orders, orderDetail, bundleDetail, ship, cancel, cancelOpen, confirm, addReceivedBook,
-  dispute, listDisputes, resolveDispute, review, maintainDriftOrders, migrateLegacyAccounting,
-  settleOrder,
+  publish, check, appeal, claim, orders, orderDetail, bundleDetail, ship, cancel, cancelOpen, updateOpen, confirm, addReceivedBook,
+  dispute, listDisputes, resolveDispute, review, reportSubscribe, debugSubscribe, resendSubscribe, maintainDriftOrders, migrateLegacyAccounting,
+  settleOrder, summary,
 };

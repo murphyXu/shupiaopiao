@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const { requireLogin } = require('../../utils/util');
 const { publishEarnGuideModal } = require('../../utils/pointRules');
+const { showPublishEntryOptions } = require('../../utils/publishEntry');
 
 function withBalanceAfter(list = [], balance = 0) {
   let runningBalance = Number(balance) || 0;
@@ -40,7 +41,7 @@ Page({
   },
 
   goPublish() {
-    wx.navigateTo({ url: '/pages/drift/publish' });
+    showPublishEntryOptions();
   },
 
   showEarnPointGuide() {

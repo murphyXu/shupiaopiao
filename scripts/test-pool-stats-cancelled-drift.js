@@ -27,7 +27,10 @@ require.cache[categoryPath] = {
   id: categoryPath,
   filename: categoryPath,
   loaded: true,
-  exports: { normalizeBookCategory: (category) => category || '社科' },
+  exports: {
+    normalizeBookCategory: (category) => category || '社科',
+    resolveShelfCategory: (book = {}) => ({ key: 'social', label: book.category || '社科' }),
+  },
 };
 require.cache[policyPath] = {
   id: policyPath,

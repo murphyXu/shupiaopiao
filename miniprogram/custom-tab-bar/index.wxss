@@ -22,13 +22,37 @@
   gap: 6rpx;
 }
 
+.tab-icon-wrap {
+  position: relative;
+  width: 48rpx;
+  height: 48rpx;
+}
+
 .tab-icon {
   width: 48rpx;
   height: 48rpx;
 }
 
+.tab-badge {
+  position: absolute;
+  top: -10rpx;
+  right: -18rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  padding: 0 6rpx;
+  border-radius: 14rpx;
+  background: #2FBE77;
+  color: #fff;
+  font-size: 18rpx;
+  font-weight: 700;
+  line-height: 28rpx;
+  text-align: center;
+  box-sizing: border-box;
+  border: 2rpx solid #fff;
+}
+
 .tab-text {
-  font-size: 20rpx;
+  font-size: 22rpx;
   color: #b3c0b8;
   font-weight: 500;
 }

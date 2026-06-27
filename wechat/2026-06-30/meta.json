@@ -1,0 +1,25 @@
+{
+  "date": "2026-06-30",
+  "theme": "积分科普",
+  "platform": "wechat",
+  "real_shots": [
+    {
+      "file": "04-wallet.png",
+      "raw": "04-wallet-raw.png",
+      "page": "pages/mine/wallet",
+      "steps": [
+        "公益积分明细"
+      ],
+      "composite": null
+    },
+    {
+      "file": "05-credit-page.png",
+      "raw": "05-credit-raw.png",
+      "page": "pages/mine/credit",
+      "steps": [
+        "信用积分明细"
+      ],
+      "composite": null
+    }
+  ]
+}

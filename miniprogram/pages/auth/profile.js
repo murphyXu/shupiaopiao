@@ -100,9 +100,15 @@ Page({
     try {
       const address = this.addressPayload();
       if (address === false) return;
+      let avatar = this.data.avatar;
+      if (avatar && !avatar.startsWith('cloud://')) {
+        wx.showLoading({ title: '上传头像...', mask: true });
+        avatar = await api.uploadAvatar(avatar);
+        wx.hideLoading();
+      }
       const user = await api.updateProfile({
         nickname: this.data.nickname,
-        avatar: this.data.avatar,
+        avatar,
         childAgeRange: this.data.childAgeRange,
       });
       if (address) {
@@ -118,6 +124,7 @@ Page({
       wx.showToast({ title: '保存成功' });
       setTimeout(() => wx.navigateBack(), 1000);
     } catch (e) {
+      wx.hideLoading();
       console.error(e);
     }
   },

@@ -12,14 +12,45 @@
   </view>
 
   <block wx:else>
-    <view class="section-title">今日概览</view>
+    <view class="toolbar">
+      <view class="tool-btn" bindtap="goLogs">查看明细</view>
+      <view class="tool-btn secondary {{rebuilding ? 'disabled' : ''}}" bindtap="rebuildMetrics">{{rebuilding ? '重算中…' : '重算昨日'}}</view>
+    </view>
+
+    <view class="section-title">昨日概览<text wx:if="{{overview.today.day}}" class="section-day">（{{overview.today.day}}）</text></view>
     <view class="cards">
-      <view class="card"><text class="num">{{overview.today.dau}}</text><text class="label">今日活跃</text></view>
-      <view class="card"><text class="num">{{overview.today.newUsers}}</text><text class="label">今日新增</text></view>
-      <view class="card"><text class="num">{{overview.today.driftPublished}}</text><text class="label">今日上漂</text></view>
-      <view class="card"><text class="num">{{overview.today.driftDone}}</text><text class="label">今日完成</text></view>
+      <view class="card"><text class="num">{{overview.today.dau}}</text><text class="label">日活</text></view>
+      <view class="card"><text class="num">{{overview.today.newUsers}}</text><text class="label">新增用户</text></view>
+      <view class="card"><text class="num">{{overview.today.driftPublished}}</text><text class="label">上漂</text></view>
+      <view class="card"><text class="num">{{overview.today.driftDone}}</text><text class="label">完成漂流</text></view>
+    </view>
+
+    <view class="section-title">累计概览<text class="section-hint">实时</text></view>
+    <view class="cards">
       <view class="card"><text class="num">{{overview.cumulative.totalUsers}}</text><text class="label">累计用户</text></view>
-      <view class="card"><text class="num">{{overview.today.coinStock}}</text><text class="label">积分存量</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.driftPublished}}</text><text class="label">累计上漂</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.driftOrders}}</text><text class="label">累计接漂</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.driftDone}}</text><text class="label">累计完成</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.inPool}}</text><text class="label">在漂中</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.inTransit}}</text><text class="label">在途订单</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.coinStock}}</text><text class="label">积分存量</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.coinIssued}}</text><text class="label">累计发行</text></view>
+      <view class="card"><text class="num">{{overview.cumulative.coinConsumed}}</text><text class="label">累计消耗</text></view>
+    </view>
+    <view class="week cumulative-rates">
+      <view class="week-row"><text>累计被接率</text><text class="week-val">{{overview.cumulativeText.claimRate}}</text></view>
+      <view class="week-row"><text>累计完成率</text><text class="week-val">{{overview.cumulativeText.doneRate}}</text></view>
+    </view>
+    <view wx:if="{{overview.consumeBreakdown.length}}" class="week cumulative-breakdown">
+      <view class="week-row breakdown-head">
+        <text>消耗构成</text>
+        <text class="week-val">合计 {{overview.cumulative.coinConsumed}}</text>
+      </view>
+      <view wx:for="{{overview.consumeBreakdown}}" wx:key="type" class="week-row">
+        <text>{{item.label}}<text wx:if="{{item.count}}" class="row-sub"> · {{item.count}} 笔</text></text>
+        <text class="week-val">{{item.amount}}</text>
+      </view>
+      <view wx:if="{{overview.consumeHint}}" class="breakdown-hint">{{overview.consumeHint}}</view>
     </view>
 
     <view class="section-title">近 7 天</view>
@@ -31,10 +62,19 @@
       <view class="week-row"><text>接口错误率</text><text class="week-val">{{overview.weekText.errorRate}}</text></view>
     </view>
 
-    <view class="section-title">日活趋势（近 14 天）</view>
+    <view class="section-title">趋势（近 {{trendDays}} 天 · {{trend.metricLabel}}）</view>
+    <view class="trend-controls">
+      <picker mode="selector" range="{{trendMetrics}}" range-key="label" value="{{trendMetricIndex}}" bindchange="pickTrendMetric">
+        <view class="picker-chip">指标 ▾</view>
+      </picker>
+      <picker mode="selector" range="{{trendDaysOptions}}" range-key="label" value="{{trendDaysIndex}}" bindchange="pickTrendDays">
+        <view class="picker-chip">范围 ▾</view>
+      </picker>
+    </view>
     <view class="chart">
       <view class="bars">
         <view wx:for="{{trend.bars}}" wx:key="day" class="bar-col">
+          <text class="bar-value">{{item.value}}</text>
           <view class="bar" style="height: {{item.height}}%;"></view>
           <text class="bar-label">{{item.day}}</text>
         </view>
@@ -65,6 +105,6 @@
       </view>
     </view>
 
-    <view class="tip">数据每日 00:30 自动聚合；下拉可刷新</view>
+    <view class="tip">数据每日 00:30 自动聚合；events 明细保留 90 天；下拉可刷新</view>
   </block>
 </view>

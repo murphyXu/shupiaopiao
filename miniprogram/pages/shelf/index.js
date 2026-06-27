@@ -2,9 +2,11 @@ const api = require('../../utils/api');
 const {
   CATEGORIES, BOOK_CLASSES, SHELF_LOCATIONS, isLoggedIn, requireLogin,
 } = require('../../utils/util');
+const { onCoverError: baseOnCoverError } = require('../../utils/cover');
 const safeAreaBehavior = require('../../behaviors/safe-area');
-const { setTabBarIndex } = require('../../utils/tab-bar');
+const { setTabBarIndex, refreshTabBarPendingShip } = require('../../utils/tab-bar');
 const { trackPageView } = require('../../utils/track');
+const { shelfShare } = require('../../utils/share');
 
 const PRIMARY_TABS = [
   { key: 'class', label: '书籍分类' },
@@ -36,9 +38,12 @@ function defaultLocations() {
   return SHELF_LOCATIONS.map((item) => ({ key: item.label, label: item.label }));
 }
 
+function shelfCategoryLabel(item = {}) {
+  return (item.bookClassLabel || item.displayCategory || item.sourceCategory || '未分类').trim();
+}
+
 function sourceCategory(item = {}) {
-  const book = item.book || {};
-  return (item.displayCategory || item.sourceCategory || book.category || item.bookClassLabel || '未分类').trim();
+  return shelfCategoryLabel(item);
 }
 
 function matchesShelfSearch(item = {}, keyword = '') {
@@ -65,7 +70,11 @@ function hasRealCover(cover = '') {
 
 function pickSeriesCover(items = []) {
   const withCover = items.find((item) => hasRealCover(((item.book || {}).cover)));
-  return (((withCover || items[0] || {}).book || {}).cover) || '';
+  const source = (withCover || items[0] || {}).book || {};
+  return {
+    cover: source.cover || '',
+    isbn: source.isbn || '',
+  };
 }
 
 function cleanSeriesTitle(title = '') {
@@ -156,6 +165,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 1);
+    refreshTabBarPendingShip();
     trackPageView('shelf/index');
     if (wx.getStorageSync('forceOwnShelf')) {
       wx.removeStorageSync('forceOwnShelf');
@@ -240,15 +250,17 @@ Page({
   },
 
   buildClassTabs() {
-    const map = new Map();
+    const labelsInUse = new Set();
     this.data.allBooks.forEach((item) => {
-      const category = sourceCategory(item);
-      map.set(category, { key: category, label: category });
+      labelsInUse.add(shelfCategoryLabel(item));
     });
-    if (!map.size) {
-      BOOK_CLASSES.forEach((item) => map.set(item.label, { key: item.label, label: item.label }));
+    const ordered = BOOK_CLASSES
+      .filter((item) => labelsInUse.has(item.label))
+      .map((item) => ({ key: item.label, label: item.label }));
+    if (!ordered.length) {
+      return [ALL_TAB].concat(BOOK_CLASSES.map((item) => ({ key: item.label, label: item.label })));
     }
-    return [ALL_TAB].concat([...map.values()]);
+    return [ALL_TAB].concat(ordered);
   },
 
   filterBooks() {
@@ -260,7 +272,7 @@ Page({
       let matchedTab = true;
       if (activeSecondary !== 'all') {
         if (activePrimary === 'status') matchedTab = item.readingStatus === activeSecondary;
-        if (activePrimary === 'class') matchedTab = sourceCategory(item) === activeSecondary;
+        if (activePrimary === 'class') matchedTab = shelfCategoryLabel(item) === activeSecondary;
         if (activePrimary === 'location') matchedTab = (item.shelfLocationName || '默认书架 1') === activeSecondary;
       }
       return matchedTab && matchesShelfSearch(item, keyword);
@@ -311,6 +323,7 @@ Page({
       }
       if (emitted.has(group.key)) return;
       emitted.add(group.key);
+      const seriesCover = pickSeriesCover(group.books);
       entries.push({
         type: 'series',
         id: `series-${group.key}`,
@@ -318,7 +331,8 @@ Page({
         seriesTitle: group.title,
         seriesTypeLabel: group.typeLabel,
         count: group.books.length,
-        cover: pickSeriesCover(group.books),
+        cover: seriesCover.cover,
+        coverIsbn: seriesCover.isbn,
         books: group.books,
         collapsed: collapsedState[group.key] !== false,
       });
@@ -455,14 +469,39 @@ Page({
     });
   },
 
+  onCoverError(e) {
+    const { isbn } = e.currentTarget.dataset;
+    if (!isbn) return;
+    const book = (this.data.allBooks || []).find((item) => (item.book || {}).isbn === isbn);
+    if (!book || !book.book) return;
+    const ctx = {
+      data: { list: this.data.allBooks },
+      setData: (patch) => {
+        const match = Object.keys(patch).find((key) => /^\w+\[\d+\]\.book\.cover$/.test(key));
+        if (!match) return;
+        const cover = patch[match];
+        const allBooks = (this.data.allBooks || []).map((item) => {
+          if ((item.book || {}).isbn !== isbn) return item;
+          return { ...item, book: { ...item.book, cover } };
+        });
+        this.setData({ allBooks });
+        this.filterBooks();
+      },
+    };
+    const index = (this.data.allBooks || []).findIndex((item) => (item.book || {}).isbn === isbn);
+    e.currentTarget.dataset.index = index;
+    e.currentTarget.dataset.listKey = 'list';
+    e.currentTarget.dataset.nestedKey = 'book';
+    baseOnCoverError.call(ctx, e);
+  },
+
   onShareAppMessage() {
     const user = wx.getStorageSync('userInfo') || {};
-    const shareUserId = this.data.shareUserId || user.id || '';
-    return {
-      title: this.data.shareMode && this.data.owner
-        ? this.data.shelfName
-        : `来看看${this.data.shelfName}`,
-      path: `/pages/shelf/index?shareUserId=${shareUserId}&inviterId=${shareUserId}`,
-    };
+    return shelfShare({
+      shelfName: this.data.shelfName,
+      shareUserId: this.data.shareUserId || user.id || '',
+      owner: this.data.owner,
+      shareMode: this.data.shareMode,
+    });
   },
 });

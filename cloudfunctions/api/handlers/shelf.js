@@ -5,9 +5,12 @@ const {
 const { resolveByIsbn } = require('../lib/bookLookup');
 const { cleanBookTitle } = require('../lib/bookLookupPolicy');
 const { normalizeIsbn } = require('../lib/bookCatalog');
-const { normalizeBookCategory } = require('../lib/bookCategory');
+const { normalizeBookCategory, resolveShelfCategory, resolveShelfBookClass } = require('../lib/bookCategory');
 const { assertSafeTextFields } = require('../lib/contentSecurity');
 const { availableCoin, SHELF_CAPACITY_PER_COIN } = require('../lib/driftPolicy');
+const { CONDITION_LABELS } = require('../lib/pricing');
+const { formatDisplayBook } = require('../lib/bookCover');
+const { cacheBooksForList } = require('../lib/listCoverCache');
 
 const READING_STATUS_LABELS = {
   reading: '在读',
@@ -27,6 +30,20 @@ const BOOK_CLASS_LABELS = {
 };
 
 const DEFAULT_LOCATION = { key: 'shelf_1', name: '默认书架 1' };
+const SHELF_PURPOSE_DRIFT_QUICK = 'drift_quick';
+
+function normalizeShelfPurpose(value) {
+  return value === SHELF_PURPOSE_DRIFT_QUICK ? SHELF_PURPOSE_DRIFT_QUICK : 'normal';
+}
+
+function isQuickShelfRow(row = {}) {
+  return normalizeShelfPurpose(row.purpose) === SHELF_PURPOSE_DRIFT_QUICK;
+}
+
+function filterShelfRowsForList(rows = [], data = {}) {
+  if (data.includeQuick) return rows;
+  return rows.filter((row) => !isQuickShelfRow(row));
+}
 const ACTIVE_SHELF_DRIFT_STATUSES = ['PENDING_REVIEW', 'IN_POOL', 'CLAIMED'];
 const CLAIMED_SHELF_DRIFT_STATUSES = ['CLAIMED'];
 const CANCELABLE_SHELF_DRIFT_STATUSES = ['PENDING_REVIEW', 'IN_POOL'];
@@ -71,22 +88,13 @@ function normalizeReadingStatus(value, legacyCategory) {
 
 function inferBookClass(book = {}, legacyCategory = '') {
   if (legacyCategory === 'child') return 'child';
-  const sourceCategory = normalizeBookCategory(book.category, book);
-  const text = [sourceCategory, book.ageRange, book.title, book.summary].filter(Boolean).join(' ');
-  if (/童书|绘本|儿童|亲子|0-3|3-6|6-9|9-12/.test(text)) return 'child';
-  if (/经管|商业|管理|创业|金融|理财/.test(text)) return 'business';
-  if (/科普|科学|自然|技术|计算机/.test(text)) return 'science';
-  if (/社科|社会|历史|心理|哲学|传记/.test(text)) return 'social';
-  if (/艺术|设计|摄影|音乐/.test(text)) return 'art';
-  if (/生活|旅行|美食|家居/.test(text)) return 'life';
-  if (/文学|小说|诗|散文|名著/.test(text)) return 'literature';
-  return 'other';
+  return resolveShelfBookClass(book);
 }
 
 function normalizeShelfMeta(row = {}, book = {}, data = {}) {
   const readingStatus = normalizeReadingStatus(data.readingStatus || row.readingStatus, data.category || row.category);
-  const inferredBookClass = inferBookClass(book, data.category || row.category);
-  const bookClass = data.bookClass || (inferredBookClass === 'child' ? 'child' : (row.bookClass || inferredBookClass));
+  const resolvedBookClass = resolveShelfBookClass(book);
+  const bookClass = data.bookClass || row.bookClass || resolvedBookClass || 'other';
   const shelfLocationKey = data.shelfLocationKey || row.shelfLocationKey || DEFAULT_LOCATION.key;
   const shelfLocationName = String(data.shelfLocationName || row.shelfLocationName || DEFAULT_LOCATION.name).trim() || DEFAULT_LOCATION.name;
   return {
@@ -101,20 +109,31 @@ function normalizeShelfMeta(row = {}, book = {}, data = {}) {
 
 function formatActiveDrift(drift) {
   if (!drift) return null;
+  const canEdit = ['PENDING_REVIEW', 'IN_POOL'].includes(drift.status);
   return {
     id: drift._id,
     status: drift.status,
     statusLabel: SHELF_DRIFT_STATUS_LABELS[drift.status] || drift.status,
     canCancel: CANCELABLE_SHELF_DRIFT_STATUSES.includes(drift.status),
+    canEdit,
+    condition: drift.condition || 'like_new',
+    conditionLabel: CONDITION_LABELS[drift.condition] || drift.condition || '9成新',
+    conditionIssues: drift.conditionIssues || [],
+    conditionIssueLabels: drift.conditionIssueLabels || [],
+    conditionIssueText: (drift.conditionIssueLabels || []).join('、'),
+    coinValue: Number(drift.coinValue) || 0,
+    systemCoinValue: Number(drift.systemCoinValue) || 0,
+    listPrice: Number(drift.listPrice) || 0,
   };
 }
 
 function formatShelfBook(row, book, activeDrift = null) {
+  const resolvedCategory = resolveShelfCategory(book);
   const meta = normalizeShelfMeta(row, book);
-  const sourceCategory = normalizeBookCategory(book.category, book) || meta.bookClassLabel || '未分类';
-  const displayCategory = sourceCategory || meta.bookClassLabel || '未分类';
+  const sourceCategory = resolvedCategory.label || meta.bookClassLabel || '未分类';
+  const displayCategory = meta.bookClassLabel || sourceCategory || '未分类';
   const formattedBook = {
-    ...formatBook(book),
+    ...formatDisplayBook(book),
     category: displayCategory,
   };
   return {
@@ -233,6 +252,41 @@ async function buildCollectionStats(userId, allShelfRows = []) {
   };
 }
 
+async function healStaleBookClassification(rows = [], books = {}) {
+  const shelfPatches = [];
+  const bookPatches = [];
+  rows.forEach((row) => {
+    const book = books[row.bookId];
+    if (!book) return;
+    const resolved = resolveShelfCategory(book);
+    const hasShelfClass = !!(row.bookClass && BOOK_CLASS_LABELS[row.bookClass]);
+    if (!row.bookClassManual) {
+      if (!hasShelfClass && row.bookClass !== resolved.key) {
+        shelfPatches.push({ id: row._id, bookClass: resolved.key });
+        row.bookClass = resolved.key;
+      } else if (!hasShelfClass) {
+        row.bookClass = resolved.key;
+      }
+    }
+    const targetLabel = (row.bookClassManual || hasShelfClass)
+      ? (BOOK_CLASS_LABELS[row.bookClass] || resolved.label)
+      : resolved.label;
+    if (book._id && book.category !== targetLabel) {
+      bookPatches.push({ id: book._id, category: targetLabel });
+      book.category = targetLabel;
+    }
+  });
+  const limit = 15;
+  await Promise.all([
+    ...shelfPatches.slice(0, limit).map((patch) => db.collection('shelf_books').doc(patch.id).update({
+      data: { bookClass: patch.bookClass },
+    })),
+    ...bookPatches.slice(0, limit).map((patch) => db.collection('books').doc(patch.id).update({
+      data: { category: patch.category, updatedAt: nowIso() },
+    })),
+  ]);
+}
+
 async function list(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
@@ -240,17 +294,22 @@ async function list(openid, data) {
   const page = Number(data.page) || 1;
   const size = Math.min(Number(data.size) || 200, 500);
   const { data: allRows } = await db.collection('shelf_books').where({ userId: user._id }).orderBy('createdAt', 'desc').limit(500).get();
+  const visibleRows = filterShelfRowsForList(allRows, data);
   const rows = (category && category !== 'all')
-    ? allRows.filter((row) => normalizeReadingStatus(row.readingStatus, row.category) === category)
-    : allRows;
+    ? visibleRows.filter((row) => normalizeReadingStatus(row.readingStatus, row.category) === category)
+    : visibleRows;
   const pageRows = rows.slice((page - 1) * size, page * size);
   const bookIds = pageRows.map((r) => r.bookId);
   const books = {};
   if (bookIds.length) {
     const { data: bookList } = await db.collection('books').where({ _id: db.command.in(bookIds) }).get();
     const pricedBooks = await enrichBookPrices(bookList);
-    pricedBooks.forEach((b) => { books[b._id] = b; });
+    const rawMap = {};
+    pricedBooks.forEach((b) => { rawMap[b._id] = b; });
+    const cachedMap = await cacheBooksForList(db, rawMap, 12);
+    Object.keys(cachedMap).forEach((id) => { books[id] = cachedMap[id]; });
   }
+  await healStaleBookClassification(pageRows, books);
   const activeDrifts = await activeDriftsByShelfBook(user._id, pageRows.map((r) => r._id));
   return ok({
     list: pageRows.filter((r) => books[r.bookId]).map((r) => formatShelfBook(r, books[r.bookId], activeDrifts[r._id])),
@@ -260,14 +319,18 @@ async function list(openid, data) {
   });
 }
 
+async function findShelfRowByBookId(userId, bookId) {
+  const { data: rows } = await db.collection('shelf_books').where({ userId, bookId }).limit(1).get();
+  return rows[0] || null;
+}
+
 async function add(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   await assertSafeTextFields(openid, {
     shelfLocationName: data.shelfLocationName,
   });
-  const capacityError = await ensureShelfCapacity(user);
-  if (capacityError) return capacityError;
+  const purpose = normalizeShelfPurpose(data.purpose);
   let bookId = data.bookId;
   if (!bookId && data.isbn) {
     const book = await resolveByIsbn(db, data.isbn);
@@ -276,16 +339,34 @@ async function add(openid, data) {
   }
   if (!bookId) return fail(400, '缺少 bookId 或 isbn');
 
-  const { total } = await db.collection('shelf_books').where({ userId: user._id, bookId }).count();
-  if (total > 0) return fail(400, '该书已在书架中');
+  const existingRow = await findShelfRowByBookId(user._id, bookId);
+  if (existingRow) {
+    if (purpose === SHELF_PURPOSE_DRIFT_QUICK) {
+      const book = await getBookById(bookId);
+      return ok(formatShelfBook(existingRow, book));
+    }
+    return fail(400, '该书已在书架中');
+  }
+
+  const capacityError = await ensureShelfCapacity(user);
+  if (capacityError) return capacityError;
 
   const book = await getBookById(bookId);
-  const meta = normalizeShelfMeta({}, book, data);
+  const quickDefaults = purpose === SHELF_PURPOSE_DRIFT_QUICK
+    ? {
+      readingStatus: 'read',
+      category: 'read',
+      shelfLocationKey: DEFAULT_LOCATION.key,
+      shelfLocationName: DEFAULT_LOCATION.name,
+    }
+    : {};
+  const meta = normalizeShelfMeta({}, book, { ...quickDefaults, ...data });
   const id = uid();
   await db.collection('shelf_books').doc(id).set({
     data: {
       userId: user._id,
       bookId,
+      purpose,
       category: meta.readingStatus,
       readingStatus: meta.readingStatus,
       bookClass: meta.bookClass,
@@ -297,7 +378,9 @@ async function add(openid, data) {
       createdAt: nowIso(),
     },
   });
-  await settleInviteReward(user, 'shelf_add');
+  if (purpose !== SHELF_PURPOSE_DRIFT_QUICK) {
+    await settleInviteReward(user, 'shelf_add');
+  }
   const { data: row } = await db.collection('shelf_books').doc(id).get();
   return ok(formatShelfBook(row, book));
 }
@@ -396,18 +479,29 @@ async function update(openid, data) {
   if (data.status !== undefined) patch.status = data.status;
   if (data.rating !== undefined) patch.rating = data.rating;
   // 读书笔记 note 模块已下线（规避社交-笔记类目），不再接收与检测 note 字段。
-  const book = await getBookById(row.bookId);
+  let book = await getBookById(row.bookId);
   const nextMeta = normalizeShelfMeta(row, book, data);
   if (data.category !== undefined || data.readingStatus !== undefined) {
     patch.category = nextMeta.readingStatus;
     patch.readingStatus = nextMeta.readingStatus;
   }
-  if (data.bookClass !== undefined) patch.bookClass = nextMeta.bookClass;
+  if (data.bookClass !== undefined) {
+    patch.bookClass = nextMeta.bookClass;
+    patch.bookClassManual = true;
+    const categoryLabel = BOOK_CLASS_LABELS[nextMeta.bookClass] || BOOK_CLASS_LABELS.other;
+    if (book && book._id) {
+      await db.collection('books').doc(book._id).update({
+        data: { category: categoryLabel, updatedAt: nowIso() },
+      });
+      book = { ...book, category: categoryLabel };
+    }
+  }
   if (data.shelfLocationKey !== undefined) patch.shelfLocationKey = nextMeta.shelfLocationKey;
   if (data.shelfLocationName !== undefined) {
     await assertSafeTextFields(openid, { shelfLocationName: nextMeta.shelfLocationName });
     patch.shelfLocationName = nextMeta.shelfLocationName;
   }
+  if (!Object.keys(patch).length) return fail(400, '没有可更新的书架信息');
   await db.collection('shelf_books').doc(data.id).update({ data: patch });
   const { data: updated } = await db.collection('shelf_books').doc(data.id).get();
   return ok(formatShelfBook(updated, book));
@@ -426,14 +520,16 @@ async function dashboard(openid) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   const { data: allShelf } = await db.collection('shelf_books').where({ userId: user._id }).get();
-  const stats = await buildCollectionStats(user._id, allShelf);
+  const managedShelf = filterShelfRowsForList(allShelf, {});
+  const stats = await buildCollectionStats(user._id, managedShelf);
+  const capacityStats = await buildCollectionStats(user._id, allShelf);
   const shelfLimit = getShelfLimit(user);
   return ok({
     totalBooks: stats.totalBooks,
     totalValue: stats.totalValue,
     totalListPrice: stats.totalListPrice,
     shelfLimit,
-    remainingCapacity: Math.max(shelfLimit - stats.occupiedSlots, 0),
+    remainingCapacity: Math.max(shelfLimit - capacityStats.occupiedSlots, 0),
   });
 }
 
@@ -483,7 +579,10 @@ async function publicList(data) {
   if (bookIds.length) {
     const { data: bookList } = await db.collection('books').where({ _id: db.command.in(bookIds) }).get();
     const pricedBooks = await enrichBookPrices(bookList);
-    pricedBooks.forEach((book) => { books[book._id] = book; });
+    const rawMap = {};
+    pricedBooks.forEach((book) => { rawMap[book._id] = book; });
+    const cachedMap = await cacheBooksForList(db, rawMap, 12);
+    Object.keys(cachedMap).forEach((id) => { books[id] = cachedMap[id]; });
   }
   const list = rows.filter((row) => books[row.bookId]).map((row) => formatShelfBook(row, books[row.bookId]));
   const pricedBooks = await enrichBookPrices(Object.values(books));

@@ -1,0 +1,79 @@
+<view class="page">
+  <view class="card scan-card">
+    <view class="scan-head">
+      <view>
+        <view class="label">扫码识别图书</view>
+        <view class="muted scan-tip">适合清理闲置，无需先维护书架</view>
+      </view>
+      <view class="btn-ghost scan-btn" bindtap="doScan">继续扫码</view>
+    </view>
+    <view wx:if="{{sessionCount > 0}}" class="session-note muted">本次已连续上漂 {{sessionCount}} 本</view>
+    <view wx:if="{{lookupStatus === 'loading'}}" class="muted">正在识别...</view>
+    <view wx:elif="{{lookupStatus === 'error'}}" class="lookup-error">{{lookupError}}</view>
+  </view>
+
+  <view wx:if="{{book}}" class="card row">
+    <image class="book-cover-sm" src="{{book.cover}}" mode="aspectFill" />
+    <view class="info">
+      <view class="title">{{book.title}}</view>
+      <view class="muted">{{book.author}}</view>
+      <view wx:if="{{scannedIsbn}}" class="muted isbn-line">ISBN {{scannedIsbn}}</view>
+    </view>
+  </view>
+
+  <view wx:else class="card empty-scan">
+    <view class="muted">扫条形码开始上漂</view>
+    <view class="btn-primary scan-start" bindtap="doScan">扫码上漂</view>
+  </view>
+
+  <view class="card {{!book ? 'disabled-card' : ''}}">
+    <view class="label">品相档位</view>
+    <view class="chips condition-chips">
+      <view wx:for="{{conditions}}" wx:key="key" class="chip {{condition === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectCondition">{{item.label}}</view>
+    </view>
+    <view class="sub-label">品相描述</view>
+    <view class="chips issue-chips">
+      <view wx:for="{{conditionIssueOptions}}" wx:key="key" class="chip {{item.selected ? 'active' : ''}}" data-key="{{item.key}}" bindtap="toggleConditionIssue">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">公益积分</view>
+    <view wx:if="{{hasListPrice}}" class="price-line">
+      <text>图书定价：¥{{listPrice}}</text>
+      <text>系统建议：{{systemCoinValue}} 积分</text>
+    </view>
+    <view wx:else class="price-warning">图书定价缺失，暂不能发起漂流。<text class="inline-link" bindtap="goEditBookMeta">补录信息 ›</text></view>
+    <view wx:if="{{hasListPrice}}" class="coin-stepper-row">
+      <view class="coin-stepper-label">本次设定</view>
+      <view class="coin-stepper">
+        <button class="stepper-btn" bindtap="decreaseCoinValue" disabled="{{coinValue <= 0 || submitting}}">−</button>
+        <view class="coin-stepper-value">{{coinValue}} 积分</view>
+        <button class="stepper-btn" bindtap="increaseCoinValue" disabled="{{coinValue >= systemCoinValue || submitting}}">+</button>
+      </view>
+    </view>
+    <view class="coin-hint">{{coinHint}}</view>
+  </view>
+
+  <view class="card">
+    <view class="label">漂流身份</view>
+    <view class="identity-row">
+      <view class="identity-option {{!isAnonymous ? 'active' : ''}}" data-anonymous="0" bindtap="toggleAnonymous">
+        <view class="identity-title">昵称漂流</view>
+        <view class="identity-desc">领取方可看到你的昵称</view>
+      </view>
+      <view class="identity-option {{isAnonymous ? 'active' : ''}}" data-anonymous="1" bindtap="toggleAnonymous">
+        <view class="identity-title">匿名漂流</view>
+        <view class="identity-desc">对外显示为匿名书友</view>
+      </view>
+    </view>
+    <view wx:if="{{shipRegionLabel}}" class="ship-region-note muted">寄出参考地：{{shipRegionLabel}}（供接漂方参考到付运费）</view>
+    <view wx:elif="{{needsShipRegionPicker}}" class="ship-region-picker">
+      <picker mode="region" bindchange="onShipRegionChange">
+        <view class="ship-region-line muted">寄出参考地：可选填写省/市，便于接漂方参考运费 ›</view>
+      </picker>
+    </view>
+  </view>
+
+  <button class="btn-primary publish-submit" loading="{{submitting}}" disabled="{{submitting || !book}}" bindtap="submit">提交上漂</button>
+</view>

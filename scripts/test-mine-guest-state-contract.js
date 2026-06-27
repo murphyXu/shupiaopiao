@@ -13,6 +13,14 @@ const utilJs = read('miniprogram/utils/util.js');
 
 assert.ok(!mineWxml.includes('guest-card'), 'mine page should not use login-only guest card layout');
 assert.ok(mineWxml.includes('未登录') && mineWxml.includes('登录后查看'), 'mine page should show guest placeholders');
+assert.ok(
+  mineWxml.includes('wx:else class="avatar-placeholder"') && mineWxml.includes('/assets/brand/logo.png'),
+  'mine page should use brand logo when guest or logged-in user has no avatar',
+);
+assert.ok(
+  mineWxml.includes('wx:if="{{loggedIn && user.avatar}}"') && !mineWxml.includes('/assets/icons/mine.png'),
+  'mine page should show user avatar only after login when avatar is set',
+);
 assert.ok(mineWxml.includes('menu-list') && mineWxml.includes('我的漂流（赠出）'), 'mine page should keep menu visible for guests');
 assert.ok(mineWxml.includes('隐私政策 / 设置'), 'mine page should keep settings accessible without login');
 

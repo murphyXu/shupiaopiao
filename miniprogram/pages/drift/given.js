@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
+const { prepareOrderList, resolveActiveTabFromStatus } = require('../../utils/orderList');
 
 const OPEN_DRIFT_CANCEL_STATUSES = ['PENDING_REVIEW', 'IN_POOL'];
 
@@ -60,20 +61,35 @@ function buildDisplayItems(orders = []) {
 }
 
 Page({
-  data: { displayItems: [], pendingShipCount: 0, statusMap: ORDER_STATUS, statusFilter: '' },
+  data: {
+    displayItems: [],
+    pendingShipCount: 0,
+    statusMap: ORDER_STATUS,
+    activeTab: 'all',
+    statusTabs: [],
+  },
 
   onLoad(options) {
-    this.setData({ statusFilter: options.status || '' });
+    this.setData({ activeTab: resolveActiveTabFromStatus(options.status || '', 'given') });
   },
 
   onShow() {
-    api.getOrders('given', this.data.statusFilter || undefined).then((res) => {
+    api.getOrders('given').then((res) => {
       const orders = withProgress(res.list || []);
+      this._orders = orders;
+      const { orders: visibleOrders, statusTabs } = prepareOrderList(orders, 'given', this.data.activeTab);
       this.setData({
-        displayItems: buildDisplayItems(orders),
+        displayItems: buildDisplayItems(visibleOrders),
         pendingShipCount: orders.filter((order) => order.status === 'PENDING_SHIP').length,
+        statusTabs,
       });
     });
+  },
+
+  switchStatusTab(e) {
+    const activeTab = e.currentTarget.dataset.key || 'all';
+    if (activeTab === this.data.activeTab) return;
+    this.setData({ activeTab }, () => this.onShow());
   },
 
   ship(e) {
@@ -128,5 +144,23 @@ Page({
   viewLogistics(e) {
     const { no, company } = e.currentTarget.dataset;
     wx.navigateTo({ url: `/pages/mine/logistics?trackingNo=${no}&expressCompany=${company}` });
+  },
+
+  async enableSubscribeNotify() {
+    const pending = (this._orders || []).find((order) => order.status === 'PENDING_SHIP' && order.driftId);
+    if (!pending) {
+      wx.showToast({ title: '暂无待发货图书', icon: 'none' });
+      return;
+    }
+    try {
+      const { subscribeDriftNotifications } = require('../../utils/subscribe');
+      const res = await subscribeDriftNotifications(pending.driftId);
+      wx.showToast({
+        title: (res.recorded || 0) > 0 ? '已开启微信提醒' : '未开启微信提醒',
+        icon: 'none',
+      });
+    } catch (err) {
+      wx.showToast({ title: '提醒设置未保存', icon: 'none' });
+    }
   },
 });

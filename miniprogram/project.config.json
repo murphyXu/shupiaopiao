@@ -17,7 +17,12 @@
   "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [],
-    "include": []
+    "include": [
+      {
+        "type": "glob",
+        "value": "assets/share/**"
+      }
+    ]
   },
   "appid": "wxcf1f90666c15950f",
   "editorSetting": {}

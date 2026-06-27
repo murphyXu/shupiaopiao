@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const { isLoggedIn, requireLogin } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { shippingDistanceHint } = require('../../utils/shipRegion');
+const { trackPageView, track } = require('../../utils/track');
 
 function buildShippingHint(item, address) {
   if (!item || !item.shipFrom) return '';
@@ -17,6 +18,7 @@ Page({
       return;
     }
     this.driftId = options.driftId;
+    trackPageView('drift/claim', { driftId: options.driftId || '' });
     Promise.all([
       api.getPoolDetail(options.driftId),
       api.getWalletBalance(),
@@ -90,6 +92,7 @@ Page({
       return;
     }
     try {
+      track('drift_claim_submit', { driftId: this.driftId });
       const result = await api.claimDrift(this.driftId, this.data.address.id);
       if (result.merged) {
         wx.showToast({ title: '已与上一本合并寄出', icon: 'none' });

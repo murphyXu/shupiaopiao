@@ -1,6 +1,7 @@
 Component({
   data: {
     selected: 0,
+    mineBadge: '',
     list: [
       {
         pagePath: '/pages/pool/index',
@@ -23,10 +24,26 @@ Component({
     ],
   },
 
+  lifetimes: {
+    attached() {
+      try {
+        const app = getApp();
+        const badge = app && app.globalData && app.globalData.pendingShipBadge;
+        if (badge) this.setData({ mineBadge: badge });
+      } catch (err) { /* 冷启动 */ }
+    },
+  },
+
   methods: {
     switchTab(e) {
       const { path, index } = e.currentTarget.dataset;
+      const prev = this.data.list[this.data.selected];
+      const next = this.data.list[index];
       if (path === '/pages/shelf/index') wx.setStorageSync('forceOwnShelf', true);
+      try {
+        const track = require('../utils/track');
+        track.track('tab_switch', { from: prev && prev.text, to: next && next.text });
+      } catch (err) { /* 埋点静默 */ }
       wx.switchTab({ url: path });
       this.setData({ selected: index });
     },

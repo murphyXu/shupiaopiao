@@ -1,10 +1,13 @@
 const api = require('../../utils/api');
 const { CONDITIONS, CONDITION_ISSUES } = require('../../utils/util');
+const { trackPageView, track } = require('../../utils/track');
+const { pricingState, coinHintText, calculateSystemCoinValue } = require('../../utils/driftPricing');
 const {
   formatShipFromLabel,
   normalizeShipRegion,
   parseShipRegionFromAddresses,
 } = require('../../utils/shipRegion');
+const { hasMissingBookMeta } = require('../../utils/bookMetaEdit');
 
 function createConditionIssueOptions(selected = []) {
   return CONDITION_ISSUES.map((option) => ({
@@ -13,58 +16,40 @@ function createConditionIssueOptions(selected = []) {
   }));
 }
 
-function parseListPrice(value) {
-  const match = String(value || '').replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
-  return match ? Number(match[1]) : 0;
+function splitSelectedByListPrice(selectedIds = [], shelfBooks = [], condition = 'like_new') {
+  const validIds = [];
+  const invalidItems = [];
+  selectedIds.forEach((id) => {
+    const item = shelfBooks.find((entry) => entry.id === id);
+    if (!item) return;
+    if (pricingState(item.book, condition).hasListPrice) validIds.push(id);
+    else invalidItems.push(item);
+  });
+  return { validIds, invalidItems };
 }
 
-const CONDITION_FACTORS = { new: 1.5, like_new: 1, good: 0.9, seven_new: 0.8, below_seven: 0.8 };
-
-function calculateSystemCoinValue(book, condition) {
-  const price = parseListPrice(book && book.listPrice);
-  return Math.max(Math.round(price * (CONDITION_FACTORS[condition] || 0.8) * 0.2), 0);
-}
-
-function clampCoinValue(coinValue, systemCoinValue) {
-  const system = Math.max(Math.floor(Number(systemCoinValue) || 0), 0);
-  const value = Math.floor(Number(coinValue) || 0);
-  return Math.max(0, Math.min(value, system));
-}
-
-function coinHintText(coinValue, systemCoinValue) {
-  const value = Number(coinValue) || 0;
-  const system = Number(systemCoinValue) || 0;
-  if (value === 0) {
-    return '接漂方无需消耗公益积分；完成赠书后无流转积分，且不计入首次完成赠书奖励。';
-  }
-  if (value < system) {
-    return '你已调低流转积分，接漂更容易；完成赠书后你将获得相应流转积分。';
-  }
-  return '按系统建议，接漂方需占用相应公益积分，完成赠书后你将获得相同流转积分。';
-}
-
-function pricingState(book, condition, currentCoinValue) {
-  const sourceIsEstimate = book && book.listPriceSource === 'pricing_cache';
-  const listPrice = sourceIsEstimate ? 0 : parseListPrice(book && book.listPrice);
-  const systemCoinValue = listPrice ? calculateSystemCoinValue(book, condition) : 0;
-  const coinValue = listPrice
-    ? clampCoinValue(currentCoinValue === undefined ? systemCoinValue : currentCoinValue, systemCoinValue)
-    : 0;
-  return {
-    listPrice,
-    systemCoinValue,
-    coinValue,
-    coinHint: coinHintText(coinValue, systemCoinValue),
-    hasListPrice: listPrice > 0,
-  };
+function decorateShelfBooks(list = [], selectedIds = [], condition = 'like_new') {
+  const selectedSet = new Set(selectedIds);
+  return list.map((item) => ({
+    ...item,
+    selected: selectedSet.has(item.id),
+    previewCoinValue: calculateSystemCoinValue(item.book, condition),
+    missingListPrice: !pricingState(item.book, condition).hasListPrice,
+    needsMetaEdit: hasMissingBookMeta(item.book),
+  }));
 }
 
 Page({
   data: {
+    mode: 'shelf',
     book: null,
     bookId: '',
     shelfBookId: '',
     shelfBooks: [],
+    selectedShelfIds: [],
+    selectedCount: 0,
+    missingPriceSelectedCount: 0,
+    batchMode: false,
     loadingShelfBooks: false,
     condition: 'like_new',
     conditions: CONDITIONS,
@@ -83,8 +68,17 @@ Page({
   },
 
   onLoad(options) {
-    this.setData({ bookId: options.bookId || '' });
+    this.setData({
+      bookId: options.bookId || '',
+      mode: options.mode || 'shelf',
+    });
+    trackPageView('drift/publish', { bookId: options.bookId || '', mode: options.mode || 'shelf' });
     this.loadBook();
+  },
+
+  onShow() {
+    if (this._hasShown) this.loadBook();
+    this._hasShown = true;
   },
 
   async loadBook() {
@@ -94,62 +88,93 @@ Page({
         api.getShelfBooks('all'),
         api.getAddresses().catch(() => ({ list: [] })),
       ]);
-      const shelfBooks = shelf.list || [];
+      const shelfBooks = decorateShelfBooks(
+        (shelf.list || []).filter((item) => item.canPublishDrift !== false),
+        this.data.selectedShelfIds,
+        this.data.condition,
+      );
       const shipRegion = parseShipRegionFromAddresses(addrRes.list || []);
       const shipRegionLabel = formatShipFromLabel(shipRegion);
-      const item = this.data.bookId
-        ? shelfBooks.find((b) => b.bookId === this.data.bookId)
-        : null;
       this.setData({
         shelfBooks,
         shipRegion,
         shipRegionLabel,
         needsShipRegionPicker: !shipRegion,
       });
-      if (item) {
-        this.setSelectedBook(item);
-      } else if (this.data.bookId) {
-        wx.showToast({ title: '未在书架找到这本书', icon: 'none' });
+      if (this.data.bookId) {
+        const item = shelfBooks.find((b) => b.bookId === this.data.bookId);
+        if (item) {
+          this.setSelectedBooks([item.id], shelfBooks);
+        } else {
+          wx.showToast({ title: '未在书架找到这本书', icon: 'none' });
+        }
       }
     } finally {
       this.setData({ loadingShelfBooks: false });
     }
   },
 
-  selectBook(e) {
-    const bookId = e.currentTarget.dataset.bookId;
-    const item = this.data.shelfBooks.find((entry) => entry.bookId === bookId);
-    if (!item) return;
-    this.setSelectedBook(item);
-  },
-
-  setSelectedBook(item) {
-    const { book, bookId } = item;
-    this.setData({
-      shelfBookId: item.id,
-      bookId,
-      book,
+  syncShelfSelection(selectedShelfIds, shelfBooks = this.data.shelfBooks) {
+    const selectedItems = shelfBooks.filter((item) => selectedShelfIds.includes(item.id));
+    const batchMode = selectedItems.length > 1;
+    const missingPriceSelectedCount = selectedItems.filter(
+      (item) => !pricingState(item.book, this.data.condition).hasListPrice,
+    ).length;
+    const next = {
+      shelfBooks: decorateShelfBooks(shelfBooks, selectedShelfIds, this.data.condition),
+      selectedShelfIds,
+      selectedCount: selectedItems.length,
+      missingPriceSelectedCount,
+      batchMode,
       conditionIssues: [],
       conditionIssueOptions: createConditionIssueOptions(),
       isAnonymous: true,
-      ...pricingState(book, this.data.condition),
-    });
+    };
+    if (selectedItems.length === 1) {
+      const item = selectedItems[0];
+      Object.assign(next, {
+        shelfBookId: item.id,
+        bookId: item.bookId,
+        book: item.book,
+        ...pricingState(item.book, this.data.condition),
+      });
+    } else {
+      Object.assign(next, {
+        shelfBookId: '',
+        bookId: '',
+        book: null,
+        listPrice: 0,
+        systemCoinValue: 0,
+        coinValue: 0,
+        coinHint: batchMode ? '批量上漂将按每本书各自的系统建议积分提交。' : '',
+        hasListPrice: selectedItems.every((item) => pricingState(item.book, this.data.condition).hasListPrice),
+      });
+    }
+    this.setData(next);
+  },
+
+  toggleBookSelection(e) {
+    const shelfId = e.currentTarget.dataset.shelfId;
+    const selected = new Set(this.data.selectedShelfIds);
+    if (selected.has(shelfId)) selected.delete(shelfId);
+    else selected.add(shelfId);
+    this.syncShelfSelection([...selected]);
+  },
+
+  setSelectedBooks(selectedShelfIds, shelfBooks = this.data.shelfBooks) {
+    this.syncShelfSelection(selectedShelfIds, shelfBooks);
   },
 
   clearSelectedBook() {
     if (!this.data.shelfBooks.length) return;
+    this.syncShelfSelection([]);
+  },
+
+  continueAddBooks() {
     this.setData({
+      book: null,
       bookId: '',
       shelfBookId: '',
-      book: null,
-      conditionIssues: [],
-      conditionIssueOptions: createConditionIssueOptions(),
-      listPrice: 0,
-      systemCoinValue: 0,
-      coinValue: 0,
-      coinHint: '',
-      hasListPrice: false,
-      isAnonymous: true,
     });
   },
 
@@ -163,12 +188,27 @@ Page({
     });
   },
 
+  goEditBookMeta(e) {
+    const shelfId = e.currentTarget.dataset.shelfId;
+    if (!shelfId) return;
+    wx.navigateTo({ url: `/pages/book/edit-meta?shelfBookId=${shelfId}&from=publish` });
+  },
+
   selectCondition(e) {
     const condition = e.currentTarget.dataset.key;
-    this.setData({
+    const patch = {
       condition,
-      ...pricingState(this.data.book, condition, this.data.coinValue),
-    });
+      shelfBooks: decorateShelfBooks(this.data.shelfBooks, this.data.selectedShelfIds, condition),
+    };
+    if (this.data.batchMode) {
+      patch.hasListPrice = this.data.selectedShelfIds.every((id) => {
+        const item = this.data.shelfBooks.find((entry) => entry.id === id);
+        return item ? pricingState(item.book, condition).hasListPrice : false;
+      });
+    } else if (this.data.book) {
+      Object.assign(patch, pricingState(this.data.book, condition, this.data.coinValue));
+    }
+    this.setData(patch);
   },
 
   decreaseCoinValue() {
@@ -191,11 +231,8 @@ Page({
     const key = e.currentTarget.dataset.key;
     const conditionIssues = [...this.data.conditionIssues];
     const index = conditionIssues.indexOf(key);
-    if (index >= 0) {
-      conditionIssues.splice(index, 1);
-    } else {
-      conditionIssues.push(key);
-    }
+    if (index >= 0) conditionIssues.splice(index, 1);
+    else conditionIssues.push(key);
     this.setData({
       conditionIssues,
       conditionIssueOptions: createConditionIssueOptions(conditionIssues),
@@ -217,8 +254,23 @@ Page({
   },
 
   validateCoinValue() {
-    if (!this.data.hasListPrice) {
-      wx.showToast({ title: '图书定价缺失，暂不能发起漂流', icon: 'none' });
+    const { validIds, invalidItems } = splitSelectedByListPrice(
+      this.data.selectedShelfIds,
+      this.data.shelfBooks,
+      this.data.condition,
+    );
+    if (invalidItems.length) {
+      if (validIds.length !== this.data.selectedShelfIds.length) {
+        this.syncShelfSelection(validIds);
+      }
+      const count = invalidItems.length;
+      wx.showToast({
+        title: count === 1
+          ? `《${invalidItems[0].book.title}》定价缺失，已取消勾选`
+          : `已取消 ${count} 本定价缺失的书`,
+        icon: 'none',
+        duration: 2500,
+      });
       return false;
     }
     return true;
@@ -236,29 +288,82 @@ Page({
     });
   },
 
-  async submit() {
-    if (this.data.submitting) return;
-    if (!this.data.bookId) {
-      wx.showToast({ title: '请选择要赠出的书', icon: 'none' });
-      return;
-    }
-    if (!this.validateCoinValue()) return;
+  buildPublishPayload(item, coinValue) {
+    return {
+      shelfBookId: item.id,
+      bookId: item.bookId,
+      condition: this.data.condition,
+      conditionIssues: this.data.conditionIssues,
+      isAnonymous: this.data.isAnonymous,
+      coinValue,
+      shipRegion: this.data.shipRegion || undefined,
+    };
+  },
+
+  async submitSingle() {
     if (this.data.coinValue === 0) {
       const confirmed = await this.confirmZeroCoinValue();
       if (!confirmed) return;
     }
+    const item = this.data.shelfBooks.find((entry) => entry.id === this.data.shelfBookId);
+    if (!item) {
+      wx.showToast({ title: '请选择要赠出的书', icon: 'none' });
+      return;
+    }
+    track('drift_publish_submit', { bookId: this.data.bookId, coinValue: this.data.coinValue });
+    const result = await api.publishDrift(this.buildPublishPayload(item, this.data.coinValue));
+    wx.redirectTo({
+      url: `/pages/drift/check-result?driftId=${result.driftId}&passed=${result.passed}&status=${result.status || ''}`,
+    });
+  },
+
+  async submitBatch() {
+    const selectedItems = this.data.shelfBooks.filter((item) => this.data.selectedShelfIds.includes(item.id));
+    if (!selectedItems.length) {
+      wx.showToast({ title: '请选择要赠出的书', icon: 'none' });
+      return;
+    }
+    const results = [];
+    for (const item of selectedItems) {
+      const pricing = pricingState(item.book, this.data.condition);
+      try {
+        track('drift_publish_submit', { bookId: item.bookId, coinValue: pricing.coinValue, batch: true });
+        const result = await api.publishDrift(this.buildPublishPayload(item, pricing.coinValue));
+        results.push({
+          ok: true,
+          title: item.book.title,
+          passed: result.passed,
+          status: result.status,
+        });
+      } catch (err) {
+        results.push({
+          ok: false,
+          title: item.book.title,
+          message: err.message || '提交失败',
+        });
+      }
+    }
+    wx.setStorageSync('driftBatchPublishResult', {
+      results,
+      at: Date.now(),
+    });
+    wx.redirectTo({ url: '/pages/drift/batch-result' });
+  },
+
+  async submit() {
+    if (this.data.submitting) return;
+    if (!this.data.selectedCount) {
+      wx.showToast({ title: '请选择要赠出的书', icon: 'none' });
+      return;
+    }
+    if (!this.validateCoinValue()) return;
     this.setData({ submitting: true });
     try {
-      const result = await api.publishDrift({
-        shelfBookId: this.data.shelfBookId,
-        bookId: this.data.bookId,
-        condition: this.data.condition,
-        conditionIssues: this.data.conditionIssues,
-        isAnonymous: this.data.isAnonymous,
-        coinValue: this.data.coinValue,
-        shipRegion: this.data.shipRegion || undefined,
-      });
-      wx.redirectTo({ url: `/pages/drift/check-result?driftId=${result.driftId}&passed=${result.passed}&status=${result.status || ''}` });
+      if (this.data.batchMode) {
+        await this.submitBatch();
+      } else {
+        await this.submitSingle();
+      }
     } catch (e) {
       console.error(e);
     } finally {

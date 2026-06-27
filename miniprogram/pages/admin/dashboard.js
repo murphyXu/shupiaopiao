@@ -1,6 +1,20 @@
 const api = require('../../utils/api');
 const safeAreaBehavior = require('../../behaviors/safe-area');
 
+const TREND_METRICS = [
+  { key: 'dau', label: '日活' },
+  { key: 'driftPublished', label: '上漂' },
+  { key: 'driftDone', label: '完成' },
+  { key: 'coinIssued', label: '积分发行' },
+  { key: 'coinConsumed', label: '积分消耗' },
+];
+
+const TREND_DAYS_OPTIONS = [
+  { days: 7, label: '7 天' },
+  { days: 14, label: '14 天' },
+  { days: 30, label: '30 天' },
+];
+
 function pct(v) {
   return `${Math.round((Number(v) || 0) * 100)}%`;
 }
@@ -10,10 +24,17 @@ Page({
   data: {
     loading: true,
     denied: false,
+    rebuilding: false,
     overview: null,
     funnel: null,
     conclusions: [],
     trend: null,
+    trendMetrics: TREND_METRICS,
+    trendMetric: 'dau',
+    trendMetricIndex: 0,
+    trendDaysOptions: TREND_DAYS_OPTIONS,
+    trendDaysIndex: 1,
+    trendDays: 14,
   },
 
   onLoad() {
@@ -26,20 +47,19 @@ Page({
 
   loadAll() {
     this.setData({ loading: true, denied: false });
+    const { trendDays } = this.data;
     return Promise.all([
       api.call('admin.overview', {}, { showError: false }),
       api.call('admin.funnel', { days: 7 }, { showError: false }),
       api.call('admin.conclusion', {}, { showError: false }),
-      api.call('admin.trend', { days: 14 }, { showError: false }),
+      api.call('admin.trend', { days: trendDays }, { showError: false }),
     ]).then(([overview, funnel, conclusion, trend]) => {
-      const dauSeries = (trend && trend.series && trend.series.dau) || [];
-      const barMax = Math.max(1, ...dauSeries);
       this.setData({
         loading: false,
         overview: this.decorateOverview(overview),
         funnel: this.decorateFunnel(funnel),
         conclusions: (conclusion && conclusion.conclusions) || [],
-        trend: this.buildTrend(trend, barMax),
+        trend: this.buildTrend(trend, this.data.trendMetric),
       });
     }).catch((err) => {
       const denied = String((err && err.message) || '').includes('无权');
@@ -48,12 +68,60 @@ Page({
     });
   },
 
+  loadTrend() {
+    const { trendDays, trendMetric } = this.data;
+    return api.call('admin.trend', { days: trendDays }, { showError: false }).then((trend) => {
+      this.setData({ trend: this.buildTrend(trend, trendMetric) });
+    });
+  },
+
+  pickTrendMetric(e) {
+    const index = Number(e.detail.value) || 0;
+    const metric = TREND_METRICS[index].key;
+    this.setData({ trendMetricIndex: index, trendMetric: metric });
+    this.loadTrend();
+  },
+
+  pickTrendDays(e) {
+    const index = Number(e.detail.value) || 0;
+    const days = TREND_DAYS_OPTIONS[index].days;
+    this.setData({ trendDaysIndex: index, trendDays: days });
+    this.loadTrend();
+  },
+
+  goLogs() {
+    wx.navigateTo({ url: '/pages/admin/logs' });
+  },
+
+  rebuildMetrics() {
+    if (this.data.rebuilding) return;
+    wx.showModal({
+      title: '重算昨日数据',
+      content: '将重新聚合昨日 daily_metrics，通常用于首次上线或修复数据。',
+      success: (res) => {
+        if (!res.confirm) return;
+        this.setData({ rebuilding: true });
+        api.call('admin.rebuild', {}, { showError: true }).then(() => {
+          wx.showToast({ title: '重算完成', icon: 'success' });
+          this.loadAll();
+        }).finally(() => this.setData({ rebuilding: false }));
+      },
+    });
+  },
+
   decorateOverview(overview) {
     if (!overview) return null;
     const week = overview.week || {};
+    const cumulative = overview.cumulative || {};
     return {
       today: overview.today || {},
-      cumulative: overview.cumulative || {},
+      cumulative,
+      consumeBreakdown: cumulative.coinConsumeBreakdown || [],
+      consumeHint: cumulative.consumeHint || '',
+      cumulativeText: {
+        claimRate: pct(cumulative.claimRate),
+        doneRate: pct(cumulative.doneRate),
+      },
       week,
       weekText: {
         dauWoW: pct(week.dauWoW),
@@ -86,14 +154,17 @@ Page({
     };
   },
 
-  buildTrend(trend, barMax) {
+  buildTrend(trend, metricKey) {
     if (!trend || !trend.days) return null;
-    const dau = (trend.series && trend.series.dau) || [];
+    const series = (trend.series && trend.series[metricKey]) || [];
+    const barMax = Math.max(1, ...series);
+    const metricLabel = (TREND_METRICS.find((m) => m.key === metricKey) || {}).label || '';
     return {
+      metricLabel,
       bars: trend.days.map((day, i) => ({
         day: day.slice(5),
-        value: dau[i] || 0,
-        height: Math.round(((dau[i] || 0) / barMax) * 100),
+        value: series[i] || 0,
+        height: Math.round(((series[i] || 0) / barMax) * 100),
       })),
     };
   },

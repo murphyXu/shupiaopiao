@@ -52,11 +52,16 @@ assert.ok(mineWxml.includes('user.availableCoin') && !mineWxml.includes('user.co
 assert.ok(mineJs.includes('normalizeMineUser') && mineJs.includes('availableCoin'), 'mine page should normalize available public points for old cached users');
 assert.ok(!mineWxml.includes('invite-stat-card') && !mineWxml.includes('邀请规则'), 'top duplicate invitation rule card should be removed');
 assert.ok(mineWxml.includes('invite-block') && mineWxml.includes('邀请书友共建') && mineWxml.includes('open-type="share"'), 'mine page should keep one neutral invitation block');
+assert.ok(mineWxml.includes('invite-reward') && mineWxml.includes('inviteRewardRule') && mineJs.includes('inviteRewardSummary'), 'mine invite block should show invite reward rule copy');
 assert.ok(mineWxss.includes('.mine-stat-row') && !mineWxss.includes('.invite-stat-card'), 'mine top stat row should only style point cards');
 
 assert.ok(profileWxml.includes('收货地址') && profileWxml.includes('address-card') && profileWxml.includes('bindtap="chooseWxAddress"'), 'profile page should include address editing');
 assert.ok(profileWxml.includes('addressName') && profileWxml.includes('addressPhone') && profileWxml.includes('addressRegion') && profileWxml.includes('addressDetail'), 'profile address fields should be bound in profile form');
 assert.ok(profileJs.includes('api.getAddresses') && profileJs.includes('api.addAddress') && profileJs.includes('api.updateAddress'), 'profile save should load and persist address');
+assert.ok(
+  profileJs.includes('uploadAvatar') && profileJs.includes("!avatar.startsWith('cloud://')"),
+  'profile save should upload local avatar to cloud storage before updateProfile',
+);
 assert.ok(profileJs.includes('wx.chooseAddress') && profileJs.includes('provinceName'), 'profile page should support reading WeChat address');
 assert.ok(profileWxss.includes('.address-card'), 'profile address section should have layout styles');
 
@@ -68,7 +73,7 @@ assert.ok(walletWxml.includes('item.balanceAfter') && !walletWxml.includes('余�
 assert.ok(walletJs.includes('withBalanceAfter') && walletJs.includes('balanceAfter'), 'wallet page should derive transaction balance from current total and deltas');
 assert.ok(walletWxml.includes('wallet-earn-action') && walletWxml.includes('bindtap="showEarnPointGuide"') && walletWxml.includes('获得积分'), 'wallet hero should expose an earn-points entry');
 assert.ok(walletJs.includes('publishEarnGuideModal') && walletJs.includes('showEarnPointGuide()') && walletJs.includes("itemList: ['上漂一本书', '邀请书友']"), 'wallet earn-points entry should reuse the pool earn-points guide logic');
-assert.ok(walletJs.includes("wx.navigateTo({ url: '/pages/drift/publish' })") && walletJs.includes("url: '/pages/mine/index'"), 'wallet earn-points action should route like the pool entry');
+assert.ok(walletJs.includes('showPublishEntryOptions') && walletJs.includes("url: '/pages/mine/index'"), 'wallet earn-points action should route like the pool entry');
 assert.ok(!walletJs.includes('wx.showModal') && walletJs.includes('showEarnGuideModal: true') && walletJs.includes('confirmEarnPointGuide()'), 'wallet earn-points guide should use the structured shared modal instead of wx.showModal text');
 assert.ok(walletJson.usingComponents && walletJson.usingComponents['earn-point-guide-modal'], 'wallet page should register the shared earn guide modal component');
 assert.ok(walletWxml.includes('earn-point-guide-modal') && walletWxml.includes('showEarnGuideModal') && walletWxml.includes('bind:confirm="confirmEarnPointGuide"'), 'wallet page should render the shared earn guide modal component');

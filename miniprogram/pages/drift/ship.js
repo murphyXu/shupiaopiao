@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const { EXPRESS_COMPANIES } = require('../../utils/util');
+const { trackPageView } = require('../../utils/track');
 const {
   formatRegion,
   shippingInfoText,
@@ -8,6 +9,8 @@ const {
 } = require('../../utils/shipping');
 const { EXPRESS_MINI_PROGRAMS, openExpressMiniProgram } = require('../../utils/expressApps');
 const { validateTrackingNo } = require('../../utils/trackingNo');
+
+const EXPRESS_SHEET_ALERT = '收件信息已复制，选快递后粘贴地址';
 
 Page({
   data: {
@@ -18,6 +21,7 @@ Page({
     bundleDetail: null,
     regionText: '',
     deadlineText: '',
+    addressCopied: false,
     expressCompanies: EXPRESS_COMPANIES,
     expressIndex: 0,
     trackingNo: '',
@@ -33,6 +37,7 @@ Page({
   },
 
   onShow() {
+    trackPageView('drift/ship', { orderId: this.orderId || '', bundleId: this.bundleId || '' });
     this.load();
   },
 
@@ -129,6 +134,7 @@ Page({
     }
     const now = Date.now();
     if (now - this.lastCopiedAt < 3000) {
+      this.setData({ addressCopied: true });
       if (showToast) wx.showToast({ title: '收件信息已复制', icon: 'none' });
       return Promise.resolve();
     }
@@ -137,6 +143,7 @@ Page({
         data: shippingInfoText(address),
         success: () => {
           this.lastCopiedAt = Date.now();
+          this.setData({ addressCopied: true });
           if (showToast) wx.showToast({ title: '收件信息已复制', icon: 'none' });
           resolve();
         },
@@ -145,8 +152,14 @@ Page({
     });
   },
 
-  openExpressSheet() {
+  async openExpressSheet() {
+    try {
+      await this.copyAddressToClipboard(false);
+    } catch (err) {
+      return;
+    }
     wx.showActionSheet({
+      alertText: EXPRESS_SHEET_ALERT,
       itemList: EXPRESS_MINI_PROGRAMS.map((item) => item.name),
       success: (res) => {
         const app = EXPRESS_MINI_PROGRAMS[res.tapIndex];
@@ -156,20 +169,11 @@ Page({
   },
 
   async copyAndOpenExpress(app) {
-    try {
-      await this.copyAddressToClipboard(false);
-    } catch (err) {
-      return;
-    }
-    if (app.id === 'other') {
-      wx.showToast({ title: '收件信息已复制', icon: 'none' });
-      return;
-    }
-    wx.showToast({ title: `收件信息已复制，正在打开${app.name}`, icon: 'none', duration: 2000 });
+    if (app.id === 'other') return;
     try {
       await openExpressMiniProgram(app);
     } catch (err) {
-      wx.showToast({ title: `请手动打开${app.name}，收件信息已复制`, icon: 'none' });
+      wx.showToast({ title: `请手动打开${app.name}粘贴地址`, icon: 'none' });
     }
   },
 

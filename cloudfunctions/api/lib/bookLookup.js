@@ -8,7 +8,9 @@ const {
   cleanBookTitle,
   manualNeeded,
 } = require('./bookLookupPolicy');
-const { normalizeBookCategory } = require('./bookCategory');
+const { normalizeBookCategory, resolveShelfCategory, resolveShelfBookClass, extractSourceClc } = require('./bookCategory');
+
+const PROVIDER_REFRESH_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isLegacyStub(book) {
   const isbn = normalizeIsbn(book && book.isbn);
@@ -29,10 +31,21 @@ function needsCoverMetadata(book) {
   return isValidIsbn(isbn);
 }
 
+function isProviderRefreshCoolingDown(book) {
+  const refreshedAt = Date.parse(book && book.providerRefreshedAt);
+  if (!Number.isFinite(refreshedAt)) return false;
+  return Date.now() - refreshedAt < PROVIDER_REFRESH_COOLDOWN_MS;
+}
+
 function needsProviderRefresh(book) {
   const isbn = normalizeIsbn(book && book.isbn);
   if (!isValidIsbn(isbn)) return false;
-  return !book.listPrice || isGenericCategory(book.category) || needsCoverMetadata(book);
+  if (isProviderRefreshCoolingDown(book)) return false;
+  if (needsCoverMetadata(book)) return true;
+  if (!book.listPrice) return true;
+  if (!book.sourceClc && isGenericCategory(book.category)) return true;
+  if (isGenericCategory(book.category)) return true;
+  return false;
 }
 
 async function refreshBookCoverMetadata(db, book) {
@@ -84,6 +97,16 @@ async function upsertBook(db, meta) {
     : (meta.cover || (meta.coverRemote ? meta.coverRemote : `local:${isbn}`));
 
   const title = cleanBookTitle(meta.title) || meta.title || '未知书名';
+  const sourceClc = extractSourceClc({
+    sourceClc: meta.sourceClc,
+    category: meta.category,
+  }) || (existing[0] && existing[0].sourceClc) || '';
+  const bookMeta = {
+    ...meta,
+    title,
+    publisher: meta.publisher || '',
+    sourceClc,
+  };
   const doc = {
     isbn,
     isbn10: meta.isbn10 || '',
@@ -94,16 +117,23 @@ async function upsertBook(db, meta) {
     pubDate: meta.pubDate || '',
     listPrice: meta.listPrice || meta.price || '',
     cover,
-    coverRemote: meta.coverRemote || '',
+    coverRemote: meta.coverRemote || (existing[0] && existing[0].coverRemote) || '',
     coverSource: meta.coverSource || meta.source || '',
     summary: meta.summary || '',
-    category: normalizeBookCategory(meta.category || '图书', meta),
+    sourceClc,
+    category: normalizeBookCategory(meta.category || '图书', bookMeta),
     ageRange: meta.ageRange || '',
     source: meta.source || 'catalog',
     sourceId: meta.sourceId || '',
     lookupStatus: meta.lookupStatus || 'found',
+    providerRefreshedAt: meta.providerRefreshedAt
+      || ((meta.source && !['catalog', 'manual'].includes(meta.source)) ? nowIso() : ''),
     updatedAt: nowIso(),
   };
+
+  if (!doc.providerRefreshedAt && existing[0] && existing[0].providerRefreshedAt) {
+    doc.providerRefreshedAt = existing[0].providerRefreshedAt;
+  }
 
   if (existing[0]) {
     await db.collection('books').doc(bookId).update({ data: doc });
@@ -170,9 +200,11 @@ async function searchBooks(db, keyword, size = 20) {
 module.exports = {
   upsertBook,
   needsProviderRefresh,
+  isProviderRefreshCoolingDown,
   needsCoverMetadata,
   refreshBookCoverMetadata,
   refreshBooksCoverMetadata,
   resolveByIsbn,
   searchBooks,
+  PROVIDER_REFRESH_COOLDOWN_MS,
 };

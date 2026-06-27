@@ -1,0 +1,16 @@
+{
+  "date": "2026-07-02",
+  "theme": "召唤首波赠书",
+  "platform": "wechat",
+  "real_shots": [
+    {
+      "file": "04-pool.png",
+      "raw": "04-pool-raw.png",
+      "page": "pages/pool/index",
+      "steps": [
+        "当前广场状态"
+      ],
+      "composite": null
+    }
+  ]
+}

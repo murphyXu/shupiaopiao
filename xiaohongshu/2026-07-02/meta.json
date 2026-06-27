@@ -1,0 +1,17 @@
+{
+  "date": "2026-07-02",
+  "theme": "召唤首波赠书",
+  "platform": "xhs",
+  "real_shots": [
+    {
+      "file": "02-empty.png",
+      "raw": "02-empty-raw.png",
+      "page": "pages/pool/index",
+      "steps": [
+        "广场空态或仅少量书",
+        "真实状态即可"
+      ],
+      "composite": null
+    }
+  ]
+}

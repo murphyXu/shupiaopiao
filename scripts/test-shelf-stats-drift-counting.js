@@ -42,7 +42,10 @@ require.cache[categoryPath] = {
   id: categoryPath,
   filename: categoryPath,
   loaded: true,
-  exports: { normalizeBookCategory: (category) => category || '图书' },
+  exports: {
+    normalizeBookCategory: (category) => category || '图书',
+    resolveShelfCategory: (book = {}) => ({ key: 'other', label: book.category || '图书' }),
+  },
 };
 
 const shelfRows = [

@@ -5,8 +5,8 @@ const RULES = {
   publishAuditCap: 2,
   firstGiveBonus: 10,
   inviteReward: 2,
-  inviteDailyCap: 10,
   inviteLifetimeCap: 10,
+  inviteLifetimeTimes: 5,
   creditCompleteBonus: 2,
   creditReceiverCancel: -2,
   creditGiverCancel: -5,
@@ -14,6 +14,7 @@ const RULES = {
   creditDisputeFirst: -5,
   creditDisputeRepeat: -20,
   creditPublishMin: 60,
+  publishDailyLimit: 100,
   inflightClaimLimit: 2,
   disputeCompensation: 5,
   shelfCapacityPerCoin: 10,
@@ -43,6 +44,13 @@ function publishEarnGuideModal() {
         '发货前取消上漂，已发放奖励会退回',
       ],
     },
+    {
+      title: '上漂频率',
+      items: [
+        `24 小时内最多上漂 ${r.publishDailyLimit} 本`,
+        '仅统计审核通过或进行中的上漂，未通过或已取消的不计入',
+      ],
+    },
   ];
   return {
     title: '上漂赠书可获得积分',
@@ -52,6 +60,11 @@ function publishEarnGuideModal() {
       ...section.items,
     ].join('\n')).join('\n\n'),
   };
+}
+
+function inviteRewardSummary() {
+  const r = RULES;
+  return `共建奖励 +${r.inviteReward} 公益积分/人，累计最多 ${r.inviteLifetimeTimes} 次`;
 }
 
 function settingsPointRules() {
@@ -65,7 +78,7 @@ function settingsPointRules() {
           `上漂审核通过：+${r.publishAuditReward}（每位用户累计最多 ${r.publishAuditCap}）`,
           `首次完成赠书并完成接漂：额外 +${r.firstGiveBonus}（每位用户仅一次；0 积分完成不计）`,
           '接漂方确认收货后：赠书方获得该书的流转积分',
-          `邀请书友完成有效互动：+${r.inviteReward}（每日最多 ${r.inviteDailyCap}，累计最多 ${r.inviteLifetimeCap}）`,
+          `邀请书友完成有效互动：+${r.inviteReward}（累计最多 ${r.inviteLifetimeTimes} 次，共 ${r.inviteLifetimeCap} 分，不设单日上限）`,
         ].join('\n'),
       },
       {
@@ -99,6 +112,7 @@ function settingsPointRules() {
         title: '使用限制',
         body: [
           `信用积分低于 ${r.creditPublishMin} 分时，暂不可上漂`,
+          `24 小时内最多上漂 ${r.publishDailyLimit} 本（仅统计审核通过或进行中的上漂，未通过或已取消的不计入）`,
           '信用积分过低或多次违约，可能限制后续接漂',
           `已接漂未收货最多 ${r.inflightClaimLimit} 单，需先完成在途漂流再申请新书`,
         ].join('\n'),
@@ -110,5 +124,6 @@ function settingsPointRules() {
 module.exports = {
   RULES,
   publishEarnGuideModal,
+  inviteRewardSummary,
   settingsPointRules,
 };

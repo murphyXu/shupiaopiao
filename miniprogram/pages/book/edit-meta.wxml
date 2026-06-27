@@ -1,0 +1,40 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="card">
+    <view class="muted">正在读取图书信息...</view>
+  </view>
+
+  <block wx:else>
+    <view class="card intro-card">
+      <view class="title">补录图书信息</view>
+      <view class="muted">缺失字段会影响上漂积分计算，请尽量补全。带 * 为必填。</view>
+      <view wx:if="{{missingHint}}" class="missing-tip">待补：{{missingHint}}</view>
+    </view>
+
+    <view class="card form-card">
+      <view class="label {{missingFields.indexOf('title') >= 0 ? 'label-missing' : ''}}">书名 *</view>
+      <input class="form-control" placeholder="如：三国演义" value="{{title}}" bindinput="onTitle" />
+
+      <view class="label {{missingFields.indexOf('author') >= 0 ? 'label-missing' : ''}}">作者 *</view>
+      <input class="form-control" placeholder="如：罗贯中" value="{{author}}" bindinput="onAuthor" />
+
+      <view class="label {{missingFields.indexOf('isbn') >= 0 ? 'label-missing' : ''}}">ISBN（选填）</view>
+      <input class="form-control" type="text" placeholder="13 位条码" value="{{isbn}}" bindinput="onIsbn" />
+
+      <view class="row-fields">
+        <view class="field">
+          <view class="label {{missingFields.indexOf('publisher') >= 0 ? 'label-missing' : ''}}">出版社（选填）</view>
+          <input class="form-control" placeholder="可选" value="{{publisher}}" bindinput="onPublisher" />
+        </view>
+        <view class="field">
+          <view class="label {{missingFields.indexOf('pubDate') >= 0 ? 'label-missing' : ''}}">出版年</view>
+          <input class="form-control" placeholder="如：2020" value="{{pubDate}}" bindinput="onPubDate" />
+        </view>
+      </view>
+
+      <view class="label {{missingFields.indexOf('listPrice') >= 0 ? 'label-missing' : ''}}">定价（选填）</view>
+      <input class="form-control" placeholder="如：59.00，上漂必填" value="{{listPrice}}" bindinput="onListPrice" />
+    </view>
+
+    <button class="btn-primary save-btn" loading="{{saving}}" disabled="{{saving}}" bindtap="save">保存</button>
+  </block>
+</view>

@@ -1,0 +1,24 @@
+@import '../../styles/common.wxss';
+
+.page { padding: 24rpx; padding-bottom: 160rpx; }
+.intro-card { background: linear-gradient(135deg, #ffffff, #f2fff8); }
+.title { font-size: 34rpx; font-weight: 700; color: #15211B; margin-bottom: 8rpx; }
+.missing-tip {
+  margin-top: 16rpx;
+  color: #ff4d4f;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+.form-card { padding-bottom: 12rpx; }
+.label { font-size: 24rpx; color: #7b8a82; margin: 24rpx 0 8rpx; font-weight: 600; }
+.label-missing { color: #ff4d4f; }
+.form-card .label:first-child { margin-top: 0; }
+.row-fields { display: flex; gap: 18rpx; }
+.field { flex: 1; min-width: 0; }
+.save-btn {
+  position: fixed;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(28rpx + env(safe-area-inset-bottom));
+  z-index: 10;
+}

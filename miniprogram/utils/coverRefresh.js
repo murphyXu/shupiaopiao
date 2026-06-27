@@ -34,6 +34,15 @@ function cloudCoverPath(isbn, url) {
   return `book-covers/${clean}.${ext}`;
 }
 
+function markCoversUpdated() {
+  try {
+    const app = getApp();
+    if (app && app.globalData) app.globalData.coversUpdated = true;
+  } catch (e) {
+    // ignore outside app context
+  }
+}
+
 function cacheRemoteCover(book) {
   if (!shouldCacheRemoteCover(book)) return Promise.resolve(null);
   const isbn = cleanIsbn(book.isbn);
@@ -47,7 +56,9 @@ function cacheRemoteCover(book) {
     .then((res) => {
       const result = res.result || {};
       if (result.code !== 0) throw new Error(result.msg || 'CACHE_REMOTE_COVER_FAILED');
-      return result.data && result.data.cover ? result.data.cover : null;
+      const cover = result.data && result.data.cover ? result.data.cover : null;
+      if (cover) markCoversUpdated();
+      return cover;
     })
     .catch((err) => {
       console.warn('[covers] remote cache skipped', isbn, err);
@@ -87,10 +98,12 @@ function cacheRemoteCovers(books, limit = 3) {
 }
 
 module.exports = {
+  cleanIsbn,
   shouldCacheRemoteCover,
   remoteCoverUrl,
   cloudCoverPath,
   cacheRemoteCover,
   cacheRemoteCovers,
   applyCoverUpdates,
+  markCoversUpdated,
 };

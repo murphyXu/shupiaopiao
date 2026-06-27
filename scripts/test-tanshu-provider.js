@@ -58,6 +58,7 @@ function loadProvider(mockGetJson) {
   assert.strictEqual(book.pubDate, '2013-07');
   assert.strictEqual(book.listPrice, '39.80');
   assert.strictEqual(book.category, '童书');
+  assert.strictEqual(book.sourceClc, 'I287.8');
   assert.strictEqual(book.summary, '经典亲子绘本。');
   assert.strictEqual(book.coverRemote, 'https://static.tanshuapi.com/book-cover.jpg');
   assert.strictEqual(book.coverSource, 'tanshu');

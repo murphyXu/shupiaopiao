@@ -61,6 +61,18 @@
   gap: 20rpx;
 }
 
+.giver-avatar,
+.avatar-placeholder.sm {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.giver-avatar {
+  background: #fff;
+}
+
 .giver-name {
   font-size: 28rpx;
   font-weight: 600;
@@ -180,4 +192,54 @@
   font-size: 36rpx;
   color: #0C7A4B;
   line-height: 1;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #15211B;
+  margin-bottom: 18rpx;
+}
+
+.summary {
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #46564e;
+}
+
+.summary-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.summary-toggle {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #0C7A4B;
+  font-weight: 600;
+}
+
+.info-grid {
+  display: grid;
+  gap: 14rpx;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 24rpx;
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.info-row text:first-child {
+  color: #7b8a82;
+  flex-shrink: 0;
+}
+
+.info-row text:last-child {
+  color: #15211B;
+  text-align: right;
 }

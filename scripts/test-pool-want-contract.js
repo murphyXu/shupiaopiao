@@ -52,7 +52,6 @@ assert.ok(poolDetailWxml.includes('want-btn') && poolDetailWxml.includes('bindta
 assert.ok(poolDetailJs.includes('toggleWant') && poolDetailJs.includes('api.togglePoolWant'), 'pool detail should toggle want state');
 
 const poolModuleOrder = [
-  poolIndexWxml.indexOf('stat-row'),
   poolIndexWxml.indexOf('pool-search-box'),
   poolIndexWxml.indexOf('primary-tabs'),
   poolIndexWxml.indexOf('filter-scroll'),
@@ -62,10 +61,10 @@ assert.ok(poolModuleOrder.every((position) => position >= 0), 'pool home modules
 assert.deepStrictEqual(
   poolModuleOrder,
   [...poolModuleOrder].sort((left, right) => left - right),
-  'pool home should order stats, search, primary filters, secondary filters, then list',
+  'pool home should order search, primary filters, secondary filters, then list',
 );
-assert.ok(poolIndexWxml.includes('stat-row') && poolIndexWxml.includes('stat-card'), 'pool stats should reuse shelf stat row/card layout classes');
-assert.ok(shelfWxml.includes('stat-row') && shelfWxml.includes('shelf-search'), 'shelf reference should still use stat-row and shelf-search');
+assert.ok(!poolIndexWxml.includes('stat-row') && !poolIndexWxml.includes('stat-card'), 'pool home should not render the top stats row');
+assert.ok(shelfWxml.includes('shelf-search') && !shelfWxml.includes('shelf-stat-row'), 'shelf home should keep search without the top stats row');
 assert.ok(shelfWxss.includes('.shelf-search') && commonWxss.includes('.stat-card'), 'shelf/common styles should define the shared target layout');
 
 console.log('pool want contract ok');

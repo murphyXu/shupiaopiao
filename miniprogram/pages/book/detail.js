@@ -1,25 +1,126 @@
 const api = require('../../utils/api');
 const {
-  CATEGORIES, BOOK_CLASSES, SHELF_LOCATIONS, findLabel,
+  CATEGORIES, BOOK_CLASSES, SHELF_LOCATIONS, CONDITIONS, CONDITION_ISSUES, findLabel,
 } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
+const { bookShare } = require('../../utils/share');
+const { pricingState, parseListPrice } = require('../../utils/driftPricing');
+const { hasMissingBookMeta, missingFieldsSummary } = require('../../utils/bookMetaEdit');
 
 function isGenericCategory(category) {
   return !category || ['图书', '童书', '其他', '未分类'].includes(String(category).trim());
 }
 
+function needsCoverRefresh(book = {}) {
+  const cover = String(book.cover || '').trim();
+  if (cover.startsWith('cloud://')) return false;
+  if (book.coverRemote && /^https?:\/\//.test(book.coverRemote)) return false;
+  if (/^https?:\/\//.test(cover)) return false;
+  return !!book.isbn;
+}
+
 function needsMetadataRefresh(book = {}) {
-  return !!book.isbn && (!book.listPrice || isGenericCategory(book.category));
+  return !!book.isbn && (needsCoverRefresh(book) || !book.listPrice || isGenericCategory(book.category));
+}
+
+function createConditionIssueOptions(selected = []) {
+  return CONDITION_ISSUES.map((option) => ({
+    ...option,
+    selected: selected.includes(option.key),
+  }));
+}
+
+function buildDraftFromItem(item) {
+  const drift = item.activeDrift;
+  const draft = {
+    readingStatus: item.readingStatus,
+    bookClass: item.bookClass,
+    shelfLocationKey: item.shelfLocationKey,
+    shelfLocationName: item.shelfLocationName,
+    customLocationName: item.shelfLocationName || '',
+  };
+  if (drift && drift.canEdit) {
+    draft.condition = drift.condition || 'like_new';
+    draft.conditionIssues = [...(drift.conditionIssues || [])];
+    draft.coinValue = Number(drift.coinValue) || 0;
+    draft.systemCoinValue = Number(drift.systemCoinValue) || 0;
+    const bookListPrice = parseListPrice(item.book && item.book.listPrice);
+    draft.listPrice = Number(drift.listPrice) || bookListPrice || 0;
+    draft.hasListPrice = draft.listPrice > 0;
+    draft.coinHint = '';
+  }
+  return draft;
+}
+
+function syncDriftPricing(draft, book = {}) {
+  if (draft.condition === undefined) return draft;
+  const bookListPrice = parseListPrice(book.listPrice);
+  const listPriceValue = Number(draft.listPrice) || bookListPrice || 0;
+  const listPriceText = listPriceValue ? `¥${listPriceValue}` : '';
+  const priced = pricingState({ listPrice: listPriceText }, draft.condition, draft.coinValue);
+  return {
+    ...draft,
+    listPrice: priced.listPrice || listPriceValue,
+    systemCoinValue: priced.systemCoinValue,
+    coinValue: priced.coinValue,
+    coinHint: priced.coinHint,
+    hasListPrice: priced.hasListPrice || listPriceValue > 0,
+  };
+}
+
+function resolveDraftLocation(draft) {
+  const custom = String(draft.customLocationName || '').trim();
+  const preset = SHELF_LOCATIONS.find((entry) => entry.key === draft.shelfLocationKey);
+  if (preset && (!custom || custom === preset.label)) {
+    return { shelfLocationKey: preset.key, shelfLocationName: preset.label };
+  }
+  if (custom) {
+    const existingPreset = SHELF_LOCATIONS.find((entry) => entry.label === custom);
+    if (existingPreset) {
+      return { shelfLocationKey: existingPreset.key, shelfLocationName: existingPreset.label };
+    }
+    const key = preset && !SHELF_LOCATIONS.find((entry) => entry.key === draft.shelfLocationKey)
+      ? draft.shelfLocationKey
+      : `custom_${Date.now()}`;
+    return { shelfLocationKey: key, shelfLocationName: custom };
+  }
+  return {
+    shelfLocationKey: draft.shelfLocationKey,
+    shelfLocationName: draft.shelfLocationName,
+  };
+}
+
+function draftChanged(draft, baseline) {
+  if (!draft || !baseline) return false;
+  const location = resolveDraftLocation(draft);
+  const baseLocation = resolveDraftLocation(baseline);
+  if (draft.readingStatus !== baseline.readingStatus) return true;
+  if (draft.bookClass !== baseline.bookClass) return true;
+  if (location.shelfLocationKey !== baseLocation.shelfLocationKey) return true;
+  if (location.shelfLocationName !== baseLocation.shelfLocationName) return true;
+  if (baseline.condition !== undefined) {
+    if (draft.condition !== baseline.condition) return true;
+    if (JSON.stringify(draft.conditionIssues || []) !== JSON.stringify(baseline.conditionIssues || [])) return true;
+    if (draft.coinValue !== baseline.coinValue) return true;
+  }
+  return false;
 }
 
 Page({
   data: {
     item: null,
+    draft: null,
+    draftBaseline: null,
+    draftDirty: false,
+    saving: false,
     categories: CATEGORIES,
     bookClasses: BOOK_CLASSES,
     shelfLocations: SHELF_LOCATIONS,
+    conditions: CONDITIONS,
+    conditionIssueOptions: createConditionIssueOptions(),
     stars: [1, 2, 3, 4, 5],
-    customLocationName: '',
+    needsMetaEdit: false,
+    missingMetaHint: '',
   },
 
   onLoad(options) {
@@ -47,11 +148,32 @@ Page({
       ...(item.book || {}),
       category: nextItem.displayCategory,
     };
+    let draft = buildDraftFromItem(nextItem);
+    draft = syncDriftPricing(draft, nextItem.book);
+    const draftBaseline = JSON.parse(JSON.stringify(draft));
     this.setData({
       item: nextItem,
-      customLocationName: item.shelfLocationName || '',
+      draft,
+      draftBaseline,
+      draftDirty: false,
+      needsMetaEdit: hasMissingBookMeta(nextItem.book),
+      missingMetaHint: missingFieldsSummary(nextItem.book),
+      conditionIssueOptions: createConditionIssueOptions(draft.conditionIssues || []),
     });
     this.refreshBookMetadata(nextItem);
+  },
+
+  updateDraft(patch) {
+    let draft = { ...this.data.draft, ...patch };
+    if (patch.condition !== undefined || patch.coinValue !== undefined) {
+      draft = syncDriftPricing(draft, this.data.item && this.data.item.book);
+    }
+    const draftDirty = draftChanged(draft, this.data.draftBaseline);
+    const next = { draft, draftDirty };
+    if (patch.conditionIssues !== undefined || patch.condition !== undefined) {
+      next.conditionIssueOptions = createConditionIssueOptions(draft.conditionIssues || []);
+    }
+    this.setData(next);
   },
 
   async refreshBookMetadata(item) {
@@ -62,16 +184,23 @@ Page({
     try {
       const book = await api.getBookByIsbn(isbn);
       if (!book || book.lookupStatus === 'manual_needed') return;
-      this.setData({
-        item: {
-          ...this.data.item,
-          sourceCategory: book.category || this.data.item.sourceCategory,
-          displayCategory: book.category || this.data.item.displayCategory,
-          book: {
-            ...book,
-            category: book.category || this.data.item.displayCategory,
-          },
+      const nextItem = {
+        ...this.data.item,
+        sourceCategory: book.category || this.data.item.sourceCategory,
+        displayCategory: book.category || this.data.item.displayCategory,
+        book: {
+          ...book,
+          category: book.category || this.data.item.displayCategory,
         },
+      };
+      let draft = syncDriftPricing(this.data.draft, nextItem.book);
+      const draftDirty = draftChanged(draft, this.data.draftBaseline);
+      this.setData({
+        item: nextItem,
+        draft,
+        draftDirty,
+        needsMetaEdit: hasMissingBookMeta(nextItem.book),
+        missingMetaHint: missingFieldsSummary(nextItem.book),
       });
     } catch (e) {
       console.warn('[book-detail] metadata refresh skipped', e);
@@ -80,38 +209,105 @@ Page({
     }
   },
 
-  async changeReadingStatus(e) {
-    const readingStatus = e.currentTarget.dataset.key;
-    const item = await api.updateShelfBook(this.shelfId, { readingStatus, category: readingStatus });
-    this.setBookItem(item);
+  selectReadingStatus(e) {
+    this.updateDraft({ readingStatus: e.currentTarget.dataset.key });
   },
 
-  async changeBookClass(e) {
-    const bookClass = e.currentTarget.dataset.key;
-    const item = await api.updateShelfBook(this.shelfId, { bookClass });
-    this.setBookItem(item);
+  selectBookClass(e) {
+    this.updateDraft({ bookClass: e.currentTarget.dataset.key });
   },
 
-  async changeLocation(e) {
+  selectLocation(e) {
     const shelfLocationKey = e.currentTarget.dataset.key;
     const shelfLocationName = e.currentTarget.dataset.label;
-    const item = await api.updateShelfBook(this.shelfId, { shelfLocationKey, shelfLocationName });
-    this.setBookItem(item);
+    this.updateDraft({
+      shelfLocationKey,
+      shelfLocationName,
+      customLocationName: shelfLocationName,
+    });
   },
 
   onCustomLocation(e) {
-    this.setData({ customLocationName: e.detail.value });
+    this.updateDraft({ customLocationName: e.detail.value });
   },
 
-  async saveCustomLocation() {
-    const shelfLocationName = this.data.customLocationName.trim();
-    if (!shelfLocationName) return;
-    const item = await api.updateShelfBook(this.shelfId, {
-      shelfLocationKey: `custom_${Date.now()}`,
-      shelfLocationName,
-    });
-    this.setBookItem(item);
-    wx.showToast({ title: '位置已保存' });
+  selectCondition(e) {
+    this.updateDraft({ condition: e.currentTarget.dataset.key });
+  },
+
+  toggleConditionIssue(e) {
+    const key = e.currentTarget.dataset.key;
+    const conditionIssues = [...(this.data.draft.conditionIssues || [])];
+    const index = conditionIssues.indexOf(key);
+    if (index >= 0) conditionIssues.splice(index, 1);
+    else conditionIssues.push(key);
+    this.updateDraft({ conditionIssues });
+  },
+
+  decreaseCoinValue() {
+    if (this.data.saving) return;
+    const coinValue = Math.max((Number(this.data.draft.coinValue) || 0) - 1, 0);
+    if (coinValue === this.data.draft.coinValue) return;
+    this.updateDraft({ coinValue });
+  },
+
+  increaseCoinValue() {
+    if (this.data.saving) return;
+    const system = Number(this.data.draft.systemCoinValue) || 0;
+    const coinValue = Math.min((Number(this.data.draft.coinValue) || 0) + 1, system);
+    if (coinValue === this.data.draft.coinValue) return;
+    this.updateDraft({ coinValue });
+  },
+
+  async confirmShelfChanges() {
+    if (!this.data.draftDirty || this.data.saving) return;
+    const { draft, item, draftBaseline } = this.data;
+    const location = resolveDraftLocation(draft);
+    const shelfPayload = {};
+    if (draft.readingStatus !== draftBaseline.readingStatus) {
+      shelfPayload.readingStatus = draft.readingStatus;
+      shelfPayload.category = draft.readingStatus;
+    }
+    if (draft.bookClass !== draftBaseline.bookClass) {
+      shelfPayload.bookClass = draft.bookClass;
+    }
+    const baseLocation = resolveDraftLocation(draftBaseline);
+    if (location.shelfLocationKey !== baseLocation.shelfLocationKey
+      || location.shelfLocationName !== baseLocation.shelfLocationName) {
+      shelfPayload.shelfLocationKey = location.shelfLocationKey;
+      shelfPayload.shelfLocationName = location.shelfLocationName;
+    }
+
+    const drift = item.activeDrift;
+    const driftPayload = {};
+    if (drift && drift.canEdit && draftBaseline.condition !== undefined) {
+      if (draft.condition !== draftBaseline.condition) driftPayload.condition = draft.condition;
+      if (JSON.stringify(draft.conditionIssues || []) !== JSON.stringify(draftBaseline.conditionIssues || [])) {
+        driftPayload.conditionIssues = draft.conditionIssues || [];
+      }
+      if (draft.coinValue !== draftBaseline.coinValue) driftPayload.coinValue = draft.coinValue;
+    }
+
+    this.setData({ saving: true });
+    wx.showLoading({ title: '保存中' });
+    try {
+      let updatedItem = item;
+      if (Object.keys(shelfPayload).length) {
+        updatedItem = await api.updateShelfBook(this.shelfId, shelfPayload);
+      }
+      if (Object.keys(driftPayload).length) {
+        await api.updateOpenDrift(drift.id, driftPayload);
+        await this.loadBook();
+      } else if (Object.keys(shelfPayload).length) {
+        this.setBookItem(updatedItem);
+      }
+      wx.showToast({ title: '已保存' });
+    } catch (e) {
+      wx.showToast({ title: e.message || '保存失败', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+      this.setData({ saving: false });
+    }
   },
 
   async setRating(e) {
@@ -127,6 +323,11 @@ Page({
       return;
     }
     wx.navigateTo({ url: `/pages/drift/publish?bookId=${this.data.item.bookId}` });
+  },
+
+  goEditBookMeta() {
+    if (!this.shelfId) return;
+    wx.navigateTo({ url: `/pages/book/edit-meta?shelfBookId=${this.shelfId}&from=detail` });
   },
 
   cancelOpenDrift() {
@@ -162,9 +363,11 @@ Page({
   onShareAppMessage() {
     const book = this.data.item ? this.data.item.book : {};
     const user = wx.getStorageSync('userInfo') || {};
-    return {
-      title: `我书架上的《${book.title || '一本书'}》`,
-      path: `/pages/book/catalog?id=${book.id || this.data.item.bookId}&inviterId=${user.id || ''}`,
-    };
+    return bookShare({
+      title: book.title,
+      bookId: book.id || this.data.item.bookId,
+      inviterId: user.id,
+      cover: book.cover,
+    });
   },
 });

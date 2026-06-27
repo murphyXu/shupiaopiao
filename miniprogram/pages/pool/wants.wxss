@@ -7,6 +7,9 @@
 }
 
 .pool-card {
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
   background: #fff;
   border: 1rpx solid #eef3ef;
   border-radius: 36rpx;
@@ -35,6 +38,7 @@
   font-size: 26rpx;
   font-weight: 600;
   margin-top: 12rpx;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -44,7 +48,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8rpx;
   margin-top: 12rpx;
+  min-width: 0;
+}
+
+.row-meta .coin {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-meta .pill {
+  flex-shrink: 0;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .want-action {

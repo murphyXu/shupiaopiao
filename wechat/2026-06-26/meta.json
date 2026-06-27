@@ -1,0 +1,17 @@
+{
+  "date": "2026-06-26",
+  "theme": "首发·闲置痛点",
+  "platform": "wechat",
+  "real_shots": [
+    {
+      "file": "04-app-pool.png",
+      "raw": "04-app-pool-screenshot-raw.png",
+      "page": "pages/pool/index",
+      "steps": [
+        "编译进入漂流 Tab",
+        "截模拟器全屏"
+      ],
+      "composite": "rtk python3 scripts/composite-wechat-pool-slide.py"
+    }
+  ]
+}

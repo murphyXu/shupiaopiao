@@ -1,4 +1,4 @@
-<view class="page" wx:if="{{item}}">
+<view class="page" wx:if="{{item && draft}}">
   <view class="cover-card">
     <view class="cover-frame">
       <image class="cover" src="{{item.book.cover}}" mode="aspectFit" binderror="onCoverError" data-single="item.book" data-isbn="{{item.book.isbn}}" />
@@ -14,6 +14,7 @@
 
   <view class="card info-card">
     <view class="section-title">基础信息</view>
+    <view wx:if="{{needsMetaEdit}}" class="meta-edit-tip">部分信息缺失（{{missingMetaHint}}），<text class="inline-link" bindtap="goEditBookMeta">补录 ›</text></view>
     <view class="info-grid">
       <view class="info-row"><text>ISBN</text><text>{{item.book.isbn || '未记录'}}</text></view>
       <view class="info-row"><text>出版社</text><text>{{item.book.publisher || '未记录'}}</text></view>
@@ -25,30 +26,67 @@
 
   <view class="card">
     <view class="section-title">书架信息</view>
-    <view class="current-meta">
-      <text>{{item.readingStatusLabel}}</text>
-      <text>{{item.displayCategory || item.sourceCategory || item.book.category || item.bookClassLabel}}</text>
-      <text>{{item.shelfLocationName}}</text>
-    </view>
+    <view class="hint muted">修改后请点击「确认保存」</view>
 
     <view class="label">阅读状态</view>
-    <view class="chips">
-      <view wx:for="{{categories}}" wx:for-item="cat" wx:key="key" class="chip {{item.readingStatus === cat.key ? 'active' : ''}}" data-key="{{cat.key}}" bindtap="changeReadingStatus">{{cat.label}}</view>
+    <view class="chips status-chips">
+      <view wx:for="{{categories}}" wx:for-item="cat" wx:key="key" class="chip {{draft.readingStatus === cat.key ? 'active' : ''}}" data-key="{{cat.key}}" bindtap="selectReadingStatus">{{cat.label}}</view>
     </view>
 
     <view class="label">书籍分类</view>
-    <view class="chips">
-      <view wx:for="{{bookClasses}}" wx:for-item="bookClass" wx:key="key" class="chip {{item.bookClass === bookClass.key ? 'active' : ''}}" data-key="{{bookClass.key}}" bindtap="changeBookClass">{{bookClass.label}}</view>
+    <view class="chips class-chips">
+      <view wx:for="{{bookClasses}}" wx:for-item="bookClass" wx:key="key" class="chip {{draft.bookClass === bookClass.key ? 'active' : ''}}" data-key="{{bookClass.key}}" bindtap="selectBookClass">{{bookClass.label}}</view>
     </view>
 
     <view class="label">书架位置</view>
-    <view class="chips">
-      <view wx:for="{{shelfLocations}}" wx:for-item="location" wx:key="key" class="chip {{item.shelfLocationKey === location.key ? 'active' : ''}}" data-key="{{location.key}}" data-label="{{location.label}}" bindtap="changeLocation">{{location.label}}</view>
+    <view class="chips location-chips">
+      <view wx:for="{{shelfLocations}}" wx:for-item="location" wx:key="key" class="chip {{draft.shelfLocationKey === location.key ? 'active' : ''}}" data-key="{{location.key}}" data-label="{{location.label}}" bindtap="selectLocation">{{location.label}}</view>
     </view>
     <view class="custom-location">
-      <input placeholder="自定义位置，如：客厅左侧书架" value="{{customLocationName}}" bindinput="onCustomLocation" />
-      <view class="mini-btn" bindtap="saveCustomLocation">保存</view>
+      <input placeholder="自定义位置，如：客厅左侧书架" value="{{draft.customLocationName}}" bindinput="onCustomLocation" />
     </view>
+  </view>
+
+  <view wx:if="{{item.activeDrift && item.activeDrift.canEdit}}" class="card">
+    <view class="section-title">漂流信息</view>
+    <view class="hint muted">待领取/审核中的漂流可修改品相与积分，保存后书池同步更新</view>
+
+    <view class="label">品相档位</view>
+    <view class="chips condition-chips">
+      <view wx:for="{{conditions}}" wx:for-item="cond" wx:key="key" class="chip {{draft.condition === cond.key ? 'active' : ''}}" data-key="{{cond.key}}" bindtap="selectCondition">{{cond.label}}</view>
+    </view>
+
+    <view class="label">品相描述</view>
+    <view class="chips issue-chips">
+      <view wx:for="{{conditionIssueOptions}}" wx:for-item="issue" wx:key="key" class="chip {{issue.selected ? 'active' : ''}}" data-key="{{issue.key}}" bindtap="toggleConditionIssue">{{issue.label}}</view>
+    </view>
+
+    <view class="label">公益积分</view>
+    <view wx:if="{{draft.hasListPrice}}" class="price-line">
+      <text>图书定价：¥{{draft.listPrice}}</text>
+      <text>系统建议：{{draft.systemCoinValue}} 积分</text>
+    </view>
+    <view wx:if="{{draft.hasListPrice}}" class="coin-stepper-row">
+      <view class="coin-stepper-label">本次设定</view>
+      <view class="coin-stepper">
+        <view class="stepper-btn {{draft.coinValue <= 0 || saving ? 'disabled' : ''}}" bindtap="decreaseCoinValue">−</view>
+        <view class="coin-stepper-value">{{draft.coinValue}} 积分</view>
+        <view class="stepper-btn {{draft.coinValue >= draft.systemCoinValue || saving ? 'disabled' : ''}}" bindtap="increaseCoinValue">+</view>
+      </view>
+    </view>
+    <view wx:if="{{draft.hasListPrice}}" class="coin-hint muted">{{draft.coinHint}}</view>
+    <view wx:else class="muted">定价缺失，暂不能调整积分。<text class="inline-link" bindtap="goEditBookMeta">补录定价 ›</text></view>
+  </view>
+
+  <view wx:elif="{{item.activeDrift}}" class="card">
+    <view class="section-title">漂流信息</view>
+    <view class="info-grid drift-summary">
+      <view class="info-row"><text>状态</text><text>{{item.activeDrift.statusLabel}}</text></view>
+      <view class="info-row"><text>品相</text><text>{{item.activeDrift.conditionLabel}}</text></view>
+      <view wx:if="{{item.activeDrift.conditionIssueText}}" class="info-row"><text>品相描述</text><text>{{item.activeDrift.conditionIssueText}}</text></view>
+      <view class="info-row"><text>公益积分</text><text>{{item.activeDrift.coinValue}} 积分</text></view>
+    </view>
+    <view class="hint muted">已被领取后仅可修改书架信息。</view>
   </view>
 
   <view class="card">
@@ -57,6 +95,8 @@
       <text wx:for="{{stars}}" wx:for-item="star" wx:key="*this" class="star {{item.rating >= star ? 'on' : ''}}" data-rating="{{star}}" bindtap="setRating">★</text>
     </view>
   </view>
+
+  <view wx:if="{{draftDirty}}" class="btn-primary action-btn {{saving ? 'is-saving' : ''}}" bindtap="confirmShelfChanges">{{saving ? '保存中...' : '确认保存'}}</view>
 
   <view wx:if="{{item.activeDrift}}" class="btn-primary action-btn drift-status-btn">{{item.activeDrift.status === 'IN_POOL' ? '待领取' : item.activeDrift.statusLabel}}</view>
   <view wx:else class="btn-primary action-btn" bindtap="goPublish">发起漂流</view>

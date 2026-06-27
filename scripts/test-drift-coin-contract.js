@@ -22,7 +22,7 @@ assert.ok(dbLib.includes('SIGNUP_BONUS = 0'), 'new user signup bonus should be z
 assert.ok(dbLib.includes('coinBalance: SIGNUP_BONUS'), 'new user balance should use signup bonus constant');
 assert.ok(dbLib.includes('INVITE_REWARD = 2'), 'invite reward should be two public points');
 assert.ok(dbLib.includes('INVITE_LIFETIME_CAP = 10'), 'invite reward should have a 10-point lifetime cap');
-assert.ok(dbLib.includes('INVITE_DAILY_CAP = 10'), 'invite reward should have a daily cap');
+assert.ok(!dbLib.includes('INVITE_DAILY_CAP'), 'invite reward should not have a daily cap');
 assert.ok(dbLib.includes("type: 'invite_reward'"), 'invite reward should be recorded as a distinct public-points source');
 assert.ok(driftHandler.includes('publishRewardCap') && driftHandler.includes('publishRewardCount'), 'publish reward should be capped per user');
 assert.ok(driftHandler.includes('publishRewardAmount') && driftHandler.includes('publishRewardCredited') && driftHandler.includes('publishRewardOffset'), 'publish reward should persist rollback metadata');

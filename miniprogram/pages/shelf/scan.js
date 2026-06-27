@@ -4,13 +4,30 @@ const {
 } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { cacheRemoteCover } = require('../../utils/coverRefresh');
+const { trackPageView, track } = require('../../utils/track');
 
 function inferBookClass(book = {}) {
-  const text = [book.category, book.ageRange, book.title, book.summary].filter(Boolean).join(' ');
-  if (/童书|绘本|儿童|亲子|0-3|3-6|6-9|9-12/.test(text)) return 'child';
+  if (book.bookClass) return book.bookClass;
+  const label = String(book.category || '').trim();
+  const byLabel = {
+    童书: 'child',
+    文学: 'literature',
+    社科: 'social',
+    经管: 'business',
+    科普: 'science',
+    生活: 'life',
+    艺术: 'art',
+    其他: 'other',
+  };
+  if (byLabel[label]) return byLabel[label];
+  const text = [book.category, book.ageRange, book.title, book.summary, book.publisher].filter(Boolean).join(' ');
+  if (/^I28/i.test(book.sourceClc || book.category || '')) return 'child';
+  if (/童书|绘本|儿童|亲子|童话|叶罗丽|萝卜回来了|0-3|3-6|6-9|9-12/.test(text)) return 'child';
   if (/经管|商业|管理|创业|金融|理财/.test(text)) return 'business';
   if (/科普|科学|自然|技术|计算机/.test(text)) return 'science';
   if (/社科|社会|历史|心理|哲学|传记/.test(text)) return 'social';
+  if (/艺术|设计|摄影|音乐/.test(text)) return 'art';
+  if (/生活|旅行|美食|家居/.test(text)) return 'life';
   if (/文学|小说|诗|散文|名著/.test(text)) return 'literature';
   return 'other';
 }
@@ -37,6 +54,7 @@ Page({
 
   onLoad(options = {}) {
     if (!requireLogin('扫码录入需登录')) return;
+    trackPageView('shelf/scan');
     if (options.isbn) this.lookupIsbn(options.isbn);
   },
 
@@ -63,6 +81,7 @@ Page({
     wx.showLoading({ title: '查询中' });
     try {
       const book = await api.getBookByIsbn(clean, 'scan');
+      track('book_lookup', { source: 'scan', isbn: clean });
       const inferredBookClass = inferBookClass(book);
       this.setData({ book, bookClass: inferredBookClass, lookupStatus: 'found' });
       cacheRemoteCover(book).then((cover) => {
@@ -116,6 +135,7 @@ Page({
     if (!book) return false;
     try {
       const item = await api.addShelfBook({
+        bookId: book.id,
         isbn: book.isbn,
         category: this.data.category,
         readingStatus: this.data.category,

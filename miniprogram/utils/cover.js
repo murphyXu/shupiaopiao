@@ -73,6 +73,15 @@ function applyCoverField(ctx, { single, listKey, index, nestedKey }, cover) {
   ctx.setData({ [field]: cover });
 }
 
+function needsCoverResolve(book = {}) {
+  if (!book || !String(book.isbn || '').trim()) return false;
+  if (isCloudCover(book.cover)) return false;
+  const remote = httpsUrl(book.coverRemote || '');
+  if (isRemoteCover(remote)) return false;
+  if (isRemoteCover(book.cover)) return false;
+  return true;
+}
+
 function onCoverError(e) {
   const { cacheRemoteCover, shouldCacheRemoteCover, remoteCoverUrl } = require('./coverRefresh');
   const {
@@ -104,5 +113,6 @@ module.exports = {
   displayCover,
   normalizeBook,
   normalizeBooksDeep,
+  needsCoverResolve,
   onCoverError,
 };

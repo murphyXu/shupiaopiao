@@ -3,10 +3,12 @@ const BUNDLE_MAX_ORDERS = 5;
 const LIGHTWEIGHT_COIN_THRESHOLD = 3;
 const LIGHTWEIGHT_PRICE_THRESHOLD = 20;
 
+const PUBLISH_RATE_LIMIT_STATUSES = ['PENDING_REVIEW', 'IN_POOL', 'CLAIMED', 'COMPLETED'];
+
 const STAGES = {
-  cold: { signupBonus: 0, firstGiveBonus: 10, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5 },
-  cycle: { signupBonus: 0, firstGiveBonus: 5, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5 },
-  mature: { signupBonus: 0, firstGiveBonus: 0, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5 },
+  cold: { signupBonus: 0, firstGiveBonus: 10, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5, publishDailyLimit: 100 },
+  cycle: { signupBonus: 0, firstGiveBonus: 5, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5, publishDailyLimit: 100 },
+  mature: { signupBonus: 0, firstGiveBonus: 0, publishReward: 2, publishRewardCap: 2, inviteReward: 2, inflightLimit: 5, publishDailyLimit: 100 },
 };
 
 const SHELF_CAPACITY_PER_COIN = 10;
@@ -92,6 +94,7 @@ module.exports = {
   BUNDLE_MAX_ORDERS,
   LIGHTWEIGHT_COIN_THRESHOLD,
   LIGHTWEIGHT_PRICE_THRESHOLD,
+  PUBLISH_RATE_LIMIT_STATUSES,
   STAGES,
   SHELF_CAPACITY_PER_COIN,
   CONDITION_FACTORS,
