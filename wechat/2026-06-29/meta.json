@@ -1,0 +1,16 @@
+{
+  "date": "2026-06-29",
+  "theme": "上漂教程",
+  "platform": "wechat",
+  "real_shots": [
+    {
+      "file": "02-form.png",
+      "raw": "02-form-raw.png",
+      "page": "pages/drift/publish",
+      "steps": [
+        "上漂表单全貌"
+      ],
+      "composite": null
+    }
+  ]
+}

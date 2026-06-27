@@ -1,0 +1,27 @@
+{
+  "date": "2026-06-27",
+  "theme": "0-3岁书单",
+  "platform": "wechat",
+  "real_shots": [
+    {
+      "file": "04-pool-detail.png",
+      "raw": "04-pool-detail-raw.png",
+      "page": "pages/pool/detail",
+      "steps": [
+        "点进任意一本漂出书",
+        "截详情含「申请接漂」"
+      ],
+      "composite": null
+    },
+    {
+      "file": "05-claim.png",
+      "raw": "05-claim-raw.png",
+      "page": "pages/drift/claim",
+      "steps": [
+        "进入接漂确认页（勿提交真实订单）",
+        "截地址/积分说明，打码地址"
+      ],
+      "composite": null
+    }
+  ]
+}

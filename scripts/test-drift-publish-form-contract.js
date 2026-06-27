@@ -17,14 +17,14 @@ const poolHandler = read('cloudfunctions/api/handlers/pool.js');
 const poolDetailWxml = read('miniprogram/pages/pool/detail.wxml');
 const givenWxml = read('miniprogram/pages/drift/given.wxml');
 
-assert.ok(publishJs.includes('shelfBookId') && publishJs.includes('setSelectedBook(item)'), 'publish should select one exact shelf record');
+assert.ok(publishJs.includes('shelfBookId') && publishJs.includes('syncShelfSelection'), 'publish should select exact shelf records');
 assert.ok(driftHandler.includes('findShelfRecord') && driftHandler.includes('shelfBookId: shelfRow._id'), 'backend should verify and persist exact shelf ownership');
-assert.ok(publishJs.includes('calculateSystemCoinValue') && publishWxml.includes('系统建议'), 'publish should preview the system suggested value');
+assert.ok(publishJs.includes('driftPricing') && publishWxml.includes('系统建议'), 'publish should preview the system suggested value');
 assert.ok(publishJs.includes('decreaseCoinValue') && publishJs.includes('increaseCoinValue') && publishWxml.includes('coin-stepper'), 'publish should let users lower coin value via stepper');
 assert.ok(driftHandler.includes('resolveRequestedCoinValue') && driftHandler.includes('systemCoinValue'), 'backend should validate requested coin value against system suggestion');
 assert.ok(driftHandler.includes('calculateCoinValue(listPrice, condition)'), 'backend should calculate the authoritative system value');
 assert.ok(driftHandler.includes('publishRewardGranted') && driftHandler.includes('grantPublishReward'), 'cold-start publish reward should be idempotent');
-assert.ok(publishJs.includes('submitting') && publishWxml.includes('loading="{{submitting}}"') && publishWxml.includes('disabled="{{submitting}}"'), 'publish submit should prevent duplicate requests');
+assert.ok(publishJs.includes('submitting') && publishWxml.includes('loading="{{submitting}}"') && publishWxml.includes('disabled="{{submitting'), 'publish submit should prevent duplicate requests');
 assert.ok(
   driftHandler.indexOf('activeDuplicateCount') > -1
     && driftHandler.indexOf('activeDuplicateCount') < driftHandler.indexOf("db.collection('drifts').doc(driftId).set"),
@@ -44,5 +44,12 @@ assert.ok(driftHandler.includes('imageMap') && driftHandler.includes('conditionI
 assert.ok(poolHandler.includes('conditionIssues') && poolDetailWxml.includes('conditionIssueLabels'), 'pool detail should expose condition labels');
 assert.ok(givenWxml.includes('conditionIssueLabels'), 'given records should show condition labels');
 assert.ok(publishJs.includes('shipRegion') && driftHandler.includes('resolveShipRegionForPublish'), 'publish should pass ship region for freight reference');
+assert.ok(
+  publishJs.includes('splitSelectedByListPrice')
+    && publishJs.includes('syncShelfSelection(validIds)')
+    && publishJs.includes('missingListPrice')
+    && publishWxml.includes('定价缺失，暂不能上漂'),
+  'publish should auto-deselect missing-price books and mark them in picker',
+);
 
 console.log('drift publish form contract ok');

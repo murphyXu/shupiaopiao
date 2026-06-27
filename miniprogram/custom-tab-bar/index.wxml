@@ -7,7 +7,10 @@
     data-path="{{item.pagePath}}"
     bindtap="switchTab"
   >
-    <image class="tab-icon" src="{{selected === index ? item.selectedIconPath : item.iconPath}}" mode="aspectFit" />
+    <view class="tab-icon-wrap">
+      <image class="tab-icon" src="{{selected === index ? item.selectedIconPath : item.iconPath}}" mode="aspectFit" />
+      <view wx:if="{{item.pagePath === '/pages/mine/index' && mineBadge}}" class="tab-badge">{{mineBadge}}</view>
+    </view>
     <text class="tab-text">{{item.text}}</text>
   </view>
 </view>

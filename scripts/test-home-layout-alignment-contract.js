@@ -245,7 +245,6 @@ assert.deepStrictEqual(
 const poolPage = extractViewByClass(poolWxml, 'page');
 const poolPageChildren = directChildOpeningTags(poolPage);
 const poolOrder = [
-  poolPageChildren.findIndex((tag) => hasClass(tag, 'stat-row')),
   poolPageChildren.findIndex((tag) => hasClass(tag, 'pool-search-box')),
   poolPageChildren.findIndex((tag) => hasClass(tag, 'primary-tabs')),
   poolPageChildren.findIndex((tag) => hasClass(tag, 'filter-scroll')),
@@ -255,8 +254,9 @@ assert.ok(poolOrder.every((position) => position >= 0), 'pool top modules should
 assert.deepStrictEqual(
   poolOrder,
   [...poolOrder].sort((left, right) => left - right),
-  'pool modules should be stats, search, primary tabs, secondary tabs, then list',
+  'pool modules should be search, primary tabs, secondary tabs, then list',
 );
+assert.ok(!poolWxml.includes('stat-row'), 'pool home should not render the top stats row');
 
 const alignedStyleRules = [
   ['.primary-tabs', '.primary-tabs'],

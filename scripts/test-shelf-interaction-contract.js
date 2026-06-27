@@ -46,7 +46,7 @@ assert.ok(shelfWxml.includes('shelf-search') && shelfWxml.includes('bindinput="o
 assert.ok(shelfJs.includes('matchesShelfSearch') && shelfJs.includes('book.isbn') && shelfJs.includes('book.publisher'), 'shelf local search should match title author isbn publisher');
 assert.ok(shelfWxml.includes('没找到这本在架书'), 'shelf search empty state should explain no in-shelf match');
 
-assert.ok(shelfWxml.includes('book-card series-card') && shelfWxml.includes('series-count-badge'), 'series entry should use normal book card style and show count on cover');
+assert.ok(shelfWxml.includes('grid-book-card series-card') && shelfWxml.includes('series-count-badge'), 'series entry should use normal book card style and show count on cover');
 assert.ok(!shelfWxml.includes('series-wrap entry-full'), 'series entry should not be a full-width custom card');
 assert.ok(shelfJs.includes('pickSeriesCover') && shelfJs.includes('hasRealCover'), 'series entry should pick a real child cover when available');
 

@@ -17,6 +17,23 @@
     <view class="report-link" bindtap="reportItem">举报</view>
   </view>
 
+  <view class="card">
+    <view class="section-title">内容介绍</view>
+    <view class="summary {{summaryNeedsFold && !summaryExpanded ? 'summary-clamped' : ''}}">{{summaryText}}</view>
+    <view wx:if="{{summaryNeedsFold}}" class="summary-toggle" bindtap="toggleSummary">{{summaryExpanded ? '收起' : '展开'}}</view>
+  </view>
+
+  <view class="card info-card">
+    <view class="section-title">基础信息</view>
+    <view class="info-grid">
+      <view class="info-row"><text>ISBN</text><text>{{item.book.isbn || '未记录'}}</text></view>
+      <view class="info-row"><text>出版社</text><text>{{item.book.publisher || '未记录'}}</text></view>
+      <view class="info-row"><text>出版时间</text><text>{{item.book.pubDate || '未记录'}}</text></view>
+      <view class="info-row"><text>定价</text><text>{{item.book.listPrice || '未记录'}}</text></view>
+      <view class="info-row"><text>图书分类</text><text>{{item.categoryLabel || item.book.category || '未记录'}}</text></view>
+    </view>
+  </view>
+
   <view wx:if="{{item.sameGiverPool}}" class="card same-giver-card">
     <view class="same-giver-label">{{item.sameGiverPool.label}}</view>
     <view class="muted same-giver-tip">凑单通常只需一次到付运费，点击查看详情</view>
@@ -41,7 +58,9 @@
   </view>
 
   <view class="card giver">
-    <view class="avatar-circle sm"></view>
+    <image wx:if="{{item.giver.avatar}}" class="giver-avatar" src="{{item.giver.avatar}}" mode="aspectFill" />
+    <image wx:elif="{{item.isAnonymous}}" class="avatar-placeholder sm" src="/assets/brand/logo.png" mode="aspectFit" />
+    <view wx:else class="avatar-circle sm"></view>
     <view>
       <view class="giver-name">{{item.giver.nickname}}</view>
       <view class="muted">信用积分 {{item.giver.creditScore}}</view>

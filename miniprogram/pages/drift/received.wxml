@@ -1,4 +1,16 @@
 <view class="page">
+  <scroll-view scroll-x class="status-scroll" enable-flex>
+    <view class="status-tabs">
+      <view
+        wx:for="{{statusTabs}}"
+        wx:key="key"
+        class="status-tab {{activeTab === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchStatusTab"
+      >{{item.label}}<text wx:if="{{item.count}}" class="tab-count">{{item.count}}</text></view>
+    </view>
+  </scroll-view>
+
   <view wx:for="{{orders}}" wx:key="id" class="card order-card">
     <view class="header">
       <text class="badge status">{{statusMap[item.status]}}</text>

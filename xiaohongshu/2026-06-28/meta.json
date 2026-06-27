@@ -1,0 +1,26 @@
+{
+  "date": "2026-06-28",
+  "theme": "接漂开箱",
+  "platform": "xhs",
+  "real_shots": [
+    {
+      "file": "02-pool.png",
+      "raw": "02-pool-raw.png",
+      "page": "pages/pool/detail",
+      "steps": [
+        "截申请前的详情页"
+      ],
+      "composite": null
+    },
+    {
+      "file": "03-order.png",
+      "raw": "03-order-raw.png",
+      "page": "pages/drift/received",
+      "steps": [
+        "我的漂流(领取) 在途/待收货",
+        "打码地址"
+      ],
+      "composite": null
+    }
+  ]
+}

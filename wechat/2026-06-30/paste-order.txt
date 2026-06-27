@@ -1,0 +1,6 @@
+1. 01-cover.png
+2. 02-coin.png
+3. 03-credit.png
+4. 04-wallet.png
+5. 05-credit-page.png
+6. 06-cta.png

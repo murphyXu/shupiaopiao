@@ -1,6 +1,7 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
+const { prepareOrderList, resolveActiveTabFromStatus } = require('../../utils/orderList');
 
 function withBundleBadge(orders = []) {
   const counts = {};
@@ -16,16 +17,29 @@ function withBundleBadge(orders = []) {
 }
 
 Page({
-  data: { orders: [], statusMap: ORDER_STATUS, statusFilter: '' },
+  data: {
+    orders: [],
+    statusMap: ORDER_STATUS,
+    activeTab: 'all',
+    statusTabs: [],
+  },
 
   onLoad(options) {
-    this.setData({ statusFilter: options.status || '' });
+    this.setData({ activeTab: resolveActiveTabFromStatus(options.status || '', 'received') });
   },
 
   onShow() {
-    api.getOrders('received', this.data.statusFilter || undefined).then((res) => {
-      this.setData({ orders: withBundleBadge(res.list || []) });
+    api.getOrders('received').then((res) => {
+      const rawOrders = withBundleBadge(res.list || []);
+      const { orders, statusTabs } = prepareOrderList(rawOrders, 'received', this.data.activeTab);
+      this.setData({ orders, statusTabs });
     });
+  },
+
+  switchStatusTab(e) {
+    const activeTab = e.currentTarget.dataset.key || 'all';
+    if (activeTab === this.data.activeTab) return;
+    this.setData({ activeTab }, () => this.onShow());
   },
 
   async confirm(e) {

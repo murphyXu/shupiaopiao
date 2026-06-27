@@ -4,7 +4,12 @@
   "cloudfunctionRoot": "cloudfunctions/",
   "packOptions": {
     "ignore": [],
-    "include": []
+    "include": [
+      {
+        "type": "glob",
+        "value": "assets/share/**"
+      }
+    ]
   },
   "setting": {
     "urlCheck": true,

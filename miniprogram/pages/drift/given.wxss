@@ -17,6 +17,12 @@
   font-size: 24rpx;
   line-height: 1.5;
 }
+.subscribe-link {
+  margin-top: 16rpx;
+  color: #0C7A4B;
+  font-size: 24rpx;
+  font-weight: 700;
+}
 .order-card .row { display: flex; gap: 16rpx; margin-top: 12rpx; }
 .progress-box {
   margin-top: 18rpx;

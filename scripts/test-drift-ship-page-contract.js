@@ -24,6 +24,10 @@ assert.ok(shipJs.includes("api.getOrderDetail(this.orderId, 'given')") || shipJs
 assert.ok(shipJs.includes('options.bundleId') && shipJs.includes('shipBundle'), 'ship page should support bundle shipping');
 assert.ok(shipJs.includes("order.status !== 'PENDING_SHIP'"), 'ship page should redirect when order is not pending ship');
 assert.ok(shipJs.includes('openExpressSheet') && shipJs.includes('copyAndOpenExpress'), 'ship page should expose express jump flow');
+assert.ok(shipJs.includes('alertText') && shipJs.includes('收件信息已复制，选快递后粘贴地址'), 'express sheet should announce copied address before carrier selection');
+assert.ok(shipJs.includes('await this.copyAddressToClipboard(false)') && shipJs.indexOf('await this.copyAddressToClipboard(false)') < shipJs.indexOf('showActionSheet'), 'express sheet should copy address before showing carrier list');
+assert.ok(!shipJs.includes('正在打开'), 'express jump should not flash toast before mini program navigation');
+assert.ok(shipWxml.includes('addressCopied') && shipWxml.includes('可在快递 App 中粘贴'), 'ship page should keep copied-state hint on address card');
 assert.ok(shipJs.includes('lastCopiedAt') && shipJs.includes('3000'), 'ship page should debounce clipboard copy within 3 seconds');
 assert.ok(shipJs.includes('redirectTo') && shipJs.includes('order-detail'), 'ship submit should redirect to order detail');
 

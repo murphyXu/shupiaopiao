@@ -1,6 +1,7 @@
 const { getJson, getText } = require('./http');
 const tanshu = require('./tanshu');
 const { normalizeIsbn } = require('../bookCatalog');
+const { cleanBookTitle } = require('../bookLookupPolicy');
 
 const SUGGEST_ENDPOINT = 'https://book.douban.com/j/subject_suggest';
 const SEARCH_ENDPOINT = 'https://search.douban.com/book/subject_search';
@@ -120,6 +121,10 @@ function normalizeDoubanBook(item, detail = {}, enriched = null) {
       ...enriched,
       title: enriched.title || item.title,
       rawTitle: item.title,
+      coverRemote: enriched.coverRemote || detail.coverRemote || item.coverRemote || '',
+      coverSource: enriched.coverRemote
+        ? enriched.coverSource
+        : ((detail.coverRemote || item.coverRemote) ? 'douban' : enriched.coverSource),
       source: enriched.source || 'tanshu',
       sourceId: enriched.sourceId || isbn,
       lookupStatus: 'found',
@@ -169,6 +174,21 @@ async function fetchDetail(item) {
   }
 }
 
+async function lookupCoverByTitle(title, isbn) {
+  const clean = normalizeIsbn(isbn);
+  const variants = [...new Set([String(title || '').trim(), cleanBookTitle(title)].filter(Boolean))];
+  for (const keyword of variants) {
+    const items = await fetchSuggest(keyword);
+    for (const item of items.slice(0, MAX_DETAIL)) {
+      const detail = await fetchDetail(item);
+      if (clean && detail.isbn && normalizeIsbn(detail.isbn) !== clean) continue;
+      const book = normalizeDoubanBook(item, detail, null);
+      if (book && book.coverRemote) return book;
+    }
+  }
+  return null;
+}
+
 async function enrichByIsbn(isbn) {
   try {
     return await tanshu.lookupByIsbn(isbn, 700);
@@ -198,5 +218,6 @@ module.exports = {
   parseSubjectPage,
   normalizeDoubanCover,
   normalizeDoubanBook,
+  lookupCoverByTitle,
   searchByKeyword,
 };

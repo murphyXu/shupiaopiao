@@ -45,7 +45,7 @@ assert.ok(driftHandler.includes('if (!data.orderId) return fail(400') && driftHa
 assert.ok(driftHandler.includes('async function cancelOpen') && driftHandler.includes('OPEN_DRIFT_CANCEL_STATUSES') && driftHandler.includes("status: 'CANCELLED'"), 'backend should cancel only unclaimed published drifts');
 
 assert.ok(shelfHandler.includes('activeDrift') && shelfHandler.includes('ACTIVE_SHELF_DRIFT_STATUSES'), 'shelf list should expose active drift state for each shelf book');
-assert.ok(bookDetailJs.includes('goPublish()') && bookDetailJs.includes('activeDrift') && bookDetailJs.includes('cancelOpenDrift()'), 'book detail should switch publish action to drift status and allow unclaimed cancellation');
-assert.ok(bookDetailWxml.includes('待领取') && bookDetailWxml.includes('bindtap="cancelOpenDrift"'), 'book detail should show pending-claim state and cancellation');
+assert.ok(bookDetailJs.includes('goPublish()') && bookDetailJs.includes('activeDrift') && bookDetailJs.includes('cancelOpenDrift()') && bookDetailJs.includes('confirmShelfChanges'), 'book detail should switch publish action to drift status and allow unclaimed cancellation with confirm save');
+assert.ok(bookDetailWxml.includes('待领取') && bookDetailWxml.includes('bindtap="cancelOpenDrift"') && bookDetailWxml.includes('确认保存'), 'book detail should show pending-claim state, cancellation and confirm save');
 
 console.log('drift given actions contract ok');

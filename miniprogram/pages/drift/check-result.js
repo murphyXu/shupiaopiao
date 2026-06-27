@@ -1,11 +1,22 @@
 const api = require('../../utils/api');
 
 Page({
-  data: { passed: false, coinValue: 0, checks: [], reasons: [] },
+  data: {
+    passed: false,
+    coinValue: 0,
+    checks: [],
+    reasons: [],
+    continueScan: false,
+    sessionCount: 0,
+  },
 
   onLoad(options) {
     this.driftId = options.driftId;
-    this.setData({ passed: options.passed === 'true' });
+    this.setData({
+      passed: options.passed === 'true',
+      continueScan: options.continueScan === '1',
+      sessionCount: Number(options.sessionCount) || 0,
+    });
     api.getDriftCheck(options.driftId).then((res) => {
       this.setData({
         passed: res.passed,
@@ -34,11 +45,44 @@ Page({
     });
   },
 
+  continueScanPublish() {
+    wx.redirectTo({
+      url: `/pages/drift/scan-publish?sessionCount=${this.data.sessionCount}`,
+    });
+  },
+
+  goPoolFromScan() {
+    wx.switchTab({ url: '/pages/pool/index' });
+  },
+
   goNext() {
+    if (this.data.continueScan && this.data.passed) {
+      this.continueScanPublish();
+      return;
+    }
     if (this.data.passed) {
       wx.switchTab({ url: '/pages/pool/index' });
     } else {
       wx.navigateBack();
+    }
+  },
+
+  async enableSubscribeNotify() {
+    if (!this.driftId) return;
+    try {
+      const { subscribeDriftNotifications } = require('../../utils/subscribe');
+      const res = await subscribeDriftNotifications(this.driftId);
+      if ((res.recorded || 0) > 0) {
+        wx.showToast({ title: `已开启 ${res.recorded} 项微信提醒`, icon: 'none' });
+        return;
+      }
+      if ((res.accepted || 0) === 0) {
+        wx.showToast({ title: '未开启微信提醒，可在上漂后重试', icon: 'none' });
+        return;
+      }
+      wx.showToast({ title: '提醒设置未保存，请确认已上传 api 云函数', icon: 'none' });
+    } catch (err) {
+      wx.showToast({ title: '提醒设置未保存', icon: 'none' });
     }
   },
 });

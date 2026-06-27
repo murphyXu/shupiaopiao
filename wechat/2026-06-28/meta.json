@@ -1,0 +1,17 @@
+{
+  "date": "2026-06-28",
+  "theme": "接漂开箱",
+  "platform": "wechat",
+  "real_shots": [
+    {
+      "file": "04-ship.png",
+      "raw": "04-ship-raw.png",
+      "page": "pages/drift/given",
+      "steps": [
+        "我的漂流(赠出) 待发货/已发货",
+        "可打码物流单号"
+      ],
+      "composite": null
+    }
+  ]
+}

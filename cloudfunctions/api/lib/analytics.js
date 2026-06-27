@@ -31,6 +31,9 @@ const ACTION_EVENT_MAP = {
   'books.isbn': 'book_lookup',
   'books.search': 'book_search',
   'pool.want': 'drift_want',
+  'pricing.estimate': 'pricing_estimate',
+  'shelf.redeemCapacity': 'capacity_redeem',
+  'drift.addReceivedBook': 'received_book_add',
 };
 
 function hashUid(openid) {

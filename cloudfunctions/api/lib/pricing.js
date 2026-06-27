@@ -39,15 +39,19 @@ function estimateFromCache(cached, condition, category) {
   };
 }
 
-function runAutoCheck(drift, book, user, recentCount, duplicateCount) {
+function runAutoCheck(drift, book, user, recentCount, duplicateCount, publishDailyLimit = 100) {
   const reasons = [];
+  const dailyLimit = Math.max(Math.floor(Number(publishDailyLimit) || 0), 1);
 
   // 实拍图上传模块已下线，不再校验封面实拍图。
   if ((user.creditScore || 100) < 60) {
     reasons.push({ code: 'LOW_CREDIT', message: '信用积分过低，暂不可上漂' });
   }
-  if (recentCount > 10) {
-    reasons.push({ code: 'RATE_LIMIT', message: '上书频率过高，请稍后再试' });
+  if (recentCount > dailyLimit) {
+    reasons.push({
+      code: 'RATE_LIMIT',
+      message: `上漂频率过高，24 小时内最多可上漂 ${dailyLimit} 本，请稍后再试`,
+    });
   }
   if (duplicateCount > 0) {
     reasons.push({ code: 'DUPLICATE', message: '该书已在漂流中，不可重复上漂' });

@@ -32,6 +32,13 @@ function coverById(coverId) {
   return coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : '';
 }
 
+function coverFromOpenLibraryRaw(raw = {}) {
+  const sized = raw.cover && (raw.cover.medium || raw.cover.large || raw.cover.small);
+  if (sized) return sized;
+  const coverId = Array.isArray(raw.covers) && raw.covers[0];
+  return coverId ? coverById(coverId) : '';
+}
+
 function normalizeOpenLibraryBook(bibKey, raw) {
   const isbn = normalizeIsbn(String(bibKey || '').replace(/^ISBN:/, ''));
   if (!isbn || !raw || !raw.title) return null;
@@ -45,7 +52,7 @@ function normalizeOpenLibraryBook(bibKey, raw) {
     summary: raw.notes || '',
     category: firstName(raw.subjects) || '童书',
     ageRange: '',
-    coverRemote: (raw.cover && (raw.cover.medium || raw.cover.large || raw.cover.small)) || '',
+    coverRemote: coverFromOpenLibraryRaw(raw),
     coverSource: 'open_library',
     source: 'open_library',
     sourceId: bibKey || '',

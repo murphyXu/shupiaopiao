@@ -33,6 +33,7 @@
       <view class="address-phone">{{detail.order.addressSnapshot.phone}}</view>
       <view class="address-detail">{{regionText}} {{detail.order.addressSnapshot.detail}}</view>
       <view class="privacy-note">地址仅用于本次到付寄件，请勿外传</view>
+      <view wx:if="{{addressCopied}}" class="copied-note">收件信息已复制，可在快递 App 中粘贴</view>
       <view class="action-row">
         <button class="btn-ghost action-btn" bindtap="copyShippingInfo">复制收件信息</button>
         <button class="btn-primary action-btn" bindtap="openExpressSheet">去寄快递 ›</button>

@@ -12,7 +12,7 @@
   gap: 24rpx;
 }
 
-.user-row .avatar-circle {
+.user-row .avatar-placeholder {
   width: 104rpx;
   height: 104rpx;
 }
@@ -46,17 +46,12 @@
 
 .edit-profile {
   flex-shrink: 0;
-  color: #0C7A4B;
-  background: #EAFBF2;
-  border-radius: 18rpx;
-  padding: 6rpx 14rpx;
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.sub {
+  color: #52605a;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
   font-size: 24rpx;
-  margin-top: 6rpx;
+  font-weight: 600;
 }
 
 .mine-stat-row {
@@ -68,14 +63,14 @@
 
 .mine-stat-card {
   min-width: 0;
-  border: 0;
+  border: 1rpx solid #e7eee9;
   border-radius: 30rpx;
   padding: 36rpx 20rpx;
-  background: #EAFBF2;
+  background: #ffffff;
   color: #0C7A4B;
   text-align: center;
   line-height: 1.35;
-  box-shadow: 0 10rpx 28rpx rgba(21, 158, 99, 0.08);
+  box-shadow: 0 16rpx 48rpx rgba(21, 158, 99, 0.06);
   box-sizing: border-box;
 }
 
@@ -104,8 +99,20 @@
 
 .stat-tip {
   margin-top: 6rpx;
-  color: #7b8a82;
-  font-size: 19rpx;
+  color: #8a988f;
+  font-size: 22rpx;
+}
+
+.menu-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-trail {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
 }
 
 .menu-sub {
@@ -113,6 +120,25 @@
   color: #7b8a82;
   font-size: 22rpx;
   line-height: 1.45;
+}
+
+.todo-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8rpx;
+  max-width: 360rpx;
+}
+
+.todo-badge {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: #e8f7ef;
+  color: #0C7A4B;
+  font-size: 22rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .invite-block {
@@ -155,6 +181,14 @@
   color: #7b8a82;
   font-size: 23rpx;
   line-height: 1.6;
+}
+
+.invite-reward {
+  margin-top: 12rpx;
+  color: #4f6b5d;
+  font-size: 21rpx;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .guest-login-tag {

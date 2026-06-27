@@ -36,24 +36,30 @@ function read(file) {
 
 // ---- 1. 集合定义包含 events / daily_metrics ----
 const collections = read('cloudfunctions/api/lib/collections.js');
+const initDbCollections = read('cloudfunctions/init-db/collections.js');
 assert.ok(collections.includes("'events'"), 'collections should include events');
 assert.ok(collections.includes("'daily_metrics'"), 'collections should include daily_metrics');
+assert.ok(initDbCollections.includes("'events'"), 'init-db collections should include events');
+assert.ok(initDbCollections.includes("'daily_metrics'"), 'init-db collections should include daily_metrics');
 
 // ---- 2. 路由注册 analytics / admin ----
 const indexJs = read('cloudfunctions/api/index.js');
 assert.ok(indexJs.includes("'analytics.track'"), 'route analytics.track registered');
 assert.ok(indexJs.includes("'admin.overview'"), 'route admin.overview registered');
 assert.ok(indexJs.includes("'admin.conclusion'"), 'route admin.conclusion registered');
+assert.ok(indexJs.includes("'admin.events'"), 'route admin.events registered');
+assert.ok(indexJs.includes("'admin.ledger'"), 'route admin.ledger registered');
 assert.ok(indexJs.includes('logApiCall'), 'router should wire埋点中间件');
-assert.ok(indexJs.includes("TriggerName === 'dailyMetrics'"), 'daily metrics timer branch present');
+assert.ok(indexJs.includes("TriggerName === 'scheduledTasks'"), 'scheduledTasks timer branch present');
 // 中间件必须在 finally 且容错，不可影响主流程
 assert.ok(indexJs.includes('finally') && indexJs.includes('.catch(() => {})'), '埋点必须容错不阻断主流程');
 assert.ok(indexJs.includes("action !== 'analytics.track'"), '避免对埋点上报自身重复埋点');
 
 // ---- 3. 定时器配置 ----
 const config = JSON.parse(read('cloudfunctions/api/config.json'));
-const hasDaily = (config.triggers || []).some((t) => t.name === 'dailyMetrics' && t.type === 'timer');
-assert.ok(hasDaily, 'config.json should declare dailyMetrics timer');
+const hasScheduled = (config.triggers || []).some((t) => t.name === 'scheduledTasks' && t.type === 'timer');
+assert.ok(hasScheduled, 'config.json should declare single scheduledTasks timer');
+assert.strictEqual((config.triggers || []).length, 1, 'WeChat allows only one timer trigger per cloud function');
 
 // ---- 4. analytics 纯函数逻辑 ----
 const analytics = require('../cloudfunctions/api/lib/analytics');
@@ -72,7 +78,12 @@ assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(analytics.dayOf(new Date('2026-06-22T03:00:
 assert.strictEqual(analytics.eventTypeForAction('drift.publish'), 'drift_publish');
 assert.strictEqual(analytics.eventTypeForAction('shelf.add'), 'shelf_add');
 assert.strictEqual(analytics.eventTypeForAction('unknown.x'), 'api_call');
+assert.strictEqual(analytics.eventTypeForAction('pricing.estimate'), 'pricing_estimate');
+assert.strictEqual(analytics.eventTypeForAction('shelf.redeemCapacity'), 'capacity_redeem');
 
+const metricsAggregator = require('../cloudfunctions/api/lib/metricsAggregator');
+assert.ok(typeof metricsAggregator.purgeOldEvents === 'function', 'purgeOldEvents exported');
+assert.ok(metricsAggregator.aggregateOneDay.toString().includes('avgShipHours'), 'aggregate includes avgShipHours');
 // ---- 5. admin 鉴权逻辑（隔离 isAdmin 不依赖 db）----
 process.env.ADMIN_OPENIDS = 'oABC123, oDEF456';
 const admin = require('../cloudfunctions/api/handlers/admin');
@@ -90,12 +101,44 @@ assert.ok(track.includes('showError: false'), 'track must not disturb user on fa
   assert.ok(js.includes("require('../../utils/track')"), `${p} page imports track`);
   assert.ok(js.includes('trackPageView'), `${p} page emits page_view`);
 });
+[
+  'miniprogram/pages/drift/publish.js',
+  'miniprogram/pages/drift/claim.js',
+  'miniprogram/pages/drift/ship.js',
+  'miniprogram/pages/pool/detail.js',
+  'miniprogram/pages/shelf/scan.js',
+  'miniprogram/pages/auth/login.js',
+].forEach((file) => {
+  const js = read(file);
+  assert.ok(js.includes('trackPageView') || js.includes("require('../../utils/track')"), `${file} should import track`);
+});
 const appJs = read('miniprogram/app.js');
 assert.ok(appJs.includes("track.track('launch'") && appJs.includes('onHide'), 'app埋 launch 并在 onHide flush');
 assert.ok(read('miniprogram/pages/mine/index.js').includes("track('invite_share'"), 'mine share emits invite_share');
+assert.ok(read('miniprogram/pages/mine/index.wxml').includes('数据看板'), 'mine admin menu includes dashboard link');
+assert.ok(read('miniprogram/pages/mine/index.js').includes("url: '/pages/admin/dashboard'"), 'mine goDashboard routes to admin dashboard');
 
 // ---- 7. admin 看板页已注册 ----
 const appJson = JSON.parse(read('miniprogram/app.json'));
 assert.ok(appJson.pages.includes('pages/admin/dashboard'), 'admin dashboard page registered');
+assert.ok(appJson.pages.includes('pages/admin/logs'), 'admin logs page registered');
+
+const adminJs = read('cloudfunctions/api/handlers/admin.js');
+assert.ok(adminJs.includes('async function events'), 'admin.events handler present');
+assert.ok(adminJs.includes('async function ledger'), 'admin.ledger handler present');
+assert.ok(adminJs.includes('fetchCumulativeStats'), 'cumulative stats helper present');
+assert.ok(adminJs.includes('driftPublished'), 'cumulative includes driftPublished');
+assert.ok(adminJs.includes('coinConsumeBreakdown'), 'cumulative includes consume breakdown');
+assert.ok(adminJs.includes('lifetimeCoinConsumeByType'), 'consume breakdown aggregator present');
+assert.ok(adminJs.includes('接漂扣款（旧流水）'), 'consume label for legacy claim type');
+assert.ok(adminJs.includes('buildConsumeHint'), 'consume hint helper present');
+assert.ok(adminJs.includes('avgShipHours'), 'conclusion references avgShipHours');
+assert.ok(adminJs.includes('纠纷率'), 'conclusion includes dispute rate rule');
+
+const dashboardWxml = read('miniprogram/pages/admin/dashboard.wxml');
+assert.ok(dashboardWxml.includes('累计概览'), 'dashboard shows cumulative section');
+assert.ok(dashboardWxml.includes('消耗构成'), 'dashboard shows consume breakdown');
+const logsPage = read('miniprogram/pages/admin/logs.js');
+assert.ok(logsPage.includes('admin.events') && logsPage.includes('admin.ledger'), 'logs page calls admin APIs');
 
 console.log('analytics & admin contract ok');

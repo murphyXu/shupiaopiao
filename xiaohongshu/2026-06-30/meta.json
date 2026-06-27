@@ -1,0 +1,17 @@
+{
+  "date": "2026-06-30",
+  "theme": "积分科普",
+  "platform": "xhs",
+  "real_shots": [
+    {
+      "file": "05-wallet.png",
+      "raw": "05-wallet-raw.png",
+      "page": "pages/mine/wallet",
+      "steps": [
+        "公益积分明细页",
+        "余额可打码"
+      ],
+      "composite": null
+    }
+  ]
+}

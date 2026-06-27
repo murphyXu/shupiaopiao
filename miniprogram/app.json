@@ -12,8 +12,11 @@
     "pages/shelf/dashboard",
     "pages/shelf/redeem-capacity",
     "pages/book/detail",
+    "pages/book/edit-meta",
     "pages/book/catalog",
     "pages/drift/publish",
+    "pages/drift/scan-publish",
+    "pages/drift/batch-result",
     "pages/drift/check-result",
     "pages/drift/guide",
     "pages/pool/detail",
@@ -32,7 +35,8 @@
     "pages/mine/logistics",
     "pages/mine/disputes",
     "pages/mine/settings",
-    "pages/admin/dashboard"
+    "pages/admin/dashboard",
+    "pages/admin/logs"
   ],
   "window": {
     "navigationBarBackgroundColor": "#ffffff",

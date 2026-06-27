@@ -1,6 +1,6 @@
 const { getJson } = require('./http');
 const { normalizeIsbn } = require('../bookCatalog');
-const { normalizeBookCategory } = require('../bookCategory');
+const { normalizeBookCategory, extractSourceClc, isClcCode } = require('../bookCategory');
 
 const TANSHU_ENDPOINT = 'https://api2.tanshuapi.com/api/isbn/v2/index';
 const TIMEOUT_MS = 2500;
@@ -15,6 +15,13 @@ function normalizeTanshuBook(raw, fallbackIsbn) {
   const isbn = normalizeIsbn(data.isbn || fallbackIsbn);
   if (!isbn || !data.title) return null;
   const rawCategory = data.class || data.category || data.bookCategory || data.classify || data.classification || data.clcName || data.clc || data.catalog || data.type || '图书';
+  const sourceClc = isClcCode(rawCategory) ? String(rawCategory).trim() : '';
+  const bookMeta = {
+    title: data.title,
+    summary: data.summary,
+    publisher: data.publisher || '',
+    sourceClc,
+  };
   return {
     isbn,
     isbn10: data.isbn10 || (isbn.length === 10 ? isbn : ''),
@@ -24,10 +31,8 @@ function normalizeTanshuBook(raw, fallbackIsbn) {
     pubDate: data.pubdate || '',
     listPrice: String(data.price || data.listPrice || data.fixedPrice || '').trim(),
     summary: data.summary || '',
-    category: normalizeBookCategory(rawCategory, {
-      title: data.title,
-      summary: data.summary,
-    }),
+    sourceClc,
+    category: normalizeBookCategory(rawCategory, bookMeta),
     ageRange: '',
     coverRemote: httpsImage(data.img),
     coverSource: 'tanshu',

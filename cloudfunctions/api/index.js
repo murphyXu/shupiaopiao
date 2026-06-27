@@ -28,6 +28,7 @@ const ROUTES = {
   'books.detail': (data) => books.detail(data),
   'books.updateCover': (data) => books.updateCover(data),
   'books.cacheRemoteCover': (data) => books.cacheRemoteCover(data),
+  'books.updateMetadata': (data, openid) => books.updateMetadata(openid, data),
 
   'shelf.list': (data, openid) => shelf.list(openid, data),
   'shelf.add': (data, openid) => shelf.add(openid, data),
@@ -47,18 +48,23 @@ const ROUTES = {
   'drift.appeal': (data, openid) => drift.appeal(openid, data),
   'drift.claim': (data, openid) => drift.claim(openid, data),
   'drift.orders': (data, openid) => drift.orders(openid, data),
+  'drift.summary': (_, openid) => drift.summary(openid),
   'drift.orderDetail': (data, openid) => drift.orderDetail(openid, data),
   'drift.bundleDetail': (data, openid) => drift.bundleDetail(openid, data),
   'drift.detail': (data, openid) => drift.orderDetail(openid, data),
   'drift.ship': (data, openid) => drift.ship(openid, data),
   'drift.cancel': (data, openid) => drift.cancel(openid, data),
   'drift.cancelOpen': (data, openid) => drift.cancelOpen(openid, data),
+  'drift.updateOpen': (data, openid) => drift.updateOpen(openid, data),
   'drift.confirm': (data, openid) => drift.confirm(openid, data),
   'drift.addReceivedBook': (data, openid) => drift.addReceivedBook(openid, data),
   'drift.dispute': (data, openid) => drift.dispute(openid, data),
   'drift.disputes': (data, openid) => drift.listDisputes(openid, data),
   'drift.resolveDispute': (data, openid) => drift.resolveDispute(openid, data),
   'drift.review': (data, openid) => drift.review(openid, data),
+  'drift.reportSubscribe': (data, openid) => drift.reportSubscribe(openid, data),
+  'drift.subscribeDebug': (data, openid) => drift.debugSubscribe(openid, data),
+  'drift.resendSubscribe': (data, openid) => drift.resendSubscribe(openid, data),
 
   'pool.list': (data, openid) => pool.list(data, openid),
   'pool.stats': (_, openid) => pool.stats(openid),
@@ -86,8 +92,16 @@ const ROUTES = {
   'admin.conclusion': (data, openid) => admin.conclusion(openid, data),
   'admin.export': (data, openid) => admin.exportMetrics(openid, data),
   'admin.rebuild': (data, openid) => admin.rebuild(openid, data),
+  'admin.events': (data, openid) => admin.events(openid, data),
+  'admin.ledger': (data, openid) => admin.ledger(openid, data),
 
-  'health': () => ok({ service: 'shupiaopiao-cloud', version: '1.0.0', bundleP1: true }),
+  'health': () => ok({
+    service: 'shupiaopiao-cloud',
+    version: '1.0.0',
+    bundleP1: true,
+    subscribeP1: true,
+    actions: ['drift.reportSubscribe', 'drift.subscribeDebug', 'drift.resendSubscribe'],
+  }),
   'system.initDb': async () => {
     const { ensureCollections } = require('./lib/collections');
     const db = cloud.database();
@@ -98,6 +112,19 @@ const ROUTES = {
 };
 
 exports.main = async (event) => {
+  // 微信每个云函数 config.json 仅支持 1 个定时触发器；合并为 scheduledTasks（每小时 :30 执行）
+  if (event.Type === 'Timer' && event.TriggerName === 'scheduledTasks') {
+    const maintenance = await drift.maintainDriftOrders();
+    const offsetMs = 8 * 60 * 60 * 1000;
+    const hour = new Date(Date.now() + offsetMs).getUTCHours();
+    if (hour === 0) {
+      const { aggregateDaily } = require('./lib/metricsAggregator');
+      const metrics = await aggregateDaily();
+      return { maintenance, metrics };
+    }
+    return maintenance;
+  }
+  // 兼容旧触发器名称（若控制台曾手动创建过）
   if (event.Type === 'Timer' && event.TriggerName === 'driftMaintenance') {
     return drift.maintainDriftOrders();
   }
@@ -133,6 +160,7 @@ exports.main = async (event) => {
     if (err.message === 'DISPUTE_RESTRICTED') return (result = fail(403, '申诉功能暂时受限，请先完成当前漂流记录'));
     if (err.message === 'ACCOUNTING_VERSION_UNSUPPORTED') return (result = fail(409, '旧记录账务待迁移，请联系管理员'));
     if (err.errCode === -501007 || err.errCode === 501007) return (result = fail(400, '数据库参数错误，请稍后重试'));
+    if (err.errCode === -604101 || err.errCode === 604101) return (result = fail(500, '内容安全服务未就绪，请稍后重试'));
     if (err.code === 'CONTENT_RISK' || err.code === 'CONTENT_CHECK_FAILED') return (result = fail(400, err.message));
     return (result = fail(500, err.message || '服务器错误'));
   } finally {

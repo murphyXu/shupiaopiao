@@ -7,7 +7,7 @@ const _ = db.command;
 
 const { uid, nowIso } = require('./utils');
 const { cleanBookTitle, versionLabel } = require('./bookLookupPolicy');
-const { normalizeBookCategory } = require('./bookCategory');
+const { normalizeBookCategory, resolveShelfCategory, resolveShelfBookClass } = require('./bookCategory');
 const { isCollectionMissing } = require('./collections');
 const { applyPendingPenalty } = require('./driftPolicy');
 
@@ -15,7 +15,6 @@ const DEFAULT_SHELF_LIMIT = 100;
 const SIGNUP_BONUS = 0;
 const INVITE_REWARD = 2;
 const INVITE_LIFETIME_CAP = 10;
-const INVITE_DAILY_CAP = 10;
 
 async function safeQuery(collectionName, builder) {
   try {
@@ -60,14 +59,7 @@ async function rewardInviter(inviterId, invitedUserId) {
   const totalReward = rewards.reduce((sum, row) => sum + Math.max(Number(row.amount) || 0, 0), 0);
   if (totalReward >= INVITE_LIFETIME_CAP) return false;
 
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
-  const todayReward = rewards
-    .filter((row) => new Date(row.createdAt) >= dayStart)
-    .reduce((sum, row) => sum + Math.max(Number(row.amount) || 0, 0), 0);
-  if (todayReward >= INVITE_DAILY_CAP) return false;
-
-  const amount = Math.min(INVITE_REWARD, INVITE_LIFETIME_CAP - totalReward, INVITE_DAILY_CAP - todayReward);
+  const amount = Math.min(INVITE_REWARD, INVITE_LIFETIME_CAP - totalReward);
   if (amount <= 0) return false;
 
   const { credited: creditedAmount, offset } = applyPendingPenalty(amount, inviter.coinPenaltyPending);
@@ -204,6 +196,7 @@ async function getUsersByIds(ids) {
 
 function formatBook(b) {
   const title = cleanBookTitle(b.title) || b.title;
+  const resolved = resolveShelfCategory(b);
   return {
     id: b._id,
     isbn: b.isbn,
@@ -219,7 +212,9 @@ function formatBook(b) {
     coverRemote: b.coverRemote || '',
     coverSource: b.coverSource || '',
     summary: b.summary,
-    category: normalizeBookCategory(b.category, b),
+    sourceClc: b.sourceClc || '',
+    category: resolved.label,
+    bookClass: resolved.key,
     ageRange: b.ageRange,
     source: b.source || 'cache',
     sourceId: b.sourceId || '',

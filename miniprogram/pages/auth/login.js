@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const safeAreaBehavior = require('../../behaviors/safe-area');
+const { trackPageView } = require('../../utils/track');
 
 Page({
   behaviors: [safeAreaBehavior],
@@ -8,6 +9,7 @@ Page({
   onLoad() {
     const pages = getCurrentPages();
     this.setData({ canGoBack: pages.length > 1 });
+    trackPageView('auth/login');
   },
 
   skipLogin() {

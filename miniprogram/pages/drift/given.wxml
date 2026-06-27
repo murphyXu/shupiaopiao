@@ -1,7 +1,20 @@
 <view class="page">
+  <scroll-view scroll-x class="status-scroll" enable-flex>
+    <view class="status-tabs">
+      <view
+        wx:for="{{statusTabs}}"
+        wx:key="key"
+        class="status-tab {{activeTab === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="switchStatusTab"
+      >{{item.label}}<text wx:if="{{item.count}}" class="tab-count">{{item.count}}</text></view>
+    </view>
+  </scroll-view>
+
   <view wx:if="{{pendingShipCount}}" class="reminder-card">
     <view class="reminder-title">有 {{pendingShipCount}} 本书已被领取</view>
     <view class="reminder-sub">请确认漂流出去并及时寄出，填写运单号后领取方可查看进展。</view>
+    <view class="subscribe-link" bindtap="enableSubscribeNotify">开启微信提醒 ›</view>
   </view>
 
   <view wx:for="{{displayItems}}" wx:key="displayId" class="card order-card">

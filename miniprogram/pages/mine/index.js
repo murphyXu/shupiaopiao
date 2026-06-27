@@ -1,8 +1,10 @@
 const { isLoggedIn, requireLogin } = require('../../utils/util');
 const safeAreaBehavior = require('../../behaviors/safe-area');
-const { setTabBarIndex } = require('../../utils/tab-bar');
+const { setTabBarIndex, refreshTabBarPendingShip } = require('../../utils/tab-bar');
 const api = require('../../utils/api');
 const { trackPageView, track } = require('../../utils/track');
+const { mineInviteShare } = require('../../utils/share');
+const { inviteRewardSummary } = require('../../utils/pointRules');
 
 function normalizeMineUser(user = {}) {
   const balance = Number(user.coinBalance) || 0;
@@ -16,11 +18,20 @@ function normalizeMineUser(user = {}) {
   };
 }
 
+function buildTodoBadges(pairs) {
+  return (pairs || [])
+    .filter((pair) => Number(pair[1]) > 0)
+    .map((pair) => ({ label: pair[0], count: pair[1] }));
+}
+
 Page({
   behaviors: [safeAreaBehavior],
   data: {
     loggedIn: false,
     user: {},
+    givenBadges: [],
+    receivedBadges: [],
+    inviteRewardRule: inviteRewardSummary(),
     driftSummary: {
       pendingShip: 0,
       expiringSoon: 0,
@@ -36,6 +47,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 2);
+    refreshTabBarPendingShip();
     trackPageView('mine/index');
     const loggedIn = isLoggedIn();
     if (!loggedIn) {
@@ -53,48 +65,27 @@ Page({
   },
 
   async loadDriftSummary() {
-    const now = Date.now();
     try {
-      const [givenPending, givenShipped, givenDisputed, givenDone, receivedPending, receivedShipped, receivedDisputed, receivedDone] = await Promise.all([
-        api.getOrders('given', 'PENDING_SHIP').catch(() => ({ list: [] })),
-        api.getOrders('given', 'SHIPPED').catch(() => ({ list: [] })),
-        api.getOrders('given', 'DISPUTED').catch(() => ({ list: [] })),
-        api.getOrders('given', 'DONE').catch(() => ({ list: [] })),
-        api.getOrders('received', 'PENDING_SHIP').catch(() => ({ list: [] })),
-        api.getOrders('received', 'SHIPPED').catch(() => ({ list: [] })),
-        api.getOrders('received', 'DISPUTED').catch(() => ({ list: [] })),
-        api.getOrders('received', 'DONE').catch(() => ({ list: [] })),
-      ]);
-      const listByStatus = (rows) => Array.isArray(rows) ? rows : (rows.list || []);
-      const givenPendingRows = listByStatus(givenPending);
-      const receivedShippedRows = listByStatus(receivedShipped);
-      const givenDisputedRows = listByStatus(givenDisputed);
-      const receivedDisputedRows = listByStatus(receivedDisputed);
-      const givenDoneRows = listByStatus(givenDone);
-      const receivedDoneRows = listByStatus(receivedDone);
-      const pendingShipRows = givenPendingRows;
-      const toConfirmRows = receivedShippedRows;
-      const disputingRows = givenDisputedRows.concat(receivedDisputedRows);
-      const doneRows = givenDoneRows.concat(receivedDoneRows);
-      const soonRows = pendingShipRows.filter((row) => {
-        const dead = Date.parse(row.shipDeadlineAt || '');
-        return Number.isFinite(dead) && dead > now && dead - now <= 24 * 3600 * 1000;
-      });
+      const summary = await api.getDriftSummary();
       this.setData({
-        driftSummary: {
-          pendingShip: givenPendingRows.length,
-          expiringSoon: soonRows.length,
-          toConfirm: receivedShippedRows.length,
-          disputing: disputingRows.length,
-          toReview: doneRows.length,
-          disputingGiven: givenDisputedRows.length,
-          disputingReceived: receivedDisputedRows.length,
-          toReviewGiven: givenDoneRows.length,
-          toReviewReceived: receivedDoneRows.length,
-        },
+        driftSummary: summary,
+        givenBadges: buildTodoBadges([
+          ['待发货', summary.pendingShip],
+          ['即将到期', summary.expiringSoon],
+          ['申诉', summary.disputingGiven],
+          ['待评价', summary.toReviewGiven],
+        ]),
+        receivedBadges: buildTodoBadges([
+          ['待确认', summary.toConfirm],
+          ['申诉', summary.disputingReceived],
+          ['待评价', summary.toReviewReceived],
+        ]),
       });
+      refreshTabBarPendingShip();
     } catch (err) {
       this.setData({
+        givenBadges: [],
+        receivedBadges: [],
         driftSummary: {
           pendingShip: 0,
           expiringSoon: 0,
@@ -124,14 +115,12 @@ Page({
   goReceived() { this.guard(() => wx.navigateTo({ url: '/pages/drift/received' })); },
   goCredit() { this.guard(() => wx.navigateTo({ url: '/pages/mine/credit' })); },
   goDisputes() { this.guard(() => wx.navigateTo({ url: '/pages/mine/disputes' })); },
+  goDashboard() { this.guard(() => wx.navigateTo({ url: '/pages/admin/dashboard' })); },
   goSettings() { wx.navigateTo({ url: '/pages/mine/settings' }); },
 
   onShareAppMessage() {
     const user = wx.getStorageSync('userInfo') || {};
     track('invite_share', { from: 'mine' });
-    return {
-      title: '来书漂漂一起让书流动起来',
-      path: `/pages/shelf/index?inviterId=${user.id || ''}`,
-    };
+    return mineInviteShare(user.id);
   },
 });

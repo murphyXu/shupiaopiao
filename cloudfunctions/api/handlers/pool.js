@@ -2,12 +2,15 @@ const { ok, fail } = require('../lib/utils');
 const {
   db, _, requireUser, getBookById, getBooksByIds, getUsersByIds, formatBook, safeQuery, getUserByOpenid,
 } = require('../lib/db');
-const { refreshBooksCoverMetadata, refreshBookCoverMetadata } = require('../lib/bookLookup');
 const { CONDITION_LABELS } = require('../lib/pricing');
-const { normalizeBookCategory } = require('../lib/bookCategory');
+const { resolveShelfCategory } = require('../lib/bookCategory');
 const { availableCoin, isLightweightBook } = require('../lib/driftPolicy');
 const { formatDisplayBook } = require('../lib/bookCover');
+const { cacheBooksForList } = require('../lib/listCoverCache');
 const { formatShipFromField } = require('../lib/shipRegion');
+const { hashUid } = require('../lib/analytics');
+const { loadUserInterestProfile } = require('../lib/poolRecommendProfile');
+const { rankPoolList, applyGiverDensityCap } = require('../lib/poolRecommend');
 
 const CATEGORY_LABELS = {
   children: '童书',
@@ -24,16 +27,8 @@ const REPORT_HIDE_THRESHOLD = 3;
 const INVALID_DRIFT_STATUSES = ['CANCELLED', 'REJECTED'];
 
 function classifyCategory(book = {}) {
-  const sourceCategory = normalizeBookCategory(book.category, book);
-  const text = [sourceCategory, book.ageRange, book.title, book.summary].filter(Boolean).join(' ');
-  if (/童书|绘本|儿童|亲子|0-3|3-6|6-9|9-12/.test(text)) return 'children';
-  if (/文学|小说|诗|散文|名著|传记/.test(text)) return 'literature';
-  if (/社科|社会|历史|心理|哲学|政治|法律|教育/.test(text)) return 'social';
-  if (/经管|商业|管理|创业|金融|理财|经济/.test(text)) return 'business';
-  if (/科普|科学|自然|技术|计算机|医学|工业/.test(text)) return 'science';
-  if (/艺术|设计|摄影|音乐|美术/.test(text)) return 'art';
-  if (/生活|旅行|美食|家居|育儿/.test(text)) return 'life';
-  return 'other';
+  const { key } = resolveShelfCategory(book);
+  return key === 'child' ? 'children' : key;
 }
 
 function wantIdFor(userId, driftId) {
@@ -103,7 +98,6 @@ async function formatWantedList(user) {
   if (!activeDrifts.length) return [];
 
   let books = await getBooksByIds(activeDrifts.map((drift) => drift.bookId));
-  books = await refreshBooksCoverMetadata(db, books, 8);
   const users = await getUsersByIds(activeDrifts.map((drift) => drift.userId));
   return activeDrifts
     .filter((drift) => books[drift.bookId])
@@ -138,7 +132,6 @@ async function formatSameGiverPoolItems(drifts = [], user = null) {
   if (!drifts.length) return [];
   const bookIds = drifts.map((drift) => drift.bookId);
   let books = await getBooksByIds(bookIds);
-  books = await refreshBooksCoverMetadata(db, books, drifts.length);
   return drifts
     .filter((drift) => books[drift.bookId])
     .map((drift) => {
@@ -177,6 +170,7 @@ function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds =
     status: drift.status,
     createdAt: drift.createdAt,
     isMine,
+    giverId: drift.userId,
     canClaim: !!currentUserId && !isMine,
     wanted,
     category,
@@ -192,8 +186,8 @@ function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds =
 }
 
 async function list(data, openid) {
-  const claimableOnly = !!data.claimableOnly;
   const user = openid ? await getUserByOpenid(openid) : null;
+  const claimableOnly = user ? data.claimableOnly !== false : !!data.claimableOnly;
   if (claimableOnly && !user) return ok({ list: [], page: 1, size: 0 });
 
   const query = { status: 'IN_POOL' };
@@ -209,7 +203,7 @@ async function list(data, openid) {
     getUsersByIds(userIds),
     getWantedDriftIds(user ? user._id : '', drifts.map((d) => d._id)),
   ]);
-  const books = await refreshBooksCoverMetadata(db, rawBooks, 8);
+  const books = await cacheBooksForList(db, rawBooks, 12);
 
   let list = drifts
     .filter((d) => books[d.bookId])
@@ -224,6 +218,15 @@ async function list(data, openid) {
       || item.book.isbn.includes(kw));
   }
   if (data.category && data.category !== 'all') list = list.filter((item) => item.category === data.category);
+
+  const keywordActive = !!keyword;
+  if (!keywordActive) {
+    const profile = user
+      ? await loadUserInterestProfile(user._id, openid)
+      : { isColdStart: true, categoryWeights: {}, authorWeights: {}, signalCount: 0 };
+    list = rankPoolList(list, profile, { uidHash: hashUid(openid) });
+    list = applyGiverDensityCap(list);
+  }
 
   return ok({ list, page: 1, size: list.length });
 }
@@ -261,8 +264,7 @@ async function detail(data, openid) {
   if (!drift) return fail(404, '漂流书不存在');
   const visibleDrifts = await filterVisibleDrifts([drift]);
   if (!visibleDrifts.length) return fail(404, '漂流书不存在');
-  let book = await getBookById(drift.bookId);
-  if (book) book = await refreshBookCoverMetadata(db, book);
+  const book = await getBookById(drift.bookId);
   const { data: giverList } = await db.collection('users').where({ _id: drift.userId }).get();
   const giver = giverList[0] || { nickname: '书友', avatar: '', creditScore: 100 };
   const user = openid ? await getUserByOpenid(openid) : null;

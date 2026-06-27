@@ -1,0 +1,17 @@
+{
+  "date": "2026-07-01",
+  "theme": "书架整理FAQ",
+  "platform": "xhs",
+  "real_shots": [
+    {
+      "file": "05-shelf.png",
+      "raw": "05-shelf-raw.png",
+      "page": "pages/shelf/index",
+      "steps": [
+        "书架列表",
+        "或真实书架照片替换本张"
+      ],
+      "composite": null
+    }
+  ]
+}

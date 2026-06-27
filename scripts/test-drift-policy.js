@@ -18,6 +18,7 @@ assert.deepStrictEqual(policyForStage('cold'), {
   publishRewardCap: 2,
   inviteReward: 2,
   inflightLimit: 5,
+  publishDailyLimit: 100,
 });
 assert.strictEqual(calculateCoinValue(15, 'new'), 5);
 assert.strictEqual(calculateCoinValue(15, 'like_new'), 3);

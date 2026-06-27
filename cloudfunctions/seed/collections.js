@@ -10,11 +10,14 @@ const COLLECTIONS = [
   'shipment_bundles',
   'drift_disputes',
   'drift_order_events',
+  'subscribe_grants',
   'coin_transactions',
   'credit_logs',
   'addresses',
   'reviews',
   'reports',
+  'events',
+  'daily_metrics',
 ];
 
 function isAlreadyExists(err) {

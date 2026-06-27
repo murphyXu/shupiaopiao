@@ -28,10 +28,15 @@ assert.ok(dbSource.includes('listPrice'), 'book formatter should expose listPric
 assert.ok(bookLookup.includes('listPrice'), 'book upsert should persist listPrice from providers');
 assert.ok(tanshu.includes('/api/isbn/v2/index'), 'tanshu provider should use professional ISBN endpoint');
 assert.ok(tanshu.includes('data.class') && tanshu.includes('listPrice'), 'tanshu provider should normalize professional class and list price');
-assert.ok(bookCategory.includes('normalizeBookCategory') && bookCategory.includes('红楼梦') && bookCategory.includes('水浒传'), 'book category should normalize CLC codes and classic novels');
-assert.ok(dbSource.includes('normalizeBookCategory') && shelfHandler.includes('normalizeBookCategory'), 'book formatter and shelf handler should expose category names instead of CLC codes');
+assert.ok(bookCategory.includes('sourceClc') && bookCategory.includes('resolveShelfBookClass'), 'book category should keep source CLC and expose shelf book class resolver');
+assert.ok(bookLookup.includes('sourceClc') && bookLookup.includes('!book.sourceClc'), 'book lookup should backfill missing source CLC from providers');
+assert.ok(tanshu.includes('sourceClc'), 'tanshu provider should persist source CLC');
+assert.ok(shelfHandler.includes('row.bookClass || resolvedBookClass'), 'shelf meta should prefer persisted shelf bookClass over auto resolver');
+assert.ok(shelfHandler.includes('bookClassManual'), 'manual bookClass edits should be marked and preserved');
+assert.ok(dbSource.includes('bookClass: resolved.key'), 'book formatter should expose resolved bookClass');
 assert.ok(bookLookup.includes('needsProviderRefresh') && bookLookup.includes('refreshByIsbn'), 'book lookup should refresh cached books missing professional metadata');
 assert.ok(authHandler.includes('shelfName') && authHandler.includes('slice(0, 12)'), 'profile update should support constrained shelfName');
+assert.ok(authHandler.includes('shelfNameFromNickname') && authHandler.includes('书架'), 'nickname update should auto-sync shelfName as nickname plus 书架');
 assert.ok(dbSourceAll.includes('shelfName'), 'user formatter should expose shelfName');
 
 console.log('shelf data contract ok');

@@ -20,6 +20,43 @@
   border-radius: 22rpx;
   background: #fbfdfb;
 }
+.book-option.selected {
+  border-color: #2FBE77;
+  background: #EAFBF2;
+}
+.picker-check {
+  flex-shrink: 0;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 1rpx solid #d6dbe2;
+  color: #fff;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 700;
+  align-self: center;
+}
+.picker-check.checked {
+  border-color: #2FBE77;
+  background: #2FBE77;
+}
+.selection-note,
+.batch-clear {
+  margin-top: 16rpx;
+}
+.batch-selected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.batch-selected-item {
+  display: flex;
+  gap: 18rpx;
+  align-items: center;
+}
 .picker-cover {
   flex-shrink: 0;
   width: 96rpx;
@@ -46,6 +83,29 @@
   margin-top: 10rpx;
   color: #6A7B72;
   font-size: 23rpx;
+}
+.picker-price-warning {
+  margin-top: 8rpx;
+  color: #ff4d4f;
+  font-size: 22rpx;
+  line-height: 1.35;
+}
+.picker-meta-hint {
+  margin-top: 8rpx;
+  color: #b8860b;
+  font-size: 22rpx;
+  line-height: 1.35;
+}
+.picker-edit-link {
+  margin-top: 8rpx;
+  color: #2FBE77;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+.inline-link {
+  color: #2FBE77;
+  font-weight: 700;
+  margin-left: 8rpx;
 }
 .empty-box {
   color: #6A7B72;

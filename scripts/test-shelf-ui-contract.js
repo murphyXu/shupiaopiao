@@ -12,6 +12,7 @@ const scanWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shel
 const manualJs = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shelf/manual-add.js'), 'utf8');
 const manualWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shelf/manual-add.wxml'), 'utf8');
 const manualWxss = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/shelf/manual-add.wxss'), 'utf8');
+const commonWxss = fs.readFileSync(path.join(__dirname, '../miniprogram/styles/common.wxss'), 'utf8');
 const shelfHandler = fs.readFileSync(path.join(__dirname, '../cloudfunctions/api/handlers/shelf.js'), 'utf8');
 
 assert.ok(shelfWxml.includes('primaryTabs'), 'shelf page should render first-level navigation');
@@ -20,20 +21,21 @@ assert.ok(shelfJs.includes("key: 'all'") && shelfJs.includes("label: '全部'"),
 assert.ok(/activeSecondary:\s*'all'/.test(shelfJs), 'shelf page should default secondary tab to all');
 assert.ok((shelfWxml + shelfJs).includes('阅读状态') && (shelfWxml + shelfJs).includes('书籍分类') && (shelfWxml + shelfJs).includes('书架位置'), 'shelf page should expose required navigation dimensions');
 assert.ok(shelfJs.includes('filterBooks'), 'shelf page should filter all shelf books on client side');
-assert.ok(shelfJs.includes('buildClassTabs') && shelfJs.includes('book.category'), 'book class tabs should be built from source book.category');
+assert.ok(shelfJs.includes('buildClassTabs') && shelfJs.includes('BOOK_CLASSES') && shelfJs.includes('shelfCategoryLabel'), 'book class tabs should use simplified book classes');
 assert.ok(shelfJs.includes('onShareAppMessage'), 'shelf page should support sharing shelf to friends');
 assert.ok(shelfJs.includes('exitShareMode') && shelfWxml.includes('回到我的书架'), 'shared shelf should provide an explicit exit to viewer own shelf');
 assert.ok(shelfJs.includes('saveShelfName') && shelfWxml.includes('shelfName'), 'shelf page should support editing shelf name');
 assert.ok(shelfJs.includes('slice(0, 12)') || shelfJs.includes('MAX_SHELF_NAME'), 'shelf name should have a length constraint');
 assert.ok(/height:\s*72rpx/.test(shelfWxss), 'add entry should be smaller than old 96rpx height');
 assert.ok(/bottom:\s*calc\(126rpx/.test(shelfWxss), 'add entry should sit lower to reduce content blocking');
-assert.ok(shelfWxml.includes('book-cover-frame') && shelfWxml.includes('mode="aspectFit"'), 'shelf list covers should adapt inside a clean frame');
+assert.ok(shelfWxml.includes('grid-book-cover-frame') && shelfWxml.includes('mode="aspectFit"'), 'shelf list covers should adapt inside a clean frame');
 assert.ok(/\.cover\s*{[^}]*background:\s*transparent/.test(detailWxss), 'book detail cover should not use light green background');
 assert.ok(detailWxml.includes('结构信息') || detailWxml.includes('基础信息'), 'book detail should render structured metadata');
 assert.ok(!detailWxml.includes('年龄/读者'), 'book detail base metadata should not show age/reader row');
 assert.ok(detailWxml.includes('item.displayCategory'), 'book detail should use canonical display category for base metadata');
-assert.ok(detailJs.includes('refreshBookMetadata') && detailJs.includes('getBookByIsbn'), 'book detail should refresh missing price/class metadata by ISBN');
-assert.ok(detailWxml.includes('item.readingStatusLabel') && detailWxml.includes('item.sourceCategory') && detailWxml.includes('item.shelfLocationName'), 'book detail should show status, source class and shelf location');
+assert.ok(detailJs.includes('needsCoverRefresh') && detailJs.includes('getBookByIsbn'), 'book detail should refresh missing cover and metadata by ISBN');
+assert.ok(detailJs.includes('selectReadingStatus') && detailJs.includes('confirmShelfChanges') && detailJs.includes('draftDirty'), 'book detail should draft shelf edits and confirm save');
+assert.ok(detailWxml.includes('确认保存') && detailWxml.includes('draft.readingStatus'), 'book detail shelf chips should bind to draft state');
 assert.ok(!detailWxml.includes('share-book-btn') && !detailWxml.includes('open-type="share"'), 'book detail should remove share-this-book entry');
 assert.ok(detailWxml.includes('bindtap="goPublish"') && detailWxml.includes('action-btn'), 'book detail action buttons should use a unified size class');
 assert.ok(/\.cover-frame/.test(detailWxss) && detailWxml.includes('mode="aspectFit"'), 'book detail cover should use an adaptive contain image inside a clean frame');
@@ -43,7 +45,7 @@ assert.ok(manualWxml.includes('作者 *') && manualJs.includes('请填写作者'
 assert.ok(manualWxml.includes('ISBN（选填）') && manualWxml.includes('出版社（选填）') && manualWxml.includes('定价（选填）'), 'manual add should mark isbn publisher and price optional');
 assert.ok(!manualWxml.includes('chooseCover') && !manualJs.includes('chooseCover') && !manualWxml.includes('添加封面'), 'manual add should not expose user cover upload for review');
 assert.ok(!manualWxml.includes('简介/备注') && !manualWxml.includes('textarea') && !manualJs.includes('onSummary'), 'manual add should not expose free-form summary or remark');
-assert.ok(/min-height:\s*88rpx/.test(manualWxss) && manualWxss.includes('.form-control'), 'manual add inputs should use adapted form controls');
+assert.ok(/min-height:\s*88rpx/.test(commonWxss) && commonWxss.includes('.form-control') && manualWxml.includes('form-control'), 'manual add inputs should use shared adapted form controls');
 assert.ok(shelfHandler.includes('validRows') && shelfHandler.includes('books[row.bookId]'), 'shelf dashboard should count only shelf books with valid catalog records');
 assert.ok(shelfHandler.includes('filterCountableShelfRows') && shelfHandler.includes('CLAIMED_SHELF_DRIFT_STATUSES') && shelfHandler.includes('claimedDriftShelfIds'), 'shelf dashboard should exclude claimed drifts from collection stats');
 assert.ok(shelfHandler.includes("status: 'COMPLETED'") && shelfHandler.includes('completedDriftShelfIds'), 'shelf dashboard should exclude drifted-away shelf rows from collection stats');

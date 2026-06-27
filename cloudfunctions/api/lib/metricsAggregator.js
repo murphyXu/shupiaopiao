@@ -162,6 +162,48 @@ async function newUsers(startIso, endIso) {
   return safeCount('users', { createdAt: _.gte(startIso).and(_.lt(endIso)) });
 }
 
+// 接漂→寄出平均耗时（小时），基于当日 shippedAt 的订单
+async function avgShipHours(startIso, endIso) {
+  try {
+    const { data } = await db.collection('drift_orders')
+      .where({ shippedAt: _.gte(startIso).and(_.lt(endIso)) })
+      .field({ claimedAt: true, shippedAt: true })
+      .limit(200)
+      .get();
+    const hours = (data || [])
+      .map((o) => {
+        if (!o.claimedAt || !o.shippedAt) return null;
+        const diff = (new Date(o.shippedAt).getTime() - new Date(o.claimedAt).getTime()) / 3600000;
+        return diff >= 0 ? diff : null;
+      })
+      .filter((h) => h !== null);
+    if (!hours.length) return 0;
+    return Number((hours.reduce((acc, h) => acc + h, 0) / hours.length).toFixed(1));
+  } catch (e) {
+    return 0;
+  }
+}
+
+/** 删除超过 retainDays 的 events 明细（按 day 字段，每批最多 100 条） */
+async function purgeOldEvents(retainDays = 90, maxBatches = 10) {
+  const cutoffDay = dayStr(new Date(Date.now() - retainDays * 86400000));
+  let deleted = 0;
+  for (let i = 0; i < maxBatches; i += 1) {
+    try {
+      const { data } = await db.collection('events').where({ day: _.lt(cutoffDay) }).limit(100).get();
+      if (!data || !data.length) break;
+      for (const doc of data) {
+        await db.collection('events').doc(doc._id).remove();
+        deleted += 1;
+      }
+      if (data.length < 100) break;
+    } catch (e) {
+      break;
+    }
+  }
+  return { deleted, cutoffDay };
+}
+
 // 留存：当日新增用户在 day+N 是否有 events
 async function retention(baseDay, n) {
   try {
@@ -199,7 +241,7 @@ async function retention(baseDay, n) {
 async function aggregateOneDay(day) {
   const { startIso, endIso } = dayRange(day);
 
-  const [dau, evtTypes, flow, stock, funnel, health, nu] = await Promise.all([
+  const [dau, evtTypes, flow, stock, funnel, health, nu, shipHours] = await Promise.all([
     countDAU(day),
     eventTypeCounts(day),
     coinFlow(startIso, endIso),
@@ -207,6 +249,7 @@ async function aggregateOneDay(day) {
     driftFunnel(day, startIso, endIso),
     apiHealth(day),
     newUsers(startIso, endIso),
+    avgShipHours(startIso, endIso),
   ]);
 
   // 留存只对足够久远的日期算（昨天的 D7 还没到，会是 0，属正常）
@@ -228,6 +271,7 @@ async function aggregateOneDay(day) {
     driftDone: funnel.done,
     driftCancelled: funnel.cancelled,
     driftDisputed: funnel.disputed,
+    avgShipHours: shipHours,
     publishToClaimRate,
     claimToDoneRate,
     // 积分经济
@@ -271,7 +315,8 @@ async function aggregateDaily(opts = {}) {
   } else {
     results.push(await aggregateOneDay(yesterday()));
   }
-  return { ok: true, days: results.map((r) => r.day), count: results.length };
+  const purge = await purgeOldEvents(90);
+  return { ok: true, days: results.map((r) => r.day), count: results.length, purge };
 }
 
-module.exports = { aggregateDaily, aggregateOneDay, dayStr, dayRange, yesterday };
+module.exports = { aggregateDaily, aggregateOneDay, dayStr, dayRange, yesterday, purgeOldEvents };

@@ -1,0 +1,16 @@
+<view class="page result-page">
+  <view class="icon ok">✓</view>
+  <view class="result-title">批量上漂已提交</view>
+  <view class="result-sub muted">成功 {{successCount}} 本{{failCount ? ('，失败 ' + failCount + ' 本') : ''}}</view>
+
+  <view class="card">
+    <view wx:for="{{results}}" wx:key="title" class="batch-result-item">
+      <view class="batch-result-title">{{item.title}}</view>
+      <view wx:if="{{item.ok}}" class="batch-result-status ok-text">{{item.passed ? '已入池' : '待处理'}}</view>
+      <view wx:else class="batch-result-status fail-text">{{item.message}}</view>
+    </view>
+  </view>
+
+  <view class="btn-primary" bindtap="goPublish">继续选书上漂</view>
+  <view class="btn-line" bindtap="goPool">查看漂流广场</view>
+</view>

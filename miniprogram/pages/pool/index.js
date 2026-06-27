@@ -3,10 +3,12 @@ const {
   CONDITIONS, POOL_CATEGORIES, isLoggedIn, requireLogin,
 } = require('../../utils/util');
 const safeAreaBehavior = require('../../behaviors/safe-area');
-const { setTabBarIndex } = require('../../utils/tab-bar');
-const { trackPageView } = require('../../utils/track');
+const { setTabBarIndex, refreshTabBarPendingShip } = require('../../utils/tab-bar');
+const { trackPageView, track } = require('../../utils/track');
 const { onCoverError } = require('../../utils/cover');
 const { publishEarnGuideModal } = require('../../utils/pointRules');
+const { showPublishEntryOptions } = require('../../utils/publishEntry');
+const { poolShare } = require('../../utils/share');
 
 const FILTER_MODES = [
   { key: 'category', label: '按品类' },
@@ -63,15 +65,17 @@ Page({
     activeValue: 'all',
     conditionTabs: CONDITION_TABS,
     activeCondition: 'all',
-    claimableOnly: false,
+    claimableOnly: true,
     showEarnGuideModal: false,
     earnGuide: publishEarnGuideModal(),
   },
 
   onShow() {
     setTabBarIndex.call(this, 0);
+    refreshTabBarPendingShip();
     trackPageView('pool/index');
-    this.setData({ loggedIn: isLoggedIn() });
+    const loggedIn = isLoggedIn();
+    this.setData({ loggedIn, claimableOnly: loggedIn });
     const poolSearch = wx.getStorageSync('poolSearch');
     if (poolSearch) {
       this.setData({ keyword: poolSearch });
@@ -191,7 +195,7 @@ Page({
       filterCategory: 'all',
       activeValue: 'all',
       activeCondition: 'all',
-      claimableOnly: false,
+      claimableOnly: true,
     }, () => {
       this.loadList().then(() => this.scrollToList());
     });
@@ -202,7 +206,16 @@ Page({
   },
 
   goDetail(e) {
-    wx.navigateTo({ url: `/pages/pool/detail?id=${e.currentTarget.dataset.id}` });
+    const { id, category, bookId, author } = e.currentTarget.dataset;
+    track('page_view', {
+      page: 'pool/index',
+      action: 'pool_card_click',
+      driftId: id,
+      category: category || '',
+      bookId: bookId || '',
+      author: author || '',
+    });
+    wx.navigateTo({ url: `/pages/pool/detail?id=${id}` });
   },
 
   goApply(e) {
@@ -216,8 +229,7 @@ Page({
   },
 
   goPublish() {
-    if (!requireLogin('登录后可发起漂流赠书')) return;
-    wx.navigateTo({ url: '/pages/drift/publish' });
+    showPublishEntryOptions();
   },
 
   showEarnPointGuide() {
@@ -257,8 +269,8 @@ Page({
   onShareAppMessage() {
     const user = wx.getStorageSync('userInfo') || {};
     return {
-      title: '来书漂漂漂流广场，挑一本好书',
-      path: `/pages/pool/index?inviterId=${user.id || ''}`,
+      ...poolShare(user.id),
+      path: user.id ? `/pages/pool/index?inviterId=${user.id}` : '/pages/pool/index',
     };
   },
 });

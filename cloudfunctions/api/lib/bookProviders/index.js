@@ -31,6 +31,39 @@ function shouldProviderSearchKeyword(provider, keyword) {
   return true;
 }
 
+function hasRemoteCover(book = {}) {
+  return !!(book.coverRemote && /^https?:\/\//.test(String(book.coverRemote)));
+}
+
+function mergeLookupBooks(base, incoming) {
+  if (!incoming) return base || null;
+  if (!base) return incoming;
+  return {
+    ...incoming,
+    ...base,
+    title: base.title || incoming.title,
+    rawTitle: base.rawTitle || incoming.rawTitle || '',
+    author: base.author || incoming.author,
+    publisher: base.publisher || incoming.publisher,
+    pubDate: base.pubDate || incoming.pubDate,
+    listPrice: base.listPrice || incoming.listPrice,
+    summary: base.summary || incoming.summary,
+    category: base.category || incoming.category,
+    sourceClc: base.sourceClc || incoming.sourceClc,
+    ageRange: base.ageRange || incoming.ageRange,
+    coverRemote: base.coverRemote || incoming.coverRemote || '',
+    coverSource: base.coverRemote ? base.coverSource : (incoming.coverSource || base.coverSource || ''),
+    source: base.source || incoming.source,
+    sourceId: base.sourceId || incoming.sourceId,
+    lookupStatus: base.lookupStatus || incoming.lookupStatus || 'found',
+  };
+}
+
+async function lookupCoverByTitle(title, isbn) {
+  if (typeof douban.lookupCoverByTitle !== 'function') return null;
+  return douban.lookupCoverByTitle(title, isbn);
+}
+
 async function tryProvider(provider, operation) {
   try {
     return await operation(provider.adapter);
@@ -41,28 +74,40 @@ async function tryProvider(provider, operation) {
 }
 
 async function lookupByIsbn(isbn) {
-  return createProviderLookup(PROVIDERS).lookupByIsbn(isbn);
+  return createProviderLookup(PROVIDERS, { coverFallback: true }).lookupByIsbn(isbn);
 }
 
 async function refreshByIsbn(isbn, timeoutMs = 1200) {
   const clean = normalizeIsbn(isbn);
   if (!isValidIsbn(clean)) return null;
-  return tryProvider({ name: 'tanshu_refresh', adapter: tanshu }, (adapter) => adapter.lookupByIsbn(clean, timeoutMs));
+  const fast = await tryProvider({ name: 'tanshu_refresh', adapter: tanshu }, (adapter) => adapter.lookupByIsbn(clean, timeoutMs));
+  if (fast && hasRemoteCover(fast)) return fast;
+  return createProviderLookup(PROVIDERS, { coverFallback: true }).lookupByIsbn(clean);
 }
 
 async function searchByKeyword(keyword, limit = 10) {
-  return createProviderLookup(PROVIDERS).searchByKeyword(keyword, limit);
+  return createProviderLookup(PROVIDERS, { coverFallback: true }).searchByKeyword(keyword, limit);
 }
 
-function createProviderLookup(providers) {
+function createProviderLookup(providers, options = {}) {
+  const coverFallback = !!options.coverFallback;
   return {
     async lookupByIsbn(isbn) {
+      const clean = normalizeIsbn(isbn);
+      if (!isValidIsbn(clean)) return null;
+      let merged = null;
       for (const provider of providers) {
         if (typeof provider.adapter.lookupByIsbn !== 'function') continue;
-        const result = await tryProvider(provider, (adapter) => adapter.lookupByIsbn(isbn));
-        if (result) return result;
+        const result = await tryProvider(provider, (adapter) => adapter.lookupByIsbn(clean));
+        if (!result) continue;
+        merged = mergeLookupBooks(merged, result);
+        if (coverFallback && merged.title && !hasRemoteCover(merged)) {
+          const byTitle = await lookupCoverByTitle(merged.title, clean);
+          if (byTitle) merged = mergeLookupBooks(merged, byTitle);
+        }
+        return merged;
       }
-      return null;
+      return merged;
     },
 
     async searchByKeyword(keyword, limit = 10) {
@@ -92,6 +137,8 @@ module.exports = {
   searchKeywordVariants,
   shouldUseExternalKeywordSearch,
   shouldProviderSearchKeyword,
+  hasRemoteCover,
+  mergeLookupBooks,
   createProviderLookup,
   lookupByIsbn,
   refreshByIsbn,

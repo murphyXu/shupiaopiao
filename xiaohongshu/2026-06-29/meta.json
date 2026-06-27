@@ -1,0 +1,35 @@
+{
+  "date": "2026-06-29",
+  "theme": "上漂教程",
+  "platform": "xhs",
+  "real_shots": [
+    {
+      "file": "02-shelf.png",
+      "raw": "02-shelf-raw.png",
+      "page": "pages/shelf/index",
+      "steps": [
+        "书架 Tab 有书列表"
+      ],
+      "composite": null
+    },
+    {
+      "file": "03-publish.png",
+      "raw": "03-publish-raw.png",
+      "page": "pages/drift/publish",
+      "steps": [
+        "发起上漂表单页",
+        "勿暴露真实地址"
+      ],
+      "composite": null
+    },
+    {
+      "file": "05-check.png",
+      "raw": "05-check-raw.png",
+      "page": "pages/drift/check-result",
+      "steps": [
+        "审核通过结果页"
+      ],
+      "composite": null
+    }
+  ]
+}

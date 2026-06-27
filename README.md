@@ -98,8 +98,57 @@ wx.cloud.callFunction({ name: 'seed', data: { syncCatalog: true } }).then(consol
 | `addresses` | 收货地址 |
 | `pricing_cache` | 核价缓存 |
 | `reviews` | 评价 |
+| `events` | 行为埋点明细（保留 90 天） |
+| `daily_metrics` | 日聚合指标快照 |
 
 > 所有数据经 `api` 云函数访问，客户端不直连数据库，无需额外配置 DB 权限规则。
+
+## 数据埋点与运营看板
+
+### 架构概览
+
+- **采集**：前端 `miniprogram/utils/track.js`（页面浏览、关键点击）+ 云函数 API 中间件（业务 action 自动埋点）
+- **明细**：`events`（行为）、`coin_transactions` / `credit_logs` / `drift_order_events`（业务流水）
+- **聚合**：`daily_metrics`（每天 00:30 定时任务 `scheduledTasks` 自动写入）
+- **看板**：小程序内 `pages/admin/dashboard`（概览、趋势、漏斗、分析结论）+ `pages/admin/logs`（明细查询）
+
+### 首次上线 Checklist
+
+1. 上传并部署 `cloudfunctions/api`（含 `config.json` 定时器）
+2. 云函数 `api` 环境变量配置管理员 openid：
+
+   ```text
+   ADMIN_OPENIDS=你的openid
+   ```
+
+3. 运行 `init-db` 或调用 `system.initDb` 创建 `events`、`daily_metrics` 集合
+4. 云数据库控制台为 `events` 创建索引：`day`+`type`、`day`+`uidHash`、`ts`（降序）
+5. 调试器手动回填近 7 天聚合：
+
+   ```javascript
+   wx.cloud.callFunction({ name: 'api', data: { action: 'admin.rebuild', data: { days: 7 } } }).then(console.log)
+   ```
+
+6. 管理员访问看板：开发者工具编译后跳转 `pages/admin/dashboard`（**不在公开导航中暴露**）
+
+### 过审说明
+
+- 看板页无 Tab/首页入口，普通用户无法触达；服务端 `ADMIN_OPENIDS` 白名单拦截，非管理员只看到「无权访问」
+- 埋点仅采集行为事件与匿名 uidHash，不上报手机号/地址等 PII；需在隐私政策中说明「用于产品优化与运营统计」
+- 审核人员无白名单 openid 时，即使知道路径也无法看到任何业务数据
+
+### 管理 API
+
+| action | 说明 |
+|--------|------|
+| `admin.overview` | 今日 + 近 7 天概览 |
+| `admin.trend` | 趋势序列（days: 7/14/30） |
+| `admin.funnel` | 漂流漏斗 |
+| `admin.conclusion` | 规则引擎分析结论 |
+| `admin.events` | 行为事件明细 |
+| `admin.ledger` | 业务流水明细（kind: coin/credit/order） |
+| `admin.rebuild` | 手动重算聚合 |
+| `admin.export` | 导出 daily_metrics JSON |
 
 ## API 云函数 action 列表
 

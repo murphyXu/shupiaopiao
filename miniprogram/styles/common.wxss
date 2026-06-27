@@ -1,11 +1,50 @@
-/* 书漂漂 · 品牌视觉设计令牌 v3 */
+/* 书漂漂 · 品牌视觉设计令牌 v4（UI/UX 优化：字阶收敛 + 中性灰阶 + 绿色预算 + 触控规范） */
 /* 主绿 #34C77B / #2FBE77 | 深绿 #159E63 | 墨绿 #0C7A4B | 薄荷 #7BE2A8 | 浅绿底 #EAFBF2 */
+
+page {
+  /* —— 品牌绿（仅用于主行动 + 公益积分） —— */
+  --green: #2FBE77;
+  --green-deep: #159E63;
+  --green-ink: #0C7A4B;
+  --mint: #EAFBF2;
+  /* —— 中性灰阶（承载多数 UI） —— */
+  --ink: #15211B;        /* 主文字 */
+  --ink-2: #52605a;      /* 次文字 */
+  --ink-3: #8a988f;      /* 辅助/占位 */
+  --surface: #ffffff;    /* 卡片面 */
+  --neutral: #f0f3f1;    /* 中性标签底 */
+  --line: #e7eee9;       /* 分隔线 */
+  /* —— 字阶（仅 5 级，下限 22rpx） —— */
+  --fs-display: 48rpx;   /* 页标题 */
+  --fs-title: 32rpx;     /* 卡片标题/书名 */
+  --fs-body: 28rpx;      /* 正文/菜单 */
+  --fs-caption: 24rpx;   /* 说明/副标题 */
+  --fs-label: 22rpx;     /* 标签下限 */
+  /* —— 圆角（3 档） —— */
+  --r-card: 32rpx;
+  --r-ctrl: 24rpx;
+  --r-tag: 16rpx;
+  /* —— 触控热区下限 —— */
+  --hit: 80rpx;
+  /* —— 统一轻阴影 —— */
+  --shadow-card: 0 16rpx 48rpx rgba(21, 158, 99, 0.06);
+}
 
 .brand { color: #2FBE77; }
 .accent { color: #0C7A4B; }
 .muted { color: #9aa8a0; }
 .text-ink { color: #15211B; }
 .text-ink2 { color: #46564e; }
+
+.share-cover-preload {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
 
 /* 页面容器（顶部安全区由各页 style 动态注入 px 值） */
 .page {
@@ -53,7 +92,7 @@
   border-radius: 36rpx;
   padding: 28rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 20rpx 80rpx rgba(21, 158, 99, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
 .chip {
@@ -186,8 +225,84 @@
 
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 28rpx;
+}
+
+/* Two-column book list card — shared by pool and shelf */
+.grid-book-card {
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1rpx solid #eef3ef;
+  border-radius: 36rpx;
+  padding: 20rpx;
+  box-shadow: 0 12rpx 40rpx rgba(21, 158, 99, 0.06);
+}
+
+.grid-book-cover-frame {
+  width: 100%;
+  min-width: 0;
+  height: 260rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-book-cover-frame .book-cover {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.grid-book-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-top: 12rpx;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #15211B;
+}
+
+.grid-book-subline {
+  font-size: 22rpx;
+  color: #8a988f;
+  margin-top: 12rpx;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid-book-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+  min-width: 0;
+}
+
+.grid-book-meta .coin {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid-book-meta .pill {
+  flex-shrink: 0;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .book-cover {
@@ -316,6 +431,21 @@
 }
 
 /* 用户头像占位 */
+.avatar-placeholder {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1rpx solid #eef3ef;
+  box-sizing: border-box;
+}
+
+.avatar-placeholder.sm {
+  width: 64rpx;
+  height: 64rpx;
+}
+
 .avatar-circle {
   width: 96rpx;
   height: 96rpx;
@@ -361,4 +491,78 @@
   color: #9aa8a0;
   margin: 32rpx 0 16rpx;
   font-weight: 500;
+}
+
+.form-label {
+  font-size: 26rpx;
+  color: #7b8a82;
+  margin-bottom: 12rpx;
+  font-weight: 600;
+}
+
+.form-field + .form-field {
+  margin-top: 24rpx;
+}
+
+.form-control {
+  width: 100%;
+  height: 88rpx;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  border: 1rpx solid #dbe7df;
+  border-radius: 20rpx;
+  background: #f8fbf9;
+  padding: 0 22rpx;
+  font-size: 28rpx;
+  line-height: 88rpx;
+  color: #15211B;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 160rpx;
+  box-sizing: border-box;
+  border: 1rpx solid #dbe7df;
+  border-radius: 20rpx;
+  background: #f8fbf9;
+  padding: 18rpx 22rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #15211B;
+}
+
+.status-scroll {
+  white-space: nowrap;
+  margin-bottom: 24rpx;
+}
+
+.status-tabs {
+  display: inline-flex;
+  gap: 14rpx;
+  min-width: 100%;
+}
+
+.status-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 30rpx;
+  background: #fff;
+  color: #46564e;
+  border: 1rpx solid #e6eee9;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.status-tab.active {
+  background: #2FBE77;
+  color: #fff;
+  border-color: #2FBE77;
+}
+
+.tab-count {
+  margin-left: 8rpx;
+  font-size: 22rpx;
+  opacity: 0.9;
 }

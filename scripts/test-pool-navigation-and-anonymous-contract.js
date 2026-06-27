@@ -20,11 +20,11 @@ const givenJs = read('miniprogram/pages/drift/given.js');
 const givenWxml = read('miniprogram/pages/drift/given.wxml');
 const givenWxss = read('miniprogram/pages/drift/given.wxss');
 const receivedWxml = read('miniprogram/pages/drift/received.wxml');
+const poolDetailWxml = read('miniprogram/pages/pool/detail.wxml');
 
-assert.ok(poolWxml.includes('bindtap="goStatTarget"') && poolJs.includes('goStatTarget'), 'pool stats should be clickable and route to related list pages');
-assert.ok(poolJs.includes('/pages/drift/given') && poolJs.includes('/pages/drift/received'), 'pool stats should navigate to given and received list pages');
-assert.ok(poolJs.includes('/pages/pool/wants'), 'want-to-claim stat should navigate to wanted books page');
-assert.ok(poolWxml.includes('hover-class="pool-stat-card-hover"') && poolWxss.includes('.pool-stat-card-hover'), 'pool stats should expose visible tap feedback');
+assert.ok(!poolWxml.includes('bindtap="goStatTarget"'), 'pool home should not expose stat-row navigation');
+assert.ok(poolJs.includes('/pages/drift/given') && poolJs.includes('/pages/drift/received'), 'pool page should still keep drift list routes available elsewhere');
+assert.ok(poolJs.includes('/pages/pool/wants'), 'pool page should still keep wanted books route available elsewhere');
 assert.ok(apiIndex.includes("'pool.list': (data, openid) => pool.list(data, openid)"), 'pool list route should pass openid for user-specific wanted state');
 assert.ok(poolHandler.includes("db.collection('drift_wants')") && poolHandler.includes('countWanted'), 'pool stats should count current-user wanted items, not the global pool count');
 assert.ok(poolHandler.includes('wantCount: 0') && !poolHandler.includes('const { total: wantCount }'), 'anonymous or unknown users should not receive a global want count');
@@ -48,6 +48,10 @@ assert.ok(publishJs.includes('isAnonymous') && publishJs.includes('toggleAnonymo
 assert.ok(publishWxml.includes('匿名漂流') && publishWxml.includes('toggleAnonymous'), 'publish page should render anonymous drift option');
 assert.ok(driftHandler.includes('isAnonymous') && driftHandler.includes('匿名书友'), 'drift publish/order formatting should persist and mask anonymous giver');
 assert.ok(poolHandler.includes('isAnonymous') && poolHandler.includes('匿名书友'), 'pool list/detail should mask anonymous giver nickname');
+assert.ok(
+  poolDetailWxml.includes('wx:elif="{{item.isAnonymous}}"') && poolDetailWxml.includes('/assets/brand/logo.png'),
+  'pool detail should use brand logo only for anonymous giver avatar placeholder',
+);
 assert.ok(receivedWxml.includes('giverNickname'), 'received records should display masked giver nickname from backend');
 
 assert.ok(givenJs.includes('pendingShipCount') && givenJs.includes('progressText'), 'given page should calculate pending shipment reminders and progress');
