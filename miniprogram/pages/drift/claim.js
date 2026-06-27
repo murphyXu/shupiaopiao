@@ -99,7 +99,7 @@ Page({
       } else {
         wx.showToast({ title: '申请已提交' });
       }
-      setTimeout(() => wx.redirectTo({ url: '/pages/drift/received' }), 1000);
+      setTimeout(() => wx.redirectTo({ url: '/pages/drift/received?milestone=claim' }), 1000);
     } catch (e) {
       console.error(e);
     }

@@ -53,7 +53,7 @@ Page({
     rawList: [],
     list: [],
     stats: {
-      givenCount: 0, receivedCount: 0, wantCount: 0, availableCoin: 0,
+      availableCoin: 0,
     },
     filterModes: FILTER_MODES,
     activeFilterMode: 'category',
@@ -118,22 +118,13 @@ Page({
 
   async loadStats() {
     if (!this.data.loggedIn) {
-      this.setData({
-        stats: {
-          givenCount: 0,
-          receivedCount: 0,
-          wantCount: 0,
-          availableCoin: 0,
-        },
-      });
+      this.setData({ stats: { availableCoin: 0 } });
       return;
     }
     try {
       const stats = await api.getPoolStats();
       this.setData({
         stats: {
-          ...this.data.stats,
-          ...stats,
           availableCoin: Number(stats.availableCoin) || 0,
         },
       });
@@ -169,40 +160,6 @@ Page({
     this.setData(data, () => {
       this.loadList();
     });
-  },
-
-  goStatTarget(e) {
-    const target = e.currentTarget.dataset.target;
-    if (target === 'given') {
-      if (!requireLogin('登录后可查看漂流赠出记录')) return;
-      wx.navigateTo({ url: '/pages/drift/given' });
-      return;
-    }
-    if (target === 'received') {
-      if (!requireLogin('登录后可查看接漂记录')) return;
-      wx.navigateTo({ url: '/pages/drift/received' });
-      return;
-    }
-    if (target === 'want') {
-      if (!requireLogin('登录后可查看想要接漂的书')) return;
-      wx.navigateTo({ url: '/pages/pool/wants' });
-      return;
-    }
-    this.setData({
-      activeFilterMode: 'category',
-      activeFilterKey: 'all',
-      secondaryTabs: secondaryTabsFor('category'),
-      filterCategory: 'all',
-      activeValue: 'all',
-      activeCondition: 'all',
-      claimableOnly: true,
-    }, () => {
-      this.loadList().then(() => this.scrollToList());
-    });
-  },
-
-  scrollToList() {
-    wx.pageScrollTo({ selector: '#pool-list', duration: 220 });
   },
 
   goDetail(e) {

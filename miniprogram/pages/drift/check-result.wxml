@@ -20,8 +20,18 @@
     <view class="btn-line" bindtap="appeal" style="margin-top:24rpx">提交申诉</view>
   </view>
 
-  <view wx:if="{{passed}}" class="btn-line subscribe-btn" bindtap="enableSubscribeNotify">接漂时微信提醒我</view>
-  <view wx:if="{{passed}}" class="subscribe-hint muted">可选；拒绝不影响漂流与发货</view>
+  <view wx:if="{{passed}}" class="card optional-notify-card">
+    <view class="optional-notify-title">可选通知</view>
+    <view class="btn-line subscribe-btn" bindtap="enableSubscribeNotify">接漂时微信提醒我</view>
+    <view class="subscribe-hint muted">可选；拒绝不影响漂流与发货</view>
+    <block wx:if="{{showOaMilestone}}">
+      <view class="optional-notify-divider"></view>
+      <view class="oa-milestone-label">关注公众号 · 玩法指南与故事</view>
+      <view class="oa-milestone-desc muted">慢慢看的内容与常见问题，与上方即时提醒不同</view>
+      <official-account-follow-block bind:follow="onOaFollow" />
+      <view class="oa-tip-dismiss" bindtap="dismissOaMilestone">下次再说</view>
+    </block>
+  </view>
 
   <view class="btn-primary" bindtap="goNext">{{continueScan && passed ? '继续扫码上漂' : (passed ? '查看漂流广场' : '返回修改')}}</view>
   <view wx:if="{{continueScan && passed}}" class="btn-line pool-link" bindtap="goPoolFromScan">查看漂流广场</view>

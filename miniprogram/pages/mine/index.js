@@ -5,6 +5,11 @@ const api = require('../../utils/api');
 const { trackPageView, track } = require('../../utils/track');
 const { mineInviteShare } = require('../../utils/share');
 const { inviteRewardSummary } = require('../../utils/pointRules');
+const {
+  isOfficialAccountConfigured,
+  openOfficialAccountProfile,
+  trackOaEvent,
+} = require('../../utils/officialAccountPrompt');
 
 function normalizeMineUser(user = {}) {
   const balance = Number(user.coinBalance) || 0;
@@ -32,6 +37,7 @@ Page({
     givenBadges: [],
     receivedBadges: [],
     inviteRewardRule: inviteRewardSummary(),
+    showOaMineCard: false,
     driftSummary: {
       pendingShip: 0,
       expiringSoon: 0,
@@ -49,6 +55,7 @@ Page({
     setTabBarIndex.call(this, 2);
     refreshTabBarPendingShip();
     trackPageView('mine/index');
+    this.refreshOaMineCard();
     const loggedIn = isLoggedIn();
     if (!loggedIn) {
       this.setData({ loggedIn: false, user: {} });
@@ -99,6 +106,19 @@ Page({
         },
       });
     }
+  },
+
+  refreshOaMineCard() {
+    const showOaMineCard = isOfficialAccountConfigured();
+    if (showOaMineCard && !this.data.showOaMineCard) {
+      trackOaEvent('oa_mine_card_show', 'mine');
+    }
+    this.setData({ showOaMineCard });
+  },
+
+  openOaProfile() {
+    trackOaEvent('oa_follow_click', 'mine');
+    openOfficialAccountProfile();
   },
 
   goLogin() {

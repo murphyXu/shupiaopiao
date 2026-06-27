@@ -1,14 +1,39 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
 const { shippingInfoText, hasShippingInfo } = require('../../utils/shipping');
+const { tryShowMilestonePrompt } = require('../../utils/officialAccountPrompt');
 
 Page({
-  data: { detail: null, statusMap: ORDER_STATUS },
+  data: {
+    detail: null,
+    statusMap: ORDER_STATUS,
+    showOaMilestone: false,
+  },
+
   onLoad(options) {
     this.orderId = options.orderId;
     this.role = options.role || '';
+    this.milestoneQuery = options.milestone || '';
+    this.setupOaMilestone();
   },
+
+  setupOaMilestone() {
+    const showOaMilestone = tryShowMilestonePrompt('ship', {
+      milestoneQuery: this.milestoneQuery,
+    });
+    this.setData({ showOaMilestone });
+  },
+
+  dismissOaMilestone() {
+    this.setData({ showOaMilestone: false });
+  },
+
+  onOaFollow() {
+    this.setData({ showOaMilestone: false });
+  },
+
   onShow() { this.load(); },
+
   async load() {
     if (!this.orderId) {
       wx.showToast({ title: '漂流记录不存在', icon: 'none' });
@@ -22,6 +47,7 @@ Page({
       setTimeout(() => wx.navigateBack(), 800);
     }
   },
+
   copyShippingInfo() {
     const detail = this.data.detail || {};
     const address = detail.order && detail.order.addressSnapshot;
@@ -34,6 +60,7 @@ Page({
       success: () => wx.showToast({ title: '收件信息已复制', icon: 'none' }),
     });
   },
+
   dispute() { wx.navigateTo({ url: `/pages/drift/dispute?orderId=${this.orderId}` }); },
   review() { wx.navigateTo({ url: `/pages/drift/review?orderId=${this.orderId}` }); },
   cancel() {

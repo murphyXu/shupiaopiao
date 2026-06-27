@@ -211,7 +211,7 @@ Page({
         });
         const firstOrder = ((this.data.bundleDetail && this.data.bundleDetail.orders) || [])[0];
         if (firstOrder && firstOrder.id) {
-          wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${firstOrder.id}&role=given` });
+          wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${firstOrder.id}&role=given&milestone=ship` });
         } else {
           wx.navigateBack();
         }
@@ -221,7 +221,7 @@ Page({
         expressCompany,
         trackingNo: check.normalized,
       });
-      wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${this.orderId}&role=given` });
+      wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${this.orderId}&role=given&milestone=ship` });
     } finally {
       this.setData({ submitting: false });
     }

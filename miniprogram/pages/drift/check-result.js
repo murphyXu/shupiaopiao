@@ -1,4 +1,9 @@
 const api = require('../../utils/api');
+const {
+  markSubscribeDialogTriggered,
+  tryShowMilestonePrompt,
+  trackOaEvent,
+} = require('../../utils/officialAccountPrompt');
 
 Page({
   data: {
@@ -8,6 +13,7 @@ Page({
     reasons: [],
     continueScan: false,
     sessionCount: 0,
+    showOaMilestone: false,
   },
 
   onLoad(options) {
@@ -28,7 +34,14 @@ Page({
         ],
         reasons: res.reasons || [],
       });
-    });
+    }).finally(() => this.refreshOaMilestone());
+  },
+
+  refreshOaMilestone() {
+    if (this._oaMilestoneReady) return;
+    this._oaMilestoneReady = true;
+    const showOaMilestone = tryShowMilestonePrompt('publish', { passed: this.data.passed });
+    this.setData({ showOaMilestone });
   },
 
   appeal() {
@@ -67,8 +80,20 @@ Page({
     }
   },
 
+  dismissOaMilestone() {
+    trackOaEvent('oa_milestone_dismiss', 'publish');
+    this.setData({ showOaMilestone: false });
+  },
+
+  onOaFollow() {
+    trackOaEvent('oa_follow_click', 'publish');
+    this.setData({ showOaMilestone: false });
+  },
+
   async enableSubscribeNotify() {
     if (!this.driftId) return;
+    markSubscribeDialogTriggered();
+    this.setData({ showOaMilestone: false });
     try {
       const { subscribeDriftNotifications } = require('../../utils/subscribe');
       const res = await subscribeDriftNotifications(this.driftId);

@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { prepareOrderList, resolveActiveTabFromStatus } = require('../../utils/orderList');
+const { tryShowMilestonePrompt } = require('../../utils/officialAccountPrompt');
 
 function withBundleBadge(orders = []) {
   const counts = {};
@@ -22,10 +23,28 @@ Page({
     statusMap: ORDER_STATUS,
     activeTab: 'all',
     statusTabs: [],
+    showOaMilestone: false,
   },
 
   onLoad(options) {
+    this.milestoneQuery = options.milestone || '';
     this.setData({ activeTab: resolveActiveTabFromStatus(options.status || '', 'received') });
+    this.setupOaMilestone();
+  },
+
+  setupOaMilestone() {
+    const showOaMilestone = tryShowMilestonePrompt('claim', {
+      milestoneQuery: this.milestoneQuery,
+    });
+    this.setData({ showOaMilestone });
+  },
+
+  dismissOaMilestone() {
+    this.setData({ showOaMilestone: false });
+  },
+
+  onOaFollow() {
+    this.setData({ showOaMilestone: false });
   },
 
   onShow() {

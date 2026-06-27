@@ -47,7 +47,7 @@ assert.ok(claimWxml.includes('确认申请') && claimWxml.includes('流转积分
 assert.ok(claimJs.includes("wx.showToast({ title: '申请已提交'"), 'claim success toast should use application wording');
 assert.ok(claimJson.includes('申请接漂'), 'claim page title should use application wording');
 
-assert.ok(poolIndexWxml.includes('我接漂') && poolIndexWxml.includes('我想漂'), 'pool stats should use current-user drift application wording');
+assert.ok(!poolIndexWxml.includes('我接漂') && !poolIndexWxml.includes('我想漂'), 'pool home should not show personal drift stat row');
 assert.ok(poolHandler.includes('INVALID_DRIFT_STATUSES') && poolHandler.includes("_.nin(INVALID_DRIFT_STATUSES)"), 'pool stats should exclude cancelled/rejected drifts from given count');
 assert.ok(poolHandler.includes("status: _.neq('CANCELLED')"), 'pool stats should exclude cancelled orders from received count');
 assert.ok(poolIndexJs.includes('onShareAppMessage'), 'pool home should support sharing to friends');

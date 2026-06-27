@@ -11,6 +11,16 @@
     </view>
   </scroll-view>
 
+  <official-account-tip-bar
+    wx:if="{{showOaMilestone}}"
+    visible="{{showOaMilestone}}"
+    title="接漂申请已提交"
+    desc="公众号会整理发货步骤与常见问题，需要时可回看"
+    scene="claim"
+    bind:dismiss="dismissOaMilestone"
+    bind:follow="onOaFollow"
+  />
+
   <view wx:for="{{orders}}" wx:key="id" class="card order-card">
     <view class="header">
       <text class="badge status">{{statusMap[item.status]}}</text>

@@ -70,18 +70,6 @@
   white-space: nowrap;
 }
 
-.pool-user-metrics {
-  display: flex;
-  gap: 14rpx;
-  margin-top: 12rpx;
-}
-
-.pool-user-metric {
-  color: #52605a;
-  font-size: 22rpx;
-  font-weight: 600;
-}
-
 .primary-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

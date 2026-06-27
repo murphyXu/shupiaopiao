@@ -3,6 +3,17 @@
     <image class="book-cover-sm" src="{{detail.order.book.cover}}" mode="aspectFill" />
     <view class="info"><view class="title">{{detail.order.book.title}}</view><view class="badge">{{statusMap[detail.order.status]}}</view></view>
   </view>
+
+  <official-account-tip-bar
+    wx:if="{{showOaMilestone}}"
+    visible="{{showOaMilestone}}"
+    title="发货成功"
+    desc="关注公众号可查看寄送说明与漂流进展案例"
+    scene="ship"
+    bind:dismiss="dismissOaMilestone"
+    bind:follow="onOaFollow"
+  />
+
   <view class="card">
     <view>系统流转积分值：{{detail.order.coinValue}}</view>
     <view wx:if="{{detail.order.shipDeadlineAt}}" class="muted">最晚寄出：{{detail.order.shipDeadlineAt}}</view>

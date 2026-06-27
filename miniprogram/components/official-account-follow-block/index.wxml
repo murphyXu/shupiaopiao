@@ -1,0 +1,9 @@
+<view class="oa-follow-block">
+  <official-account
+    wx:if="{{showNative}}"
+    class="oa-follow-native"
+    bindload="onNativeLoad"
+    binderror="onNativeError"
+  />
+  <view class="oa-follow-fallback" bindtap="onFallbackTap">前往公众号主页 ›</view>
+</view>

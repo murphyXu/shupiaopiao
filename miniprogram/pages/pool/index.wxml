@@ -9,10 +9,6 @@
       <view class="page-sub pool-point-line">{{loggedIn ? '剩余可用公益积分 ' + stats.availableCoin : '登录后查看可用公益积分'}}</view>
       <view class="earn-point-action" bindtap="showEarnPointGuide">获得积分</view>
     </view>
-    <view class="pool-user-metrics">
-      <view class="pool-user-metric">我接漂 {{loggedIn ? stats.receivedCount : '--'}}</view>
-      <view class="pool-user-metric">我想漂 {{loggedIn ? stats.wantCount : '--'}}</view>
-    </view>
   </view>
 
   <view class="pool-search-box">

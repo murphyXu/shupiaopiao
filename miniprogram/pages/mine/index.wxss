@@ -201,3 +201,25 @@
   text-align: center;
   box-sizing: border-box;
 }
+
+.oa-mine-card {
+  margin-top: 24rpx;
+  padding: 0;
+}
+
+.oa-mine-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx 28rpx;
+  font-size: 28rpx;
+  color: #15211B;
+}
+
+.oa-mine-item-hover {
+  opacity: 0.82;
+}
+
+.oa-mine-title {
+  font-weight: 600;
+}

@@ -1,1 +1,6 @@
-{"navigationBarTitleText":"漂流详情"}
+{
+  "navigationBarTitleText": "漂流详情",
+  "usingComponents": {
+    "official-account-tip-bar": "/components/official-account-tip-bar/index"
+  }
+}

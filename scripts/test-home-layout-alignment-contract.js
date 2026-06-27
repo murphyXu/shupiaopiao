@@ -256,7 +256,7 @@ assert.deepStrictEqual(
   [...poolOrder].sort((left, right) => left - right),
   'pool modules should be search, primary tabs, secondary tabs, then list',
 );
-assert.ok(!poolWxml.includes('stat-row'), 'pool home should not render the top stats row');
+assert.ok(!poolWxml.includes('stat-row') && !poolWxml.includes('pool-user-metrics'), 'pool home should not render the top stats row');
 
 const alignedStyleRules = [
   ['.primary-tabs', '.primary-tabs'],
