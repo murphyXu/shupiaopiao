@@ -3,17 +3,19 @@ const {
   CONDITIONS, POOL_CATEGORIES, isLoggedIn, requireLogin,
 } = require('../../utils/util');
 const safeAreaBehavior = require('../../behaviors/safe-area');
-const { setTabBarIndex, refreshTabBarPendingShip } = require('../../utils/tab-bar');
+const { setTabBarIndex, setTabBarHidden, refreshTabBarPendingShip } = require('../../utils/tab-bar');
 const { trackPageView, track } = require('../../utils/track');
 const { onCoverError } = require('../../utils/cover');
 const { publishEarnGuideModal } = require('../../utils/pointRules');
 const { showPublishEntryOptions } = require('../../utils/publishEntry');
 const { poolShare } = require('../../utils/share');
+const { measureMoreFilterLayout } = require('../../utils/poolMoreFilterLayout');
 
-const FILTER_MODES = [
-  { key: 'category', label: '按品类' },
-  { key: 'value', label: '按价值' },
-  { key: 'condition', label: '按品相' },
+const FIRST_SCREEN_POOL_SIZE = 30;
+
+const CATEGORY_CHIPS = [
+  { key: 'recommend', label: '推荐' },
+  ...POOL_CATEGORIES.filter((item) => item.key !== 'all'),
 ];
 
 const VALUE_TABS = [
@@ -29,12 +31,6 @@ const CONDITION_TABS = [
   ...CONDITIONS,
 ];
 
-function secondaryTabsFor(mode) {
-  if (mode === 'value') return VALUE_TABS;
-  if (mode === 'condition') return CONDITION_TABS;
-  return POOL_CATEGORIES;
-}
-
 function isValueMatched(item, key) {
   if (!key || key === 'all') return true;
   const tab = VALUE_TABS.find((entry) => entry.key === key);
@@ -43,6 +39,42 @@ function isValueMatched(item, key) {
   if (tab.min !== undefined && value < tab.min) return false;
   if (tab.max !== undefined && value > tab.max) return false;
   return true;
+}
+
+function hasRealCover(cover = '') {
+  const value = String(cover || '').trim();
+  return !!value && !/default\.png|brand\/logo|placeholder|undefined|null/.test(value);
+}
+
+const TOP_LOW_POINT_CHILDREN = 6;
+const LOW_POINT_CHILDREN_MAX = 5;
+
+function isLowPointChildrenItem(item = {}) {
+  const value = Number(item.coinValue) || 0;
+  return item.category === 'children' && value >= 0 && value <= LOW_POINT_CHILDREN_MAX;
+}
+
+function promoteTopLowPointChildren(list = [], topN = TOP_LOW_POINT_CHILDREN) {
+  if (!list.length || topN <= 0) return list;
+  const lowPointChildren = [];
+  const others = [];
+  list.forEach((item) => {
+    if (isLowPointChildrenItem(item)) lowPointChildren.push(item);
+    else others.push(item);
+  });
+  return [...lowPointChildren.slice(0, topN), ...lowPointChildren.slice(topN), ...others];
+}
+
+// 推荐排序：可接漂优先 + 童书优先 + 有封面优先，前 6 位优先 0-5 积分童书
+function recommendSort(list = []) {
+  const sorted = [...list].sort((a, b) => {
+    const claimableDiff = (b.canClaim ? 1 : 0) - (a.canClaim ? 1 : 0);
+    if (claimableDiff) return claimableDiff;
+    const childrenDiff = (b.category === 'children' ? 1 : 0) - (a.category === 'children' ? 1 : 0);
+    if (childrenDiff) return childrenDiff;
+    return (hasRealCover((b.book || {}).cover) ? 1 : 0) - (hasRealCover((a.book || {}).cover) ? 1 : 0);
+  });
+  return promoteTopLowPointChildren(sorted);
 }
 
 Page({
@@ -55,16 +87,20 @@ Page({
     stats: {
       availableCoin: 0,
     },
-    filterModes: FILTER_MODES,
-    activeFilterMode: 'category',
-    activeFilterKey: 'all',
-    secondaryTabs: POOL_CATEGORIES,
-    categoryTabs: POOL_CATEGORIES,
-    filterCategory: 'all',
+    categoryChips: CATEGORY_CHIPS,
+    activeCategory: 'recommend',
     valueTabs: VALUE_TABS,
-    activeValue: 'all',
     conditionTabs: CONDITION_TABS,
+    // 已生效的更多筛选
+    activeValue: 'all',
     activeCondition: 'all',
+    // 抽屉内草稿值
+    showMoreFilter: false,
+    filterFootPadding: 0,
+    filterCompact: false,
+    moreActive: false,
+    draftValue: 'all',
+    draftCondition: 'all',
     claimableOnly: true,
     showEarnGuideModal: false,
     earnGuide: publishEarnGuideModal(),
@@ -72,7 +108,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 0);
-    refreshTabBarPendingShip();
+    setTimeout(() => refreshTabBarPendingShip(), 500);
     trackPageView('pool/index');
     const loggedIn = isLoggedIn();
     this.setData({ loggedIn, claimableOnly: loggedIn });
@@ -87,31 +123,52 @@ Page({
     this.loadList();
   },
 
+  onHide() {
+    setTabBarHidden(false);
+  },
+
   onInput(e) {
     this.setData({ keyword: e.detail.value });
   },
 
   async loadList() {
-    try {
-      const res = await api.getPoolList({
-        keyword: this.data.keyword,
-        category: this.data.activeFilterMode === 'category' ? this.data.filterCategory : 'all',
-        claimableOnly: this.data.claimableOnly,
-      }, { showError: false });
+    const requestId = Date.now();
+    this.lastListRequestId = requestId;
+    const params = {
+      keyword: this.data.keyword,
+      category: this.data.activeCategory === 'recommend' ? 'all' : this.data.activeCategory,
+      claimableOnly: this.data.claimableOnly,
+      page: 1,
+      size: FIRST_SCREEN_POOL_SIZE,
+    };
+    const applyList = (res) => {
+      if (this.lastListRequestId !== requestId) return;
       this.setData({ rawList: res.list || [] });
       this.filterList();
+    };
+    try {
+      const res = await api.getPoolList(params, {
+        showError: false,
+        deferCoverEnrichment: true,
+        onEnriched: applyList,
+      });
+      applyList(res);
     } catch (e) {
       console.error(e);
     }
   },
 
   filterList() {
-    const { activeFilterMode, activeValue, activeCondition, rawList } = this.data;
+    const { activeCategory, activeValue, activeCondition, rawList } = this.data;
     let list = rawList;
-    if (activeFilterMode === 'value') {
+    if (activeValue !== 'all') {
       list = list.filter((item) => isValueMatched(item, activeValue));
-    } else if (activeFilterMode === 'condition' && activeCondition !== 'all') {
+    }
+    if (activeCondition !== 'all') {
       list = list.filter((item) => item.condition === activeCondition);
+    }
+    if (activeCategory === 'recommend') {
+      list = recommendSort(list);
     }
     this.setData({ list });
   },
@@ -133,33 +190,50 @@ Page({
     }
   },
 
-  filterMode(e) {
-    const activeFilterMode = e.currentTarget.dataset.key || 'category';
-    const activeFilterKey = activeFilterMode === 'value'
-      ? this.data.activeValue
-      : (activeFilterMode === 'condition' ? this.data.activeCondition : this.data.filterCategory);
+  onCategoryChip(e) {
+    const activeCategory = e.currentTarget.dataset.key || 'recommend';
+    this.setData({ activeCategory }, () => this.loadList());
+  },
+
+  openMoreFilter() {
+    setTabBarHidden(true);
+    const layout = measureMoreFilterLayout();
     this.setData({
-      activeFilterMode,
-      activeFilterKey,
-      secondaryTabs: secondaryTabsFor(activeFilterMode),
-    }, () => {
-      this.loadList();
+      showMoreFilter: true,
+      filterFootPadding: layout.filterFootPadding,
+      filterCompact: layout.filterCompact,
+      draftValue: this.data.activeValue,
+      draftCondition: this.data.activeCondition,
     });
   },
 
-  filterSecondary(e) {
-    const key = e.currentTarget.dataset.key || 'all';
-    const data = { activeFilterKey: key };
-    if (this.data.activeFilterMode === 'value') {
-      data.activeValue = key;
-    } else if (this.data.activeFilterMode === 'condition') {
-      data.activeCondition = key;
-    } else {
-      data.filterCategory = key;
-    }
-    this.setData(data, () => {
-      this.loadList();
-    });
+  closeMoreFilter() {
+    setTabBarHidden(false);
+    this.setData({ showMoreFilter: false });
+  },
+
+  onDraftValue(e) {
+    this.setData({ draftValue: e.currentTarget.dataset.key || 'all' });
+  },
+
+  onDraftCondition(e) {
+    this.setData({ draftCondition: e.currentTarget.dataset.key || 'all' });
+  },
+
+  resetMoreFilter() {
+    this.setData({ draftValue: 'all', draftCondition: 'all' });
+  },
+
+  applyMoreFilter() {
+    const { draftValue, draftCondition } = this.data;
+    const moreActive = draftValue !== 'all' || draftCondition !== 'all';
+    setTabBarHidden(false);
+    this.setData({
+      activeValue: draftValue,
+      activeCondition: draftCondition,
+      moreActive,
+      showMoreFilter: false,
+    }, () => this.filterList());
   },
 
   goDetail(e) {
@@ -180,7 +254,6 @@ Page({
       wx.showToast({ title: '不能接漂自己赠送的书', icon: 'none' });
       return;
     }
-    if (!requireLogin('申请接漂需登录，以便管理漂流记录与公益积分')) return;
     const driftId = e.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/pool/detail?id=${driftId}` });
   },

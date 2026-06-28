@@ -10,33 +10,43 @@ const { cacheBooksForList } = require('../lib/listCoverCache');
 const { formatShipFromField } = require('../lib/shipRegion');
 const { hashUid } = require('../lib/analytics');
 const { loadUserInterestProfile } = require('../lib/poolRecommendProfile');
-const { rankPoolList, applyGiverDensityCap } = require('../lib/poolRecommend');
+const { rankPoolList, applyGiverDensityCap, promoteTopLowPointChildren } = require('../lib/poolRecommend');
 
 const CATEGORY_LABELS = {
   children: '童书',
   literature: '文学',
-  social: '社科',
   business: '经管',
-  science: '科普',
-  art: '艺术',
-  life: '生活',
   other: '其他',
+};
+
+const SHELF_BOOK_CLASS_TO_POOL_CATEGORY = {
+  child: 'children',
+  children: 'children',
+  literature: 'literature',
+  social: 'literature',
+  business: 'business',
+  science: 'business',
+  art: 'literature',
+  life: 'other',
+  other: 'other',
 };
 
 const REPORT_HIDE_THRESHOLD = 3;
 const INVALID_DRIFT_STATUSES = ['CANCELLED', 'REJECTED'];
 
-function classifyCategory(book = {}) {
+function poolCategoryFromShelfRow(shelfRow = null) {
+  return shelfRow ? SHELF_BOOK_CLASS_TO_POOL_CATEGORY[shelfRow.bookClass] || '' : '';
+}
+
+function classifyCategory(book = {}, shelfRow = null) {
+  const shelfCategory = poolCategoryFromShelfRow(shelfRow);
+  if (shelfCategory) return shelfCategory;
   const { key } = resolveShelfCategory(book);
   return key === 'child' ? 'children' : key;
 }
 
 function wantIdFor(userId, driftId) {
   return `${userId}_${driftId}`;
-}
-
-function formatPoolBook(book) {
-  return formatDisplayBook(book);
 }
 
 async function getWantedDriftIds(userId, driftIds = []) {
@@ -97,16 +107,34 @@ async function formatWantedList(user) {
   const activeDrifts = await filterVisibleDrifts(wantRows.map((row) => driftMap[row.driftId]).filter(Boolean));
   if (!activeDrifts.length) return [];
 
-  let books = await getBooksByIds(activeDrifts.map((drift) => drift.bookId));
-  const users = await getUsersByIds(activeDrifts.map((drift) => drift.userId));
+  const [books, users, shelfRows] = await Promise.all([
+    getBooksByIds(activeDrifts.map((drift) => drift.bookId)),
+    getUsersByIds(activeDrifts.map((drift) => drift.userId)),
+    getShelfRowsByIds(activeDrifts.map((drift) => drift.shelfBookId)),
+  ]);
   return activeDrifts
     .filter((drift) => books[drift.bookId])
-    .map((drift) => ({ ...formatPoolItem(drift, books[drift.bookId], users[drift.userId] || {}, user._id, new Set([drift._id])), wanted: true }));
+    .map((drift) => ({
+      ...formatPoolItem(
+        drift,
+        books[drift.bookId],
+        users[drift.userId] || {},
+        user._id,
+        new Set([drift._id]),
+        shelfRows[drift.shelfBookId],
+      ),
+      wanted: true,
+    }));
 }
 
 async function countWanted(userId) {
-  const list = await formatWantedList({ _id: userId });
-  return list.length;
+  if (!userId) return 0;
+  const { total } = await safeQuery('drift_wants', (col) => {
+    const query = col.where({ userId });
+    if (typeof query.count === 'function') return query.count();
+    return query.limit(100).get().then(({ data }) => ({ total: (data || []).length }));
+  });
+  return total || 0;
 }
 
 async function countGivenDrifts(userId) {
@@ -117,6 +145,16 @@ async function countGivenDrifts(userId) {
   }).limit(500).get());
   const cancelledIds = await hiddenDriftIdsByCancelledOrders(rows.map((row) => row._id));
   return rows.filter((row) => !cancelledIds.has(row._id)).length;
+}
+
+async function getShelfRowsByIds(ids = []) {
+  const shelfBookIds = [...new Set(ids.filter(Boolean))];
+  if (!shelfBookIds.length) return {};
+  const { data: rows } = await safeQuery('shelf_books', (col) =>
+    col.where({ _id: _.in(shelfBookIds) }).limit(500).get());
+  const map = {};
+  rows.forEach((row) => { map[row._id] = row; });
+  return map;
 }
 
 async function getWantDoc(userId, driftId) {
@@ -131,15 +169,19 @@ async function getWantDoc(userId, driftId) {
 async function formatSameGiverPoolItems(drifts = [], user = null) {
   if (!drifts.length) return [];
   const bookIds = drifts.map((drift) => drift.bookId);
-  let books = await getBooksByIds(bookIds);
+  const [books, shelfRows] = await Promise.all([
+    getBooksByIds(bookIds),
+    getShelfRowsByIds(drifts.map((drift) => drift.shelfBookId)),
+  ]);
   return drifts
     .filter((drift) => books[drift.bookId])
     .map((drift) => {
       const book = books[drift.bookId];
+      const shelfRow = shelfRows[drift.shelfBookId];
       return {
         id: drift._id,
         coinValue: drift.coinValue,
-        book: formatPoolBook(book),
+        book: formatPoolBook(book, shelfRow),
         lightweightHint: isLightweightBook({
           coinValue: drift.coinValue,
           listPrice: book.listPrice || drift.listPrice,
@@ -148,8 +190,47 @@ async function formatSameGiverPoolItems(drifts = [], user = null) {
     });
 }
 
-function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds = new Set()) {
-  const category = classifyCategory(book);
+function formatPoolBook(book, shelfRow = null) {
+  const displayBook = formatDisplayBook(book);
+  const category = classifyCategory(book, shelfRow);
+  return {
+    ...displayBook,
+    category: CATEGORY_LABELS[category] || displayBook.category,
+  };
+}
+
+function formatSetInfo(drift = {}) {
+  const setCompleteness = drift.setCompleteness || 'unknown';
+  const setDescription = String(drift.setDescription || '').trim();
+  if (setCompleteness === 'partial') {
+    return {
+      setBookRisk: !!drift.setBookRisk,
+      setCompleteness,
+      setDescription,
+      setLabel: '非全套',
+      setDisplayText: setDescription ? `非全套，${setDescription}` : '非全套',
+    };
+  }
+  if (setCompleteness === 'complete') {
+    return {
+      setBookRisk: !!drift.setBookRisk,
+      setCompleteness,
+      setDescription: '',
+      setLabel: '套装',
+      setDisplayText: '完整套装',
+    };
+  }
+  return {
+    setBookRisk: !!drift.setBookRisk,
+    setCompleteness,
+    setDescription: '',
+    setLabel: '',
+    setDisplayText: '',
+  };
+}
+
+function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds = new Set(), shelfRow = null) {
+  const category = classifyCategory(book, shelfRow);
   const conditionIssueLabels = drift.conditionIssueLabels || [];
   const isAnonymous = !!drift.isAnonymous;
   const isMine = !!currentUserId && drift.userId === currentUserId;
@@ -175,7 +256,8 @@ function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds =
     wanted,
     category,
     categoryLabel: CATEGORY_LABELS[category] || CATEGORY_LABELS.other,
-    book: formatPoolBook(book),
+    ...formatSetInfo(drift),
+    book: formatPoolBook(book, shelfRow),
     giver: {
       nickname: isAnonymous ? '匿名书友' : giver.nickname,
       avatar: isAnonymous ? '' : giver.avatar,
@@ -189,12 +271,15 @@ async function list(data, openid) {
   const user = openid ? await getUserByOpenid(openid) : null;
   const claimableOnly = user ? data.claimableOnly !== false : !!data.claimableOnly;
   if (claimableOnly && !user) return ok({ list: [], page: 1, size: 0 });
+  const page = Math.max(Number(data.page) || 1, 1);
+  const size = Math.min(Number(data.size) || 30, 50);
+  const fetchSize = Math.min(size * 2, 100);
 
   const query = { status: 'IN_POOL' };
   if (claimableOnly) query.userId = _.neq(user._id);
 
   const { data: rawDrifts } = await safeQuery('drifts', (col) =>
-    col.where(query).orderBy('createdAt', 'desc').limit(100).get());
+    col.where(query).orderBy('createdAt', 'desc').limit(fetchSize).get());
   const drifts = await filterVisibleDrifts(rawDrifts);
   const bookIds = drifts.map((d) => d.bookId);
   const userIds = drifts.map((d) => d.userId);
@@ -203,11 +288,20 @@ async function list(data, openid) {
     getUsersByIds(userIds),
     getWantedDriftIds(user ? user._id : '', drifts.map((d) => d._id)),
   ]);
-  const books = await cacheBooksForList(db, rawBooks, 12);
+  const shelfRows = await getShelfRowsByIds(drifts.map((d) => d.shelfBookId));
+  cacheBooksForList(db, rawBooks, 12).catch((err) => console.warn('[pool.list] cover cache skipped', err.message || err));
+  const books = rawBooks;
 
   let list = drifts
     .filter((d) => books[d.bookId])
-    .map((d) => formatPoolItem(d, books[d.bookId], users[d.userId] || {}, user ? user._id : '', wantedDriftIds));
+    .map((d) => formatPoolItem(
+      d,
+      books[d.bookId],
+      users[d.userId] || {},
+      user ? user._id : '',
+      wantedDriftIds,
+      shelfRows[d.shelfBookId],
+    ));
 
   const keyword = (data.keyword || '').trim();
   if (keyword) {
@@ -220,15 +314,18 @@ async function list(data, openid) {
   if (data.category && data.category !== 'all') list = list.filter((item) => item.category === data.category);
 
   const keywordActive = !!keyword;
+  const isRecommendFeed = !data.category || data.category === 'all';
   if (!keywordActive) {
     const profile = user
       ? await loadUserInterestProfile(user._id, openid)
       : { isColdStart: true, categoryWeights: {}, authorWeights: {}, signalCount: 0 };
     list = rankPoolList(list, profile, { uidHash: hashUid(openid) });
     list = applyGiverDensityCap(list);
+    if (isRecommendFeed) list = promoteTopLowPointChildren(list);
   }
 
-  return ok({ list, page: 1, size: list.length });
+  const paged = list.slice((page - 1) * size, page * size);
+  return ok({ list: paged, page, size, total: list.length });
 }
 
 async function stats(openid) {
@@ -265,6 +362,7 @@ async function detail(data, openid) {
   const visibleDrifts = await filterVisibleDrifts([drift]);
   if (!visibleDrifts.length) return fail(404, '漂流书不存在');
   const book = await getBookById(drift.bookId);
+  const shelfRows = await getShelfRowsByIds([drift.shelfBookId]);
   const { data: giverList } = await db.collection('users').where({ _id: drift.userId }).get();
   const giver = giverList[0] || { nickname: '书友', avatar: '', creditScore: 100 };
   const user = openid ? await getUserByOpenid(openid) : null;
@@ -278,6 +376,7 @@ async function detail(data, openid) {
   const sameGiverPool = sameGiverCount ? {
     count: sameGiverCount,
     label: isAnonymous ? `同一书友还有 ${sameGiverCount} 本可接` : `还有 ${sameGiverCount} 本在漂`,
+    hint: '这些书尚未与你同包裹；分别申请接漂，地址相同且 48 小时内会自动合并寄出',
     anonymous: isAnonymous,
     items: sameGiverItems,
   } : null;
@@ -286,7 +385,7 @@ async function detail(data, openid) {
     listPrice: book ? book.listPrice : drift.listPrice,
   });
   return ok({
-    ...formatPoolItem(drift, book, giver, user ? user._id : '', wantedDriftIds),
+    ...formatPoolItem(drift, book, giver, user ? user._id : '', wantedDriftIds, shelfRows[drift.shelfBookId]),
     sameGiverPool,
     lightweightHint,
   });

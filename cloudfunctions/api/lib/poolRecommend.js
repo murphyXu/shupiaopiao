@@ -4,7 +4,15 @@
  */
 const { resolveShelfCategory } = require('./bookCategory');
 
-const POOL_CATEGORY_KEYS = ['children', 'literature', 'social', 'business', 'science', 'art', 'life', 'other'];
+const POOL_CATEGORY_KEYS = ['children', 'literature', 'business', 'other'];
+
+const LEGACY_POOL_CATEGORY_TO_PUBLIC = {
+  child: 'children',
+  social: 'literature',
+  science: 'business',
+  art: 'literature',
+  life: 'other',
+};
 
 const SIGNAL_WEIGHTS = {
   shelf: 3,
@@ -18,25 +26,31 @@ const COLD_START_SIGNAL_THRESHOLD = 3;
 const RECENT_DAYS_BOOST = 7;
 const GIVER_DENSITY_WINDOW = 20;
 const GIVER_DENSITY_MAX = 2;
+const PLATFORM_CHILDREN_BOOST = 2;
+const DEFAULT_PRIORITIZE_CATEGORY = 'children';
+const TOP_LOW_POINT_CHILDREN = 6;
+const LOW_POINT_CHILDREN_MAX = 5;
 
 function poolCategoryFromBook(book = {}) {
   const { key } = resolveShelfCategory(book);
-  return key === 'child' ? 'children' : key;
+  return normalizePoolCategory(key);
+}
+
+function normalizePoolCategory(category) {
+  const key = LEGACY_POOL_CATEGORY_TO_PUBLIC[category] || category;
+  return POOL_CATEGORY_KEYS.includes(key) ? key : 'other';
 }
 
 function bumpWeight(map, key, amount) {
   if (!key) return;
-  map[key] = (map[key] || 0) + amount;
+  const category = normalizePoolCategory(key);
+  map[category] = (map[category] || 0) + amount;
 }
 
 function bumpAuthor(map, author, amount) {
   const name = String(author || '').trim();
   if (!name) return;
   map[name] = (map[name] || 0) + amount;
-}
-
-function isQuickShelfRow(row = {}) {
-  return row.purpose === 'drift_quick';
 }
 
 function daysSince(iso) {
@@ -55,9 +69,14 @@ function hashSeed(text = '') {
   return Math.abs(hash);
 }
 
-function rotateCategories(seed = 0) {
-  const offset = seed % POOL_CATEGORY_KEYS.length;
-  return POOL_CATEGORY_KEYS.slice(offset).concat(POOL_CATEGORY_KEYS.slice(0, offset));
+function rotateCategories(seed = 0, options = {}) {
+  const prioritize = options.prioritizeCategory || '';
+  const rest = prioritize
+    ? POOL_CATEGORY_KEYS.filter((key) => key !== prioritize)
+    : POOL_CATEGORY_KEYS.slice();
+  const offset = seed % Math.max(rest.length, 1);
+  const rotatedRest = rest.slice(offset).concat(rest.slice(0, offset));
+  return prioritize ? [prioritize, ...rotatedRest] : rotatedRest;
 }
 
 function createEmptyProfile() {
@@ -80,7 +99,7 @@ function finalizeProfile(profile) {
 }
 
 function applyShelfSignals(profile, shelfRows = [], books = {}) {
-  shelfRows.filter((row) => !isQuickShelfRow(row)).forEach((row) => {
+  shelfRows.forEach((row) => {
     const book = books[row.bookId];
     if (!book) return;
     bumpWeight(profile.categoryWeights, poolCategoryFromBook(book), SIGNAL_WEIGHTS.shelf);
@@ -115,21 +134,22 @@ function scorePoolItem(item, profile) {
   const author = item.book && item.book.author;
   const authorScore = author ? (profile.authorWeights[author] || 0) : 0;
   const freshnessBoost = daysSince(item.createdAt) <= RECENT_DAYS_BOOST ? 0.5 : 0;
-  return categoryScore + authorScore + freshnessBoost;
+  const platformBoost = item.category === DEFAULT_PRIORITIZE_CATEGORY ? PLATFORM_CHILDREN_BOOST : 0;
+  return categoryScore + authorScore + freshnessBoost + platformBoost;
 }
 
-function diversifyPoolList(list = [], seed = 0) {
+function diversifyPoolList(list = [], seed = 0, options = {}) {
   const buckets = {};
   POOL_CATEGORY_KEYS.forEach((key) => { buckets[key] = []; });
   list.forEach((item) => {
-    const key = buckets[item.category] ? item.category : 'other';
+    const key = buckets[item.category] ? item.category : normalizePoolCategory(item.category);
     buckets[key].push(item);
   });
   Object.keys(buckets).forEach((key) => {
     buckets[key].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   });
 
-  const order = rotateCategories(seed);
+  const order = rotateCategories(seed, options);
   const merged = [];
   let added = true;
   while (added) {
@@ -145,12 +165,30 @@ function diversifyPoolList(list = [], seed = 0) {
   return merged;
 }
 
+function isLowPointChildrenItem(item = {}) {
+  const value = Number(item.coinValue) || 0;
+  return item.category === DEFAULT_PRIORITIZE_CATEGORY && value >= 0 && value <= LOW_POINT_CHILDREN_MAX;
+}
+
+function promoteTopLowPointChildren(list = [], topN = TOP_LOW_POINT_CHILDREN) {
+  if (!list.length || topN <= 0) return list;
+  const lowPointChildren = [];
+  const others = [];
+  list.forEach((item) => {
+    if (isLowPointChildrenItem(item)) lowPointChildren.push(item);
+    else others.push(item);
+  });
+  return [...lowPointChildren.slice(0, topN), ...lowPointChildren.slice(topN), ...others];
+}
+
 function rankPoolList(list = [], profile = createEmptyProfile(), options = {}) {
   if (!list.length) return list;
   if (options.preserveOrder) return list;
 
   if (profile.isColdStart) {
-    return diversifyPoolList(list, hashSeed(options.uidHash || 'anon'));
+    return diversifyPoolList(list, hashSeed(options.uidHash || 'anon'), {
+      prioritizeCategory: DEFAULT_PRIORITIZE_CATEGORY,
+    });
   }
 
   return [...list].sort((a, b) => {
@@ -213,6 +251,11 @@ function applyGiverDensityCap(list = [], options = {}) {
 }
 
 module.exports = {
+  TOP_LOW_POINT_CHILDREN,
+  LOW_POINT_CHILDREN_MAX,
+  PLATFORM_CHILDREN_BOOST,
+  DEFAULT_PRIORITIZE_CATEGORY,
+  rotateCategories,
   POOL_CATEGORY_KEYS,
   COLD_START_SIGNAL_THRESHOLD,
   GIVER_DENSITY_WINDOW,
@@ -226,6 +269,8 @@ module.exports = {
   applyBrowseSignals,
   scorePoolItem,
   diversifyPoolList,
+  isLowPointChildrenItem,
+  promoteTopLowPointChildren,
   rankPoolList,
   applyGiverDensityCap,
 };
