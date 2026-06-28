@@ -185,6 +185,11 @@ Page({
     wx.navigateTo({ url: `/pages/pool/detail?id=${driftId}` });
   },
 
+  goWants() {
+    if (!requireLogin('登录后可查看想要接漂的书')) return;
+    wx.navigateTo({ url: '/pages/pool/wants' });
+  },
+
   goPublish() {
     showPublishEntryOptions();
   },
