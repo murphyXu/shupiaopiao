@@ -3,6 +3,7 @@ const douban = require('./douban');
 const googleBooks = require('./googleBooks');
 const openLibrary = require('./openLibrary');
 const { normalizeIsbn, isValidIsbn } = require('../bookCatalog');
+const { lookupBookCatalog, isCatalogComplete } = require('../bookCatalogDb');
 const { cleanBookTitle, dedupeBooks } = require('../bookLookupPolicy');
 
 const PROVIDERS = [
@@ -77,9 +78,13 @@ async function lookupByIsbn(isbn) {
   return createProviderLookup(PROVIDERS, { coverFallback: true }).lookupByIsbn(isbn);
 }
 
-async function refreshByIsbn(isbn, timeoutMs = 1200) {
+async function refreshByIsbn(isbn, timeoutMs = 1200, db = null) {
   const clean = normalizeIsbn(isbn);
   if (!isValidIsbn(clean)) return null;
+  if (db) {
+    const catalogHit = await lookupBookCatalog(db, clean);
+    if (catalogHit && isCatalogComplete(catalogHit)) return catalogHit;
+  }
   const fast = await tryProvider({ name: 'tanshu_refresh', adapter: tanshu }, (adapter) => adapter.lookupByIsbn(clean, timeoutMs));
   if (fast && hasRemoteCover(fast)) return fast;
   return createProviderLookup(PROVIDERS, { coverFallback: true }).lookupByIsbn(clean);

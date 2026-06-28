@@ -4,6 +4,11 @@ const {
 } = require('./bookCatalog');
 const providers = require('./bookProviders');
 const {
+  lookupBookCatalog,
+  searchBookCatalog,
+  isCatalogComplete,
+} = require('./bookCatalogDb');
+const {
   bookMatchesKeyword,
   cleanBookTitle,
   manualNeeded,
@@ -50,7 +55,7 @@ function needsProviderRefresh(book) {
 
 async function refreshBookCoverMetadata(db, book) {
   if (!needsCoverMetadata(book)) return book;
-  const external = await providers.refreshByIsbn(book.isbn);
+  const external = await providers.refreshByIsbn(book.isbn, 1200, db);
   if (!external) return book;
   return upsertBook(db, external) || book;
 }
@@ -67,8 +72,11 @@ async function refreshBooksCoverMetadata(db, booksMap = {}, limit = 6) {
 }
 
 async function refreshCachedBook(db, book) {
-  if (!needsProviderRefresh(book) || typeof providers.refreshByIsbn !== 'function') return book;
-  const external = await providers.refreshByIsbn(book.isbn);
+  if (!needsProviderRefresh(book)) return book;
+  const catalogHit = await lookupBookCatalog(db, book.isbn);
+  if (catalogHit && isCatalogComplete(catalogHit)) return upsertBook(db, catalogHit) || book;
+  if (typeof providers.refreshByIsbn !== 'function') return book;
+  const external = await providers.refreshByIsbn(book.isbn, 1200, db);
   if (!external) return book;
   return upsertBook(db, external) || book;
 }
@@ -163,6 +171,9 @@ async function resolveByIsbn(db, isbn) {
     return refreshed;
   }
 
+  const catalogHit = await lookupBookCatalog(db, clean);
+  if (catalogHit) return upsertBook(db, catalogHit);
+
   const external = await providers.lookupByIsbn(clean);
   if (external) return upsertBook(db, external);
 
@@ -180,6 +191,11 @@ async function searchBooks(db, keyword, size = 20) {
     if (bookMatchesKeyword(b, kw)) {
       map.set(b.isbn, b);
     }
+  });
+
+  const catalogBooks = await searchBookCatalog(db, kw, size);
+  catalogBooks.forEach((meta) => {
+    if (!map.has(meta.isbn)) map.set(meta.isbn, meta);
   });
 
   const externalBooks = await providers.searchByKeyword(kw, size);

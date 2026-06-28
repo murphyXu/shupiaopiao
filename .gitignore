@@ -19,6 +19,10 @@ miniprogram_npm/
 .env
 .env.*
 
+# Generated import batches
+data/book_catalog/
+data/book_catalog/.upload-progress.json
+
 # Logs
 *.log
 npm-debug.log*

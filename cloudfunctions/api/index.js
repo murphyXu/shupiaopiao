@@ -108,6 +108,18 @@ const ROUTES = {
     const result = await ensureCollections(db);
     return ok(result);
   },
+  'system.importBookCatalogBatch': async (data) => {
+    const { importBookCatalogBatch } = require('./lib/bookCatalogImport');
+    const db = cloud.database();
+    const result = await importBookCatalogBatch(db, data);
+    return ok(result);
+  },
+  'system.bookCatalogStatus': async () => {
+    const { getBookCatalogImportStatus } = require('./lib/bookCatalogImport');
+    const db = cloud.database();
+    const result = await getBookCatalogImportStatus(db);
+    return ok(result);
+  },
   'system.migrateDriftAccounting': (data, openid) => drift.migrateLegacyAccounting(openid, data),
 };
 

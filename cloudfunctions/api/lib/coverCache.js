@@ -9,6 +9,7 @@ const ALLOWED_REMOTE_COVER_HOSTS = [
   'books.google.com',
   'covers.openlibrary.org',
   'doubanio.com',
+  'booklibimg.kfzimg.com',
 ];
 
 function isCloudCover(cover) {

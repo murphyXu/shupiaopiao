@@ -180,9 +180,10 @@ wx.cloud.callFunction({
 
 ### 免费书源试跑
 
-扫码/搜索真实识别试跑使用探数 ISBN API + Google Books + Open Library。当前策略：
+扫码/搜索真实识别试跑使用本地书目库 + 探数 ISBN API + Google Books + Open Library。当前策略：
 
-- ISBN 查询优先走探数 `ISBN数据查询_基础版`，命中后写入 `books` 缓存，后续同 ISBN 不再消耗探数额度
+- ISBN 查询顺序：`books` 缓存 → `book_catalog` 本地书目库（约 28 万条）→ 探数 → 豆瓣/Google/Open Library
+- 本地书目封面优先使用 `booklibimg.kfzimg.com`（无水印），命中后写入 `books` 缓存，不再消耗探数额度
 - 云函数 provider 并发查询，避免单个免费源拖慢整次查书
 - Open Library 关键词搜索使用 `title/q + fields` 两路并发精简查询，ISBN 搜索直接走 `api/books`
 - 外部 HTTP 请求有硬超时，当前 Open Library 元数据预算为 5 秒，避免连接阶段卡到云函数总超时
@@ -198,6 +199,7 @@ TANSHU_API_KEY=你的探数 key
 
 - `static.tanshuapi.com`
 - `img.tanshuapi.com`
+- `booklibimg.kfzimg.com`
 - `books.google.com`
 - `www.googleapis.com`
 - `openlibrary.org`
@@ -206,6 +208,39 @@ TANSHU_API_KEY=你的探数 key
 未配置域名时，图书元数据仍可返回，但远程封面可能不显示。
 
 扫码/搜索返回远程封面后，客户端会后台执行封面缓存：`wx.downloadFile` 下载远程封面 → `wx.cloud.uploadFile` 上传到 `book-covers/{isbn}.{ext}` → `books.updateCover` 写回云数据库。该流程不阻塞录入；失败只记录日志。
+
+### 导入本地书目库
+
+一键生成并上传（需配置 CloudBase API 密钥）：
+
+```bash
+export TCB_ENV=cloud1-6gngg7ipd8f073ed
+export TCB_SECRET_ID=你的SecretId
+export TCB_SECRET_KEY=你的SecretKey
+
+rtk node scripts/upload-book-catalog.js
+```
+
+脚本会：
+
+1. 从 `_书目.csv` + 核价 CSV 生成 `data/book_catalog/batch-*.jsonl`
+2. 直接写入云数据库 `book_catalog`（以 ISBN 为 `_id`，可重复执行）
+3. 同步 `medianPrice` 到 `pricing_cache`
+4. 进度保存在 `data/book_catalog/.upload-progress.json`，中断后可 `--resume`
+
+仅生成 JSONL、不上传：
+
+```bash
+rtk node scripts/import-book-catalog.js \
+  --catalog "/Users/xumanna/Desktop/小谷吖/_书目.csv" \
+  --pricing "/Users/xumanna/Desktop/小谷吖/新建 文本文档_核价.csv"
+```
+
+上传完成后：
+
+1. 重新上传 `api` 云函数（含 `book_catalog` 查书逻辑）
+2. 在微信公众平台为 downloadFile 增加 `booklibimg.kfzimg.com`
+3. 可选：在云开发控制台为 `book_catalog.isbn` 建索引
 
 ## 相关文档
 

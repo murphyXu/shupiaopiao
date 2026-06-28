@@ -98,8 +98,16 @@ function createCollection(initialRows) {
   const { resolveByIsbn } = require('../cloudfunctions/api/lib/bookLookup');
   const db = {
     collection(name) {
-      assert.strictEqual(name, 'books');
-      return createCollection(rows);
+      if (name === 'books') return createCollection(rows);
+      if (name === 'book_catalog') return createCollection([]);
+      if (name === 'pricing_cache') {
+        return {
+          doc() {
+            return { set: async () => {} };
+          },
+        };
+      }
+      throw new Error(`unexpected collection ${name}`);
     },
   };
 
