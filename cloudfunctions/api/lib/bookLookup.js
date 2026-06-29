@@ -82,11 +82,30 @@ async function refreshCachedBook(db, book) {
 }
 
 async function syncPricingCache(db, doc) {
-  const priceValue = Number(String(doc.listPrice || '').replace(/[^0-9.]/g, ''));
-  if (!priceValue) return;
+  const isbn = normalizeIsbn(doc.isbn);
+  if (!isValidIsbn(isbn)) return;
+  const median = Number(doc.medianPrice);
   try {
-    await db.collection('pricing_cache').doc(doc.isbn).set({
-      data: { isbn: doc.isbn, medianPrice: priceValue, sources: [{ source: doc.source || 'default', price: priceValue }] },
+    if (Number.isFinite(median) && median > 0) {
+      await db.collection('pricing_cache').doc(isbn).set({
+        data: {
+          isbn,
+          medianPrice: median,
+          sources: [{ source: doc.source || 'booklib', price: median }],
+        },
+      });
+      return;
+    }
+    const { data } = await db.collection('pricing_cache').where({ isbn }).limit(1).get();
+    if (data.length) return;
+    const priceValue = Number(String(doc.listPrice || '').replace(/[^0-9.]/g, ''));
+    if (!priceValue) return;
+    await db.collection('pricing_cache').doc(isbn).set({
+      data: {
+        isbn,
+        medianPrice: priceValue,
+        sources: [{ source: doc.source || 'default', price: priceValue }],
+      },
     });
   } catch (e) {
     // ignore

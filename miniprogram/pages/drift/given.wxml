@@ -13,12 +13,13 @@
 
   <view wx:if="{{pendingShipCount}}" class="reminder-card">
     <view class="reminder-title">有 {{pendingShipCount}} 本书已被领取</view>
-    <view class="reminder-sub">请确认漂流出去并及时寄出，填写运单号后领取方可查看进展。</view>
+    <view class="reminder-sub">请确认漂流出去并在 {{shipDeadlineLabel}} 内寄出；超时未发货将自动取消订单。</view>
     <view class="subscribe-link" bindtap="enableSubscribeNotify">开启微信提醒 ›</view>
   </view>
 
   <view wx:for="{{displayItems}}" wx:key="displayId" class="card order-card">
     <block wx:if="{{item.kind === 'bundle'}}">
+      <view wx:if="{{item.orderMetaLine}}" class="order-meta">{{item.orderMetaLine}}</view>
       <view class="header">
         <text class="badge status">待寄出</text>
         <text class="bundle-badge">合并 {{item.orderCount}} 本</text>
@@ -39,6 +40,7 @@
     </block>
 
     <block wx:else>
+      <view wx:if="{{item.orderMetaLine}}" class="order-meta">{{item.orderMetaLine}}</view>
       <view class="header">
         <text class="badge status">{{statusMap[item.order.status]}}</text>
       </view>

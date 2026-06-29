@@ -16,8 +16,12 @@ assert.ok(!mineJs.includes('goDriftSummary'), 'mine page should route through dr
 assert.ok(!mineWxml.includes('暂无待办'), 'mine page should hide todo badges when there is nothing pending');
 assert.ok(mineWxml.includes('todo-badge') && mineWxml.includes('givenBadges') && mineWxml.includes('receivedBadges'), 'drift todo badges should sit on the right of given and received menu rows');
 assert.ok(mineJs.includes('/pages/drift/given') && mineJs.includes('/pages/drift/received'), 'drift menu entries should continue opening given and received lists');
+assert.ok(mineWxml.includes('漂流记录') && mineWxml.includes('我送出的书') && mineWxml.includes('我接到的书'), 'mine page should group drift records in the first menu card');
+assert.ok(mineWxml.includes('积分规则') && mineWxml.includes('公益积分明细') && mineWxml.includes('信用积分明细'), 'mine page should group points rules in the second menu card');
+assert.ok(mineWxml.includes('我想要的书') && mineJs.includes('/pages/pool/wants'), 'mine page should expose wanted drift list in drift records card');
 assert.ok(mineJs.includes('getDriftSummary'), 'mine page should load drift todo summary from a single api call');
 assert.ok(mineJs.includes('buildTodoBadges') && mineJs.includes('givenBadges') && mineJs.includes('receivedBadges'), 'mine page should build role-specific todo badges');
+assert.ok(mineJs.includes('waitingShipReceived'), 'received badges should include orders waiting for giver shipment');
 assert.ok(givenJs.includes('onLoad(options') && givenJs.includes('activeTab') && givenJs.includes("api.getOrders('given')"), 'given list should honor status query via tabs');
 assert.ok(receivedJs.includes('onLoad(options') && receivedJs.includes('activeTab') && receivedJs.includes("api.getOrders('received')"), 'received list should honor status query via tabs');
 

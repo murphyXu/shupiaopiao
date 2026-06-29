@@ -18,6 +18,7 @@ const COLLECTIONS = [
   'reports',
   'events',
   'daily_metrics',
+  'pool_feed_meta',
 ];
 
 function isAlreadyExists(err) {
@@ -25,7 +26,8 @@ function isAlreadyExists(err) {
   return msg.includes('already exists')
     || msg.includes('Table exist')
     || msg.includes('ResourceExist')
-    || msg.includes('DATABASE_COLLECTION_EXIST');
+    || msg.includes('DATABASE_COLLECTION_EXIST')
+    || err.errCode === -501001;
 }
 
 function isCollectionMissing(err) {

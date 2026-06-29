@@ -41,6 +41,8 @@ function getSystemMetrics() {
   }
 
   const safeTop = Math.max(safeArea.top || 0, statusBarHeight);
+  const navBarHeight = (menuButton.top - statusBarHeight) * 2 + menuButton.height;
+  const stickyTop = statusBarHeight + navBarHeight;
   // 内容从胶囊按钮下方开始，避免标题与灵动岛/胶囊重叠
   const navPaddingTop = Math.max(menuButton.bottom + 10, safeTop + 20);
   // 右侧可交互区域须避开胶囊
@@ -48,6 +50,8 @@ function getSystemMetrics() {
 
   return {
     statusBarHeight,
+    navBarHeight,
+    stickyTop,
     safeAreaTop: safeTop,
     navPaddingTop,
     contentPaddingRight,

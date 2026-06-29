@@ -1,7 +1,5 @@
 <view class="login-page" style="padding-top: {{navPaddingTop}}px;">
-  <view class="login-nav">
-    <view wx:if="{{canGoBack}}" class="login-back" bindtap="skipLogin">‹ 返回</view>
-  </view>
+  <custom-nav-bar wx:if="{{canGoBack}}" showBack bind:back="skipLogin" />
 
   <view class="logo-area">
     <image class="brand-logo" src="/assets/brand/logo.png" mode="aspectFit" />

@@ -114,10 +114,10 @@ function createCollection(initialRows) {
   const book = await resolveByIsbn(db, '9787559677280');
   assert.strictEqual(refreshCalled, true);
   assert.strictEqual(book.listPrice, '88.00');
-  assert.strictEqual(book.category, '社科');
+  assert.strictEqual(book.category, '文学');
   assert.strictEqual(book.cover, 'cloud://env/book-covers/9787559677280.jpg');
   assert.strictEqual(rows[0].listPrice, '88.00');
-  assert.strictEqual(rows[0].category, '社科');
+  assert.strictEqual(rows[0].category, '文学');
 
   console.log('book lookup cache refresh ok');
 })();

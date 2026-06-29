@@ -10,6 +10,9 @@ const { publishEarnGuideModal } = require('../../utils/pointRules');
 const { showPublishEntryOptions } = require('../../utils/publishEntry');
 const { poolShare } = require('../../utils/share');
 const { measureMoreFilterLayout } = require('../../utils/poolMoreFilterLayout');
+const {
+  readPageCache, writePageCache, shouldUseCachedPage, bumpPoolFeedVersion, invalidatePageCache,
+} = require('../../utils/pageCache');
 
 const FIRST_SCREEN_POOL_SIZE = 30;
 
@@ -31,50 +34,27 @@ const CONDITION_TABS = [
   ...CONDITIONS,
 ];
 
-function isValueMatched(item, key) {
-  if (!key || key === 'all') return true;
-  const tab = VALUE_TABS.find((entry) => entry.key === key);
-  if (!tab) return true;
-  const value = Number(item.coinValue) || 0;
-  if (tab.min !== undefined && value < tab.min) return false;
-  if (tab.max !== undefined && value > tab.max) return false;
-  return true;
-}
-
-function hasRealCover(cover = '') {
-  const value = String(cover || '').trim();
-  return !!value && !/default\.png|brand\/logo|placeholder|undefined|null/.test(value);
-}
-
-const TOP_LOW_POINT_CHILDREN = 6;
-const LOW_POINT_CHILDREN_MAX = 5;
-
-function isLowPointChildrenItem(item = {}) {
-  const value = Number(item.coinValue) || 0;
-  return item.category === 'children' && value >= 0 && value <= LOW_POINT_CHILDREN_MAX;
-}
-
-function promoteTopLowPointChildren(list = [], topN = TOP_LOW_POINT_CHILDREN) {
-  if (!list.length || topN <= 0) return list;
-  const lowPointChildren = [];
-  const others = [];
-  list.forEach((item) => {
-    if (isLowPointChildrenItem(item)) lowPointChildren.push(item);
-    else others.push(item);
+function mergePoolList(existing = [], incoming = []) {
+  if (!existing.length) return incoming;
+  if (!incoming.length) return existing;
+  const byId = {};
+  existing.forEach((item) => { byId[item.id] = item; });
+  incoming.forEach((item) => { byId[item.id] = item; });
+  const seen = new Set();
+  const merged = [];
+  existing.forEach((item) => {
+    if (!seen.has(item.id)) {
+      merged.push(byId[item.id]);
+      seen.add(item.id);
+    }
   });
-  return [...lowPointChildren.slice(0, topN), ...lowPointChildren.slice(topN), ...others];
-}
-
-// 推荐排序：可接漂优先 + 童书优先 + 有封面优先，前 6 位优先 0-5 积分童书
-function recommendSort(list = []) {
-  const sorted = [...list].sort((a, b) => {
-    const claimableDiff = (b.canClaim ? 1 : 0) - (a.canClaim ? 1 : 0);
-    if (claimableDiff) return claimableDiff;
-    const childrenDiff = (b.category === 'children' ? 1 : 0) - (a.category === 'children' ? 1 : 0);
-    if (childrenDiff) return childrenDiff;
-    return (hasRealCover((b.book || {}).cover) ? 1 : 0) - (hasRealCover((a.book || {}).cover) ? 1 : 0);
+  incoming.forEach((item) => {
+    if (!seen.has(item.id)) {
+      merged.push(byId[item.id]);
+      seen.add(item.id);
+    }
   });
-  return promoteTopLowPointChildren(sorted);
+  return merged;
 }
 
 Page({
@@ -84,6 +64,11 @@ Page({
     keyword: '',
     rawList: [],
     list: [],
+    page: 1,
+    hasMore: false,
+    loading: false,
+    loadingMore: false,
+    feedVersion: 0,
     stats: {
       availableCoin: 0,
     },
@@ -91,17 +76,15 @@ Page({
     activeCategory: 'recommend',
     valueTabs: VALUE_TABS,
     conditionTabs: CONDITION_TABS,
-    // 已生效的更多筛选
     activeValue: 'all',
     activeCondition: 'all',
-    // 抽屉内草稿值
     showMoreFilter: false,
     filterFootPadding: 0,
     filterCompact: false,
     moreActive: false,
     draftValue: 'all',
     draftCondition: 'all',
-    claimableOnly: true,
+    claimableOnly: false,
     showEarnGuideModal: false,
     earnGuide: publishEarnGuideModal(),
   },
@@ -111,40 +94,86 @@ Page({
     setTimeout(() => refreshTabBarPendingShip(), 500);
     trackPageView('pool/index');
     const loggedIn = isLoggedIn();
-    this.setData({ loggedIn, claimableOnly: loggedIn });
+    this.setData({ loggedIn });
     const poolSearch = wx.getStorageSync('poolSearch');
     if (poolSearch) {
       this.setData({ keyword: poolSearch });
       wx.removeStorageSync('poolSearch');
     }
     const { reloadIfCoversUpdated } = require('../../utils/coverPage');
-    reloadIfCoversUpdated(() => this.loadList());
+    reloadIfCoversUpdated(() => this.loadList(true));
+    const cached = readPageCache('pool/list');
+    if (cached && cached.data) this.applyPoolPayload(cached.data, { mergeOnly: false });
+    if (!shouldUseCachedPage('pool/list') || !cached) this.loadList(true);
     this.loadStats();
-    this.loadList();
   },
 
   onHide() {
     setTabBarHidden(false);
   },
 
+  onReachBottom() {
+    if (this.data.hasMore && !this.data.loadingMore && !this.data.loading) {
+      this.loadList(false);
+    }
+  },
+
   onInput(e) {
     this.setData({ keyword: e.detail.value });
   },
 
-  async loadList() {
-    const requestId = Date.now();
-    this.lastListRequestId = requestId;
+  applyPoolPayload(res, options = {}) {
+    const incoming = res.list || [];
+    const rawList = options.mergeOnly
+      ? mergePoolList(this.data.rawList, incoming)
+      : incoming;
+    if (res.feedVersion) bumpPoolFeedVersion(res.feedVersion);
+    this.setData({
+      rawList,
+      list: rawList,
+      page: res.page || this.data.page,
+      hasMore: !!res.hasMore,
+      feedVersion: res.feedVersion || this.data.feedVersion,
+      loading: false,
+      loadingMore: false,
+    });
+  },
+
+  async loadList(reset = true) {
+    if (!reset) {
+      if (this.data.loadingMore || !this.data.hasMore || this.data.loading) return;
+      this.setData({ loadingMore: true });
+    } else {
+      const requestId = Date.now();
+      this.lastListRequestId = requestId;
+      if (!readPageCache('pool/list')) {
+        this.setData({ loading: true, page: 1, hasMore: false });
+      }
+    }
+
+    const requestId = this.lastListRequestId;
+    const page = reset ? 1 : this.data.page + 1;
     const params = {
       keyword: this.data.keyword,
       category: this.data.activeCategory === 'recommend' ? 'all' : this.data.activeCategory,
       claimableOnly: this.data.claimableOnly,
-      page: 1,
+      valueKey: this.data.activeValue,
+      condition: this.data.activeCondition,
+      page,
       size: FIRST_SCREEN_POOL_SIZE,
     };
+    const append = !reset;
     const applyList = (res) => {
       if (this.lastListRequestId !== requestId) return;
-      this.setData({ rawList: res.list || [] });
-      this.filterList();
+      const incoming = res.list || [];
+      const payload = {
+        list: append ? mergePoolList(this.data.rawList, incoming) : incoming,
+        page: res.page || page,
+        hasMore: !!res.hasMore,
+        feedVersion: res.feedVersion,
+      };
+      this.applyPoolPayload(payload, { mergeOnly: append });
+      if (reset && (payload.list || []).length) writePageCache('pool/list', payload);
     };
     try {
       const res = await api.getPoolList(params, {
@@ -155,22 +184,10 @@ Page({
       applyList(res);
     } catch (e) {
       console.error(e);
+      if (this.lastListRequestId === requestId) {
+        this.setData({ loading: false, loadingMore: false });
+      }
     }
-  },
-
-  filterList() {
-    const { activeCategory, activeValue, activeCondition, rawList } = this.data;
-    let list = rawList;
-    if (activeValue !== 'all') {
-      list = list.filter((item) => isValueMatched(item, activeValue));
-    }
-    if (activeCondition !== 'all') {
-      list = list.filter((item) => item.condition === activeCondition);
-    }
-    if (activeCategory === 'recommend') {
-      list = recommendSort(list);
-    }
-    this.setData({ list });
   },
 
   async loadStats() {
@@ -192,7 +209,8 @@ Page({
 
   onCategoryChip(e) {
     const activeCategory = e.currentTarget.dataset.key || 'recommend';
-    this.setData({ activeCategory }, () => this.loadList());
+    invalidatePageCache('pool/');
+    this.setData({ activeCategory }, () => this.loadList(true));
   },
 
   openMoreFilter() {
@@ -228,12 +246,13 @@ Page({
     const { draftValue, draftCondition } = this.data;
     const moreActive = draftValue !== 'all' || draftCondition !== 'all';
     setTabBarHidden(false);
+    invalidatePageCache('pool/');
     this.setData({
       activeValue: draftValue,
       activeCondition: draftCondition,
       moreActive,
       showMoreFilter: false,
-    }, () => this.filterList());
+    }, () => this.loadList(true));
   },
 
   goDetail(e) {
@@ -247,15 +266,6 @@ Page({
       author: author || '',
     });
     wx.navigateTo({ url: `/pages/pool/detail?id=${id}` });
-  },
-
-  goApply(e) {
-    if (e.currentTarget.dataset.mine) {
-      wx.showToast({ title: '不能接漂自己赠送的书', icon: 'none' });
-      return;
-    }
-    const driftId = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: `/pages/pool/detail?id=${driftId}` });
   },
 
   goWants() {

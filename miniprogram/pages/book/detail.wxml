@@ -25,7 +25,10 @@
   </view>
 
   <view class="card">
-    <view class="section-title">书架信息</view>
+    <view class="section-title shelf-info-title">
+      <text>书架信息</text>
+      <text wx:if="{{item.driftedOut}}" class="drifted-out-pill">已漂出</text>
+    </view>
     <view class="hint muted">修改后请点击「确认保存」</view>
 
     <view class="label">阅读状态</view>

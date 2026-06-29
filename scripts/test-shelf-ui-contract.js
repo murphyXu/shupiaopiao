@@ -50,5 +50,8 @@ assert.ok(shelfHandler.includes('validRows') && shelfHandler.includes('books[row
 assert.ok(shelfHandler.includes('filterCountableShelfRows') && shelfHandler.includes('CLAIMED_SHELF_DRIFT_STATUSES') && shelfHandler.includes('claimedDriftShelfIds'), 'shelf dashboard should exclude claimed drifts from collection stats');
 assert.ok(shelfHandler.includes("status: 'COMPLETED'") && shelfHandler.includes('completedDriftShelfIds'), 'shelf dashboard should exclude drifted-away shelf rows from collection stats');
 assert.ok(shelfHandler.includes('buildCollectionStats'), 'shelf dashboard should use shared collection stats builder');
+assert.ok(shelfHandler.includes('driftedOut') && shelfHandler.includes('shelfDriftContext') && shelfHandler.includes('completedDriftShelfIds'), 'shelf list should expose completed drift state for each shelf book');
+assert.ok(shelfWxml.includes('item.driftedOut') && shelfWxml.includes('已漂出'), 'shelf list card should show drifted-out badge');
+assert.ok(detailWxml.includes('item.driftedOut') && detailWxml.includes('已漂出') && detailWxml.includes('书架信息'), 'book detail shelf section should show drifted-out badge');
 
 console.log('shelf ui contract ok');

@@ -1,11 +1,13 @@
 <view class="page">
+  <view wx:if="{{sessionCount > 0}}" class="finish-link" bindtap="goFinishGiven">完成，查看我送出的书 ›</view>
+
   <view class="card scan-card">
     <view class="scan-head">
       <view>
         <view class="label">扫码识别图书</view>
         <view class="muted scan-tip">适合清理闲置，无需先维护书架</view>
       </view>
-      <view class="btn-ghost scan-btn" bindtap="doScan">继续扫码</view>
+      <view wx:if="{{book}}" class="btn-ghost scan-btn" bindtap="doScan">重新扫码</view>
     </view>
     <view wx:if="{{sessionCount > 0}}" class="session-note muted">本次已连续上漂 {{sessionCount}} 本</view>
     <view wx:if="{{lookupStatus === 'loading'}}" class="muted">正在识别...</view>
@@ -24,6 +26,28 @@
   <view wx:else class="card empty-scan">
     <view class="muted">扫条形码开始上漂</view>
     <view class="btn-primary scan-start" bindtap="doScan">扫码上漂</view>
+  </view>
+
+  <view wx:if="{{book && setBookRisk}}" class="card">
+    <view class="label">赠出内容确认</view>
+    <view class="muted">这本书可能是套装/多册书，请确认实际赠出的内容，避免接漂后误解。</view>
+    <view class="chips issue-chips">
+      <view
+        wx:for="{{setCompletenessOptions}}"
+        wx:key="key"
+        class="chip {{setCompleteness === item.key ? 'active' : ''}}"
+        data-value="{{item.key}}"
+        bindtap="selectSetCompleteness"
+      >{{item.label}}</view>
+    </view>
+    <input
+      wx:if="{{setCompleteness === 'partial'}}"
+      class="form-control"
+      maxlength="60"
+      placeholder="例如：仅第1、2册，不含第3册"
+      value="{{setDescription}}"
+      bindinput="onSetDescription"
+    />
   </view>
 
   <view class="card {{!book ? 'disabled-card' : ''}}">
@@ -75,5 +99,16 @@
     </view>
   </view>
 
-  <button class="btn-primary publish-submit" loading="{{submitting}}" disabled="{{submitting || !book}}" bindtap="submit">提交上漂</button>
+  <view wx:if="{{book && sessionCount >= 1}}" class="card">
+    <view class="continuous-row" bindtap="toggleContinuousScan">
+      <view class="switch-dot {{continuousScan ? 'active' : ''}}"></view>
+      <view>
+        <view class="continuous-title">批量连续上漂</view>
+        <view class="muted">先确认本页选项，提交后自动继续扫下一本</view>
+      </view>
+    </view>
+    <view wx:if="{{batchMessage}}" class="batch-message">{{batchMessage}}</view>
+  </view>
+
+  <button class="btn-primary publish-submit" loading="{{submitting}}" disabled="{{submitting || !book}}" bindtap="submit">{{continuousScan ? '提交并继续扫码' : '提交上漂'}}</button>
 </view>

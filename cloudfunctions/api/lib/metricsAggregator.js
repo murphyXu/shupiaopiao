@@ -236,10 +236,11 @@ async function retention(baseDay, n) {
 }
 
 /**
- * 聚合单天
+ * 计算单天指标（不写库，供实时看板与聚合共用）
  */
-async function aggregateOneDay(day) {
+async function computeDayMetrics(day, opts = {}) {
   const { startIso, endIso } = dayRange(day);
+  const includeRetention = opts.includeRetention !== false;
 
   const [dau, evtTypes, flow, stock, funnel, health, nu, shipHours] = await Promise.all([
     countDAU(day),
@@ -252,9 +253,6 @@ async function aggregateOneDay(day) {
     avgShipHours(startIso, endIso),
   ]);
 
-  // 留存只对足够久远的日期算（昨天的 D7 还没到，会是 0，属正常）
-  const [retD1, retD7] = await Promise.all([retention(day, 1), retention(day, 7)]);
-
   const publishToClaimRate = funnel.published ? Number((funnel.claimed / funnel.published).toFixed(4)) : 0;
   const claimToDoneRate = funnel.claimed ? Number((funnel.done / funnel.claimed).toFixed(4)) : 0;
 
@@ -264,7 +262,6 @@ async function aggregateOneDay(day) {
     newUsers: nu,
     launches: evtTypes.launch || 0,
     pageViews: evtTypes.page_view || 0,
-    // 漂流漏斗
     driftPublished: funnel.published,
     driftClaimed: funnel.claimed,
     driftShipped: funnel.shipped,
@@ -274,27 +271,35 @@ async function aggregateOneDay(day) {
     avgShipHours: shipHours,
     publishToClaimRate,
     claimToDoneRate,
-    // 积分经济
     coinIssued: flow.issued,
     coinConsumed: flow.consumed,
     coinNetFlow: flow.issued - flow.consumed,
     coinStock: stock,
-    // 增长
     inviteShares: evtTypes.invite_share || 0,
     shelfAdds: evtTypes.shelf_add || 0,
     bookLookups: (evtTypes.book_lookup || 0) + (evtTypes.book_search || 0),
     booklistViews: evtTypes.booklist_view || 0,
-    // 健康度
     errorRate: health.errorRate,
     avgApiLatency: health.avgApiLatency,
     apiCalls: health.apiCalls,
     contentRiskHits: evtTypes.content_risk_hit || 0,
-    // 留存
-    retentionD1: retD1,
-    retentionD7: retD7,
     generatedAt: new Date().toISOString(),
   };
 
+  if (includeRetention) {
+    const [retD1, retD7] = await Promise.all([retention(day, 1), retention(day, 7)]);
+    doc.retentionD1 = retD1;
+    doc.retentionD7 = retD7;
+  }
+
+  return doc;
+}
+
+/**
+ * 聚合单天
+ */
+async function aggregateOneDay(day) {
+  const doc = await computeDayMetrics(day);
   await db.collection('daily_metrics').doc(day).set({ data: doc });
   return doc;
 }
@@ -319,4 +324,6 @@ async function aggregateDaily(opts = {}) {
   return { ok: true, days: results.map((r) => r.day), count: results.length, purge };
 }
 
-module.exports = { aggregateDaily, aggregateOneDay, dayStr, dayRange, yesterday, purgeOldEvents };
+module.exports = {
+  aggregateDaily, aggregateOneDay, computeDayMetrics, dayStr, dayRange, yesterday, purgeOldEvents,
+};

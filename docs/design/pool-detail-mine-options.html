@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>漂流详情 · 我的赠书弱化方案</title>
+  <style>
+    :root {
+      --green: #2FBE77;
+      --green-dark: #0C7A4B;
+      --green-soft: #EAFBF2;
+      --text: #15211B;
+      --muted: #8a988f;
+      --card-border: #eef3ef;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      background: #f4f7f5;
+      color: var(--text);
+      padding: 24px 16px 48px;
+      line-height: 1.45;
+    }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    .intro { max-width: 900px; color: #5d6d64; font-size: 14px; margin-bottom: 24px; }
+    .intro strong { color: var(--green-dark); }
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 1100px;
+    }
+    .option {
+      background: #fff;
+      border-radius: 18px;
+      border: 1px solid #e8eeea;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(21,158,99,0.06);
+    }
+    .option-head { padding: 14px 16px 10px; border-bottom: 1px solid #f0f4f1; }
+    .option-head h2 { font-size: 15px; margin-bottom: 4px; }
+    .rec {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      padding: 2px 7px;
+      border-radius: 999px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .option-head p { font-size: 12px; color: #6d7d74; }
+    .pros-cons {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      padding: 10px 16px 12px; font-size: 11px; background: #fafcfb;
+      border-top: 1px solid #f0f4f1; color: #5d6d64;
+    }
+    .pros-cons b { font-size: 10px; color: var(--text); }
+
+    /* phone */
+    .phone {
+      width: 260px; margin: 14px auto 16px;
+      background: #f4f7f5; border-radius: 26px;
+      border: 1px solid #dde5e0; padding: 10px 8px 12px;
+      position: relative;
+    }
+    .phone-label { text-align: center; font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+
+    .cover {
+      height: 140px; background: #fff; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 10px; position: relative;
+    }
+    .cover-book {
+      width: 70px; height: 96px; border-radius: 4px;
+      background: linear-gradient(145deg, #dff4e8, #c3ead4);
+    }
+    .mine-tag {
+      position: absolute; top: 8px; left: 8px;
+      font-size: 10px; font-weight: 600; color: #7b8a82;
+      background: rgba(240,245,241,0.95); border: 1px solid #e6eee9;
+      padding: 3px 8px; border-radius: 999px;
+    }
+    .card {
+      background: #fff; border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 12px; margin-bottom: 8px;
+    }
+    .card-title { font-size: 15px; font-weight: 700; }
+    .card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .meta-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .pill {
+      font-size: 10px; padding: 3px 8px; border-radius: 999px;
+      background: #f2f5f3; color: #9aa8a0;
+    }
+    .pill.green { background: var(--green-soft); color: var(--green-dark); }
+    .pill.mine { background: #f0f5f1; color: #7b8a82; }
+    .status-line {
+      margin-top: 8px; font-size: 11px; color: #7b8a82;
+    }
+    .status-banner {
+      margin-top: 8px; padding: 8px 10px; border-radius: 10px;
+      background: #f7faf8; border: 1px solid #e6eee9;
+      font-size: 11px; color: #6d7d74; line-height: 1.5;
+    }
+    .status-banner b { color: #7b8a82; font-weight: 600; }
+    .section { font-size: 11px; color: #b0bab4; text-align: center; padding: 20px 0 8px; }
+
+    /* current bottom bar */
+    .fixed-bar {
+      position: absolute; left: 10px; right: 10px; bottom: 10px;
+      display: flex; justify-content: center;
+    }
+    .fixed-btn {
+      width: 150px; padding: 10px 0; text-align: center;
+      border-radius: 15px; font-size: 12px; font-weight: 600;
+      color: #7b8a82; background: #f0f5f1; border: 1px solid #e6eee9;
+    }
+    .fixed-bar-dual {
+      display: grid; grid-template-columns: 80px 1fr; gap: 8px;
+    }
+    .fixed-primary {
+      background: var(--green); color: #fff; border: none;
+      border-radius: 15px; font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fixed-ghost {
+      background: #fff; border: 1px solid #e6eee9; color: #46564e;
+      border-radius: 15px; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .inline-footer {
+      text-align: center; font-size: 11px; color: #9aa8a0;
+      padding: 6px 0 2px;
+    }
+    .inline-footer a { color: var(--green-dark); font-weight: 600; text-decoration: none; }
+
+    .strip-bar {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 8px 12px calc(8px + 2px);
+      background: rgba(247,250,248,0.96);
+      border-top: 1px solid #e6eee9;
+      font-size: 11px; color: #7b8a82; text-align: center;
+    }
+
+    .legend {
+      max-width: 900px; margin-top: 28px; padding: 16px;
+      background: #fff; border-radius: 14px; border: 1px solid #e8eeea;
+      font-size: 13px; color: #5d6d64;
+    }
+    .legend h3 { font-size: 15px; margin-bottom: 8px; color: var(--text); }
+    .legend ul { padding-left: 18px; }
+    .legend li { margin-bottom: 6px; }
+
+    .compare-row {
+      max-width: 900px; margin-bottom: 20px; padding: 14px 16px;
+      background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px;
+      font-size: 13px; color: #7c2d12;
+    }
+    .compare-row b { color: #9a3412; }
+  </style>
+</head>
+<body>
+  <h1>漂流详情 ·「我的赠书」弱化方案</h1>
+  <p class="intro">
+    当前问题：底部灰色固定按钮<strong>看起来像可点的主操作</strong>，但实际无 <code>bindtap</code>，且与列表角标重复。
+    他人书籍的底栏是「想要 + 申请接漂」决策区；自己的书不需要决策，不宜占用同级视觉权重。
+  </p>
+
+  <div class="compare-row">
+    <b>现状</b>：固定底栏 + 360rpx 宽灰按钮「我的赠书」+ 页面底部留白 200rpx —— 占位大、像假按钮。
+  </div>
+
+  <div class="options">
+    <!-- A -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 A · 去掉底栏，首卡内状态<span class="rec">推荐</span></h2>
+        <p>封面角标（与列表一致）+ 标题区一行状态文案，无固定底栏。</p>
+      </div>
+      <div class="phone" style="padding-bottom: 12px;">
+        <div class="phone-label">无底部固定区</div>
+        <div class="cover">
+          <span class="mine-tag">我的赠书</span>
+          <div class="cover-book"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">彩虹色的花</div>
+          <div class="card-sub">麦克·格雷涅茨</div>
+          <div class="meta-row">
+            <span class="pill green">公益积分 6</span>
+            <span class="pill">品相良好</span>
+          </div>
+          <div class="status-line">正在漂流池等待书友申请接漂</div>
+        </div>
+        <div class="section">… 内容介绍 / 基础信息 …</div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>与列表一致；阅读区完整；状态清晰</div>
+        <div><b>注意</b><br>需减 padding-bottom；可链到赠出记录</div>
+      </div>
+    </section>
+
+    <!-- B -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 B · 首卡状态条（非按钮）</h2>
+        <p>浅灰信息条替代底栏按钮，明确是「说明」不是「操作」。</p>
+      </div>
+      <div class="phone" style="padding-bottom: 12px;">
+        <div class="phone-label">无底部固定区</div>
+        <div class="cover"><div class="cover-book"></div></div>
+        <div class="card">
+          <div class="card-title">彩虹色的花</div>
+          <div class="card-sub">麦克·格雷涅茨</div>
+          <div class="meta-row">
+            <span class="pill green">公益积分 6</span>
+            <span class="pill mine">我的赠书</span>
+          </div>
+          <div class="status-banner">
+            <b>你的赠书正在漂流中</b><br>
+            有人申请后，可在「我的 → 赠出的书」查看并寄出
+          </div>
+        </div>
+        <div class="section">… 内容介绍 …</div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>信息最全；可放下一步指引</div>
+        <div><b>注意</b><br>首卡略长；banner 勿用按钮圆角</div>
+      </div>
+    </section>
+
+    <!-- C -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 C · 底部细条提示（非按钮）</h2>
+        <p>保留底部锚点，但改为细条文字，去掉按钮形态。</p>
+      </div>
+      <div class="phone" style="padding-bottom: 44px;">
+        <div class="phone-label">细条 ≠ 按钮</div>
+        <div class="cover"><div class="cover-book"></div></div>
+        <div class="card">
+          <div class="card-title">彩虹色的花</div>
+          <div class="meta-row"><span class="pill green">公益积分 6</span></div>
+        </div>
+        <div class="section">… 内容 …</div>
+        <div class="strip-bar">我的赠书 · 等待申请接漂</div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>改动小；仍有一致「底栏」位置</div>
+        <div><b>注意</b><br>仍占底部；不如 A/B 干净</div>
+      </div>
+    </section>
+
+    <!-- D -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 D · 弱链接替代死按钮<span class="rec">推荐</span></h2>
+        <p>去掉底栏；页末一行弱链接「查看赠出进度 ›」进赠出列表。</p>
+      </div>
+      <div class="phone" style="padding-bottom: 12px;">
+        <div class="phone-label">有行动，但非主按钮</div>
+        <div class="cover">
+          <span class="mine-tag">我的赠书</span>
+          <div class="cover-book"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">彩虹色的花</div>
+          <div class="status-line">正在等待书友申请接漂</div>
+        </div>
+        <div class="section">… 赠书方信息 / 运费说明 …</div>
+        <div class="inline-footer">
+          <a href="#">查看赠出进度 ›</a>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>把「死按钮」变成有用入口</div>
+        <div><b>注意</b><br>需确认跳转赠出列表/订单</div>
+      </div>
+    </section>
+
+    <!-- E -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 E · 仅封面角标（最简）</h2>
+        <p>与列表完全对齐：角标标识身份，详情不再重复状态。</p>
+      </div>
+      <div class="phone" style="padding-bottom: 12px;">
+        <div class="phone-label">零重复</div>
+        <div class="cover">
+          <span class="mine-tag">我的赠书</span>
+          <div class="cover-book"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">彩虹色的花</div>
+          <div class="card-sub">麦克·格雷涅茨</div>
+          <div class="meta-row">
+            <span class="pill green">公益积分 6</span>
+            <span class="pill">品相良好</span>
+          </div>
+        </div>
+        <div class="section">… 正常详情内容，底栏同他人页结构但隐藏 …</div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>最干净；列表→详情认知连续</div>
+        <div><b>注意</b><br>新用户可能不知下一步；可配合 B 的 banner</div>
+      </div>
+    </section>
+
+    <!-- 现状 -->
+    <section class="option" style="opacity:0.92;border-color:#fed7aa;">
+      <div class="option-head">
+        <h2>现状 · 底部灰按钮（对比）</h2>
+        <p>固定居中宽按钮，占位大，易被误认为可点操作。</p>
+      </div>
+      <div class="phone" style="padding-bottom: 52px;">
+        <div class="phone-label">当前实现</div>
+        <div class="cover"><div class="cover-book"></div></div>
+        <div class="card">
+          <div class="card-title">彩虹色的花</div>
+          <div class="meta-row"><span class="pill green">公益积分 6</span></div>
+        </div>
+        <div class="section">… 内容被底栏遮挡区 …</div>
+        <div class="fixed-bar">
+          <div class="fixed-btn">我的赠书</div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>问题</b><br>假按钮；与列表角标重复</div>
+        <div><b>问题</b><br>浪费 200rpx 底部留白</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="legend">
+    <h3>组合建议</h3>
+    <ul>
+      <li><strong>首选 A + D</strong>：封面角标 + 首卡一行状态 + 页末「查看赠出进度」弱链接；彻底去掉固定底栏。</li>
+      <li><strong>若担心用户不知道下一步</strong>：在 A 上加 B 的浅灰 status-banner（一句指引即可）。</li>
+      <li><strong>不推荐</strong>：保留 C 的底栏细条（仍像「有个底栏」）；或继续用按钮形态哪怕改灰色。</li>
+      <li><strong>他人书籍底栏不变</strong>：仅 <code>isMine</code> 时隐藏 <code>fixed-actions</code>，<code>padding-bottom</code> 从 200rpx 降到常规值。</li>
+    </ul>
+  </div>
+</body>
+</html>

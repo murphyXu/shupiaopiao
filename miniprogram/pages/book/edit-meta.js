@@ -39,8 +39,7 @@ Page({
     }
     this.setData({ loading: true });
     try {
-      const shelf = await api.getShelfBooks('all');
-      const item = (shelf.list || []).find((entry) => entry.id === shelfBookId);
+      const item = await api.getShelfBookDetail(shelfBookId);
       if (!item || !item.book) {
         wx.showToast({ title: '未找到这本书', icon: 'none' });
         setTimeout(() => wx.navigateBack(), 600);

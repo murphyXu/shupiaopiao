@@ -2,19 +2,18 @@ const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { prepareOrderList, resolveActiveTabFromStatus } = require('../../utils/orderList');
+const { buildOrderMetaLine } = require('../../utils/orderMeta');
+const { formatAutoCompleteRemaining } = require('../../utils/shipping');
 const { tryShowMilestonePrompt } = require('../../utils/officialAccountPrompt');
+const {
+  buildConfirmReceiveContent,
+  buildConfirmReceiveSuccessTitle,
+} = require('../../utils/pointFeedback');
 
-function withBundleBadge(orders = []) {
-  const counts = {};
-  orders.forEach((order) => {
-    if (order.bundleId) counts[order.bundleId] = (counts[order.bundleId] || 0) + 1;
-  });
-  return orders.map((order) => ({
-    ...order,
-    bundleBadge: order.bundleId && counts[order.bundleId] > 1
-      ? `同包裹 · ${counts[order.bundleId]} 本`
-      : '',
-  }));
+function withDeadlineHint(order = {}) {
+  if (order.status !== 'SHIPPED') return order;
+  const deadlineHint = formatAutoCompleteRemaining(order.autoCompleteAt);
+  return deadlineHint ? { ...order, deadlineHint } : order;
 }
 
 Page({
@@ -49,9 +48,16 @@ Page({
 
   onShow() {
     api.getOrders('received').then((res) => {
-      const rawOrders = withBundleBadge(res.list || []);
+      const rawOrders = res.list || [];
       const { orders, statusTabs } = prepareOrderList(rawOrders, 'received', this.data.activeTab);
-      this.setData({ orders, statusTabs });
+      this.setData({
+        orders: orders.map((order) => withDeadlineHint({
+          ...order,
+          orderMetaLine: buildOrderMetaLine(order),
+        })),
+        statusTabs,
+      });
+      this._orders = rawOrders;
     });
   },
 
@@ -61,17 +67,17 @@ Page({
     this.setData({ activeTab }, () => this.onShow());
   },
 
-  async confirm(e) {
+  async   confirm(e) {
     const orderId = e.currentTarget.dataset.id;
+    const order = (this._orders || []).find((item) => item.id === orderId) || {};
     wx.showModal({
       title: '确认收货',
-      content: '确认已收到图书？确认后将结算公益积分',
+      content: buildConfirmReceiveContent({ coinValue: order.coinValue }),
       success: async (res) => {
-        if (res.confirm) {
-          await api.confirmOrder(orderId);
-          wx.showToast({ title: '已确认收货' });
-          this.onShow();
-        }
+        if (!res.confirm) return;
+        const result = await api.confirmOrder(orderId);
+        wx.showToast({ title: buildConfirmReceiveSuccessTitle(result.pointEffects), icon: 'none' });
+        this.onShow();
       },
     });
   },

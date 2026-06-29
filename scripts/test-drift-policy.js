@@ -24,6 +24,8 @@ assert.strictEqual(calculateCoinValue(15, 'new'), 5);
 assert.strictEqual(calculateCoinValue(15, 'like_new'), 3);
 assert.strictEqual(calculateCoinValue(15, 'good'), 3);
 assert.strictEqual(calculateCoinValue(15, 'seven_new'), 2);
+assert.strictEqual(calculateCoinValue(73.8, 'like_new', 10.9), 11);
+assert.strictEqual(calculateCoinValue(73.8, 'new', 10.9), 16);
 assert.deepStrictEqual(resolveRequestedCoinValue(4, 2), { coinValue: 2, systemCoinValue: 4 });
 assert.strictEqual(resolveRequestedCoinValue(4, 5).error, 'COIN_VALUE_TOO_HIGH');
 assert.strictEqual(availableCoin({ coinBalance: 12, coinFrozen: 5 }), 7);

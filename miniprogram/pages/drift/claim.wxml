@@ -3,14 +3,14 @@
     <image class="book-cover-sm" src="{{item.book.cover}}" mode="aspectFill" binderror="onCoverError" data-single="item.book" data-isbn="{{item.book.isbn}}" />
     <view class="info">
       <view class="title">{{item.book.title}}</view>
-      <text class="badge">流转积分 {{item.coinValue}}</text>
+      <text class="badge">公益积分 {{item.coinValue}}</text>
       <text wx:if="{{item.lightweightHint}}" class="pill lightweight">轻量</text>
     </view>
   </view>
 
   <view wx:if="{{item.sameGiverPool}}" class="card same-giver-card">
     <view class="same-giver-label">{{item.sameGiverPool.label}}</view>
-    <view class="muted same-giver-tip">凑单通常只需一次到付运费，点击查看详情</view>
+    <view class="muted same-giver-tip">{{item.sameGiverPool.hint || sameGiverHint}}</view>
     <view
       wx:for="{{item.sameGiverPool.items}}"
       wx:key="id"
@@ -23,7 +23,7 @@
       <view class="same-giver-info">
         <view class="same-giver-title">{{item.book.title}}</view>
         <view class="same-giver-meta">
-          <text class="badge">流转积分 {{item.coinValue}}</text>
+          <text class="badge">公益积分 {{item.coinValue}}</text>
           <text wx:if="{{item.lightweightHint}}" class="pill lightweight">轻量</text>
         </view>
       </view>
@@ -31,29 +31,32 @@
     </view>
   </view>
 
-  <view class="card address-card" bindtap="selectAddress">
-    <view class="label">收货地址</view>
-    <view wx:if="{{address}}">
-      <view>{{address.name}} {{address.phone}}</view>
-      <view class="muted">{{address.region}} {{address.detail}}</view>
+  <view class="card address-card">
+    <view class="address-head">
+      <view class="label">收货地址</view>
+      <view wx:if="{{address}}" class="address-action" catchtap="selectAddress">修改地址 ›</view>
+      <view wx:else class="address-action" catchtap="chooseWxAddress">读取微信地址</view>
     </view>
-    <view wx:else class="muted">点击选择 / 新增地址 ›</view>
-  </view>
-  <view class="btn-ghost wx-address-btn" bindtap="chooseWxAddress">读取微信地址</view>
-
-  <view class="note-box">
-    <view>运费说明：赠书方将寄出「快递到付」件，运费由你在收件时付给快递员，平台不收取任何费用。</view>
-    <view wx:if="{{shippingHint}}" class="shipping-hint">{{shippingHint}}</view>
-    <view wx:elif="{{item.shipFrom}}" class="shipping-hint">赠书方从{{item.shipFrom.label}}寄出，运费收件时向快递员支付</view>
-  </view>
-
-  <view class="card balance">
-    <text>可用公益积分</text>
-    <text class="badge">{{available}}</text>
-    <text class="muted">占用中 {{frozen}}</text>
+    <view class="address-body" bindtap="selectAddress">
+      <view wx:if="{{address}}">
+        <view class="address-name">{{address.name}} {{address.phone}}</view>
+        <view class="muted address-detail">{{address.region}} {{address.detail}}</view>
+      </view>
+      <view wx:else class="muted">{{addressPlaceholder}}</view>
+    </view>
   </view>
 
-  <view class="note-box">申请成功后将占用 {{item.coinValue}} 公益积分，完成接漂时才从总记录值中扣除；同时未收货最多 5 单，请先完成在途漂流。</view>
+  <view class="card claim-summary">
+    <view class="label">本次申请摘要</view>
+    <view class="summary-row"><text class="sk">将占用公益积分</text><text class="sv hl">{{item.coinValue}}</text></view>
+    <view class="summary-row"><text class="sk">运费方式</text><text class="sv">{{codShort}}</text></view>
+    <view wx:if="{{item.shipFrom}}" class="summary-row"><text class="sk">寄出参考地</text><text class="sv">{{item.shipFrom.label}}</text></view>
+    <view class="summary-row"><text class="sk">同时未收货</text><text class="sv">{{inflightLimitSummary}}</text></view>
+    <view wx:if="{{item.setDisplayText}}" class="summary-row"><text class="sk">赠出内容</text><text class="sv">{{item.setDescription || item.setDisplayText}}</text></view>
+    <view class="summary-row"><text class="sk">当前可用公益积分</text><text class="sv">{{available}}（占用中 {{frozen}}）</text></view>
+  </view>
 
-  <view class="btn-accent" bindtap="confirm">确认申请</view>
+  <view wx:if="{{shippingHint}}" class="shipping-hint-card">{{shippingHint}}</view>
+
+  <view class="btn-accent" bindtap="confirm">确认申请接漂</view>
 </view>

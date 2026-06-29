@@ -1,5 +1,7 @@
 const { tryShowMilestonePrompt } = require('../../utils/officialAccountPrompt');
 
+const GIVEN_LIST_URL = '/pages/drift/given?status=IN_POOL';
+
 Page({
   data: {
     results: [],
@@ -26,8 +28,8 @@ Page({
     this.setData({ showOaMilestone: false });
   },
 
-  goPool() {
-    wx.switchTab({ url: '/pages/pool/index' });
+  goGivenList() {
+    wx.redirectTo({ url: GIVEN_LIST_URL });
   },
 
   goPublish() {

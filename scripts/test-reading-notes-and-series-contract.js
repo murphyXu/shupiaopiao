@@ -35,9 +35,6 @@ assert.ok(!mineJs.includes('goNotes') && !mineWxml.includes('我的读书笔记'
 
 assert.ok(!scanWxml.includes('scan-area') && !scanWxml.includes('调起 wx.scanCode'), 'scan result page should not show top scan guide module');
 
-assert.ok(shelfJs.includes('buildShelfEntries') && shelfJs.includes('seriesCollapsed') && shelfJs.includes('toggleSeries'), 'shelf should build collapsible series entries');
-assert.ok(shelfJs.includes('屁屁侦探'), 'shelf series detection should include known children series such as Butt Detective');
-assert.ok(shelfWxml.includes('series-card') && shelfWxml.includes('seriesTypeLabel') && shelfWxml.includes('series-count-badge'), 'shelf should render folded series/set entry');
-assert.ok(shelfWxss.includes('.series-card') && shelfWxss.includes('.series-count-badge'), 'shelf should style series entry');
+assert.ok(shelfWxml.includes('wx:for="{{books}}"') && !shelfJs.includes('buildShelfEntries'), 'shelf should list books flat without series grouping');
 
 console.log('reading notes and series contract ok');

@@ -57,7 +57,11 @@ function syncDriftPricing(draft, book = {}) {
   const bookListPrice = parseListPrice(book.listPrice);
   const listPriceValue = Number(draft.listPrice) || bookListPrice || 0;
   const listPriceText = listPriceValue ? `¥${listPriceValue}` : '';
-  const priced = pricingState({ listPrice: listPriceText }, draft.condition, draft.coinValue);
+  const priced = pricingState({
+    listPrice: listPriceText,
+    medianPrice: book.medianPrice,
+    listPriceSource: book.listPriceSource,
+  }, draft.condition, draft.coinValue);
   return {
     ...draft,
     listPrice: priced.listPrice || listPriceValue,
@@ -132,9 +136,14 @@ Page({
   },
 
   async loadBook() {
-    const shelf = await api.getShelfBooks('all');
-    const item = shelf.list.find((entry) => entry.id === this.shelfId);
-    if (item) this.setBookItem(item);
+    if (!this.shelfId) return;
+    try {
+      const item = await api.getShelfBookDetail(this.shelfId);
+      if (item) this.setBookItem(item);
+      else wx.showToast({ title: '未找到这本书', icon: 'none' });
+    } catch (e) {
+      wx.showToast({ title: e.message || '加载失败', icon: 'none' });
+    }
   },
 
   setBookItem(item) {
@@ -143,7 +152,11 @@ Page({
       readingStatusLabel: item.readingStatusLabel || findLabel(CATEGORIES, item.readingStatus, '想读'),
       bookClassLabel: item.bookClassLabel || findLabel(BOOK_CLASSES, item.bookClass, '其他'),
     };
-    nextItem.displayCategory = item.displayCategory || item.sourceCategory || (item.book || {}).category || nextItem.bookClassLabel;
+    nextItem.displayCategory = nextItem.bookClassLabel
+      || item.displayCategory
+      || item.sourceCategory
+      || (item.book || {}).category
+      || '其他';
     nextItem.book = {
       ...(item.book || {}),
       category: nextItem.displayCategory,
@@ -184,13 +197,15 @@ Page({
     try {
       const book = await api.getBookByIsbn(isbn);
       if (!book || book.lookupStatus === 'manual_needed') return;
+      const categoryLabel = this.data.item.bookClassLabel
+        || this.data.item.displayCategory
+        || this.data.item.book.category;
       const nextItem = {
         ...this.data.item,
-        sourceCategory: book.category || this.data.item.sourceCategory,
-        displayCategory: book.category || this.data.item.displayCategory,
         book: {
+          ...this.data.item.book,
           ...book,
-          category: book.category || this.data.item.displayCategory,
+          category: categoryLabel,
         },
       };
       let draft = syncDriftPricing(this.data.draft, nextItem.book);
@@ -322,7 +337,7 @@ Page({
       wx.showToast({ title: activeDrift.statusLabel || '这本书正在漂流中', icon: 'none' });
       return;
     }
-    wx.navigateTo({ url: `/pages/drift/publish?bookId=${this.data.item.bookId}` });
+    wx.navigateTo({ url: `/pages/drift/publish?shelfBookId=${this.shelfId}&bookId=${this.data.item.bookId}` });
   },
 
   goEditBookMeta() {

@@ -19,6 +19,7 @@ const COLLECTIONS = [
   'reports',
   'events',
   'daily_metrics',
+  'pool_feed_meta',
 ];
 
 function isAlreadyExists(err) {

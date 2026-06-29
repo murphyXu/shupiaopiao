@@ -25,9 +25,28 @@ function formatShipDeadlineRemaining(shipDeadlineAt) {
   return `请在 ${hours} 小时内寄出`;
 }
 
+function formatAutoCompleteRemaining(autoCompleteAt) {
+  if (!autoCompleteAt) return '';
+  const ms = Date.parse(autoCompleteAt) - Date.now();
+  if (Number.isNaN(ms)) return '';
+  if (ms <= 0) return '确认期限已到，系统将自动完成';
+  const hours = Math.ceil(ms / 3600000);
+  const days = Math.floor(hours / 24);
+  const remainHours = hours % 24;
+  if (days > 0) return `${days} 天 ${remainHours} 小时后自动确认收货`;
+  return `${hours} 小时后自动确认收货`;
+}
+
+function formatDeadlineClock(iso) {
+  if (!iso) return '';
+  return String(iso).replace('T', ' ').slice(0, 16);
+}
+
 module.exports = {
   formatRegion,
   shippingInfoText,
   hasShippingInfo,
   formatShipDeadlineRemaining,
+  formatAutoCompleteRemaining,
+  formatDeadlineClock,
 };

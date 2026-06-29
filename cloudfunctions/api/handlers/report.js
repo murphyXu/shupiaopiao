@@ -1,6 +1,7 @@
 const { ok, fail, uid, nowIso } = require('../lib/utils');
 const { db, requireUser } = require('../lib/db');
 const { assertSafeTextFields } = require('../lib/contentSecurity');
+const { schedulePoolFeedRebuild } = require('../lib/poolFeedSnapshot');
 
 const TARGET_TYPES = new Set(['drift', 'note', 'review', 'shelf']);
 
@@ -27,6 +28,7 @@ async function create(openid, data = {}) {
       createdAt: nowIso(),
     },
   });
+  if (targetType === 'drift') schedulePoolFeedRebuild('drift_report');
   return ok({ reportId, message: '举报已提交' });
 }
 

@@ -1,5 +1,6 @@
 const { normalizeIsbn, isValidIsbn } = require('./bookCatalog');
 const { normalizeBookCategory } = require('./bookCategory');
+const { assessCatalogRecord } = require('./catalogQuality');
 
 const COLLECTION = 'book_catalog';
 
@@ -25,6 +26,7 @@ function normalizeCatalogRecord(raw = {}) {
     ageRange: raw.ageRange || '',
   });
 
+  const medianPrice = Number(raw.medianPrice);
   return {
     isbn,
     isbn10: raw.isbn10 || (isbn.length === 10 ? isbn : ''),
@@ -41,6 +43,10 @@ function normalizeCatalogRecord(raw = {}) {
     source: 'booklib',
     sourceId: isbn,
     lookupStatus: 'found',
+    ...(Number.isFinite(medianPrice) && medianPrice > 0 ? { medianPrice } : {}),
+    ...(raw.catalogQuality ? { catalogQuality: raw.catalogQuality } : {}),
+    ...(Array.isArray(raw.catalogQualityReasons) ? { catalogQualityReasons: raw.catalogQualityReasons } : {}),
+    ...(raw.inventoryOverride ? { inventoryOverride: true } : {}),
   };
 }
 
@@ -51,6 +57,7 @@ function isCatalogComplete(book = {}) {
   if (!String(book.coverRemote || '').trim()) return false;
   const category = String(book.category || '').trim();
   if (!category || ['图书', '童书', '其他', '未分类'].includes(category)) return false;
+  if (assessCatalogRecord(book).quality === 'suspect') return false;
   return true;
 }
 

@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "登录"
+  "navigationBarTitleText": "登录",
+  "usingComponents": {
+    "custom-nav-bar": "/components/custom-nav-bar/index"
+  }
 }

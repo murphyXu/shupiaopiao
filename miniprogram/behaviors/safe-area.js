@@ -4,6 +4,7 @@ module.exports = Behavior({
   data: {
     navPaddingTop: 44,
     contentPaddingRight: 16,
+    stickyTop: 64,
   },
 
   lifetimes: {
@@ -17,6 +18,7 @@ module.exports = Behavior({
       this.setData({
         navPaddingTop: sys.navPaddingTop || 56,
         contentPaddingRight: sys.contentPaddingRight || 16,
+        stickyTop: sys.stickyTop || ((sys.statusBarHeight || 20) + (sys.navBarHeight || 44)),
       });
     },
   },

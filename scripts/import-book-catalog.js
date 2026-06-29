@@ -18,16 +18,19 @@ const path = require('path');
 const readline = require('readline');
 const { normalizeCatalogRecord } = require('../cloudfunctions/api/lib/bookCatalogDb');
 const { normalizeIsbn, isValidIsbn } = require('../cloudfunctions/api/lib/bookCatalog');
+const { assessCatalogRecord } = require('../cloudfunctions/api/lib/catalogQuality');
 
 const BATCH_SIZE = 500;
 const DEFAULT_CATALOG = '/Users/xumanna/Desktop/小谷吖/_书目.csv';
 const DEFAULT_PRICING = '/Users/xumanna/Desktop/小谷吖/新建 文本文档_核价.csv';
+const DEFAULT_INVENTORY = '/Users/xumanna/Desktop/小谷吖/社科类图书-有库存-20240911.csv';
 const DEFAULT_OUT = path.join(__dirname, '../data/book_catalog');
 
 function parseArgs(argv) {
   const args = {
     catalog: DEFAULT_CATALOG,
     pricing: DEFAULT_PRICING,
+    inventory: DEFAULT_INVENTORY,
     out: DEFAULT_OUT,
     dryRun: false,
     limit: 0,
@@ -36,6 +39,7 @@ function parseArgs(argv) {
     const key = argv[i];
     if (key === '--catalog') args.catalog = argv[++i];
     else if (key === '--pricing') args.pricing = argv[++i];
+    else if (key === '--inventory') args.inventory = argv[++i];
     else if (key === '--out') args.out = argv[++i];
     else if (key === '--dry-run') args.dryRun = true;
     else if (key === '--limit') args.limit = Number(argv[++i]) || 0;
@@ -67,8 +71,11 @@ function parseCatalogRow(line) {
   const fields = line.split(',');
   const categoryIndex = fields.length - 9;
   const summaryIndex = fields.length - 8;
+  const authorIntroIndex = fields.length - 7;
   const category = categoryIndex >= 0 ? String(fields[categoryIndex] || '').trim() : '';
   const summary = summaryIndex >= 0 ? String(fields[summaryIndex] || '').trim() : '';
+  const authorIntro = authorIntroIndex >= 0 ? String(fields[authorIntroIndex] || '').trim() : '';
+  const rawTail = line.slice(headMatch[0].length, coverMatch.index);
 
   return {
     isbn: normalizeIsbn(headMatch[3]),
@@ -79,6 +86,8 @@ function parseCatalogRow(line) {
     listPrice: String(headMatch[8] || '').trim(),
     category,
     summary,
+    authorIntro,
+    rawTail,
     coverRemote: coverMatch[0],
     source: 'booklib',
     coverSource: 'booklib',
@@ -119,6 +128,71 @@ function mergePricing(record, pricingMap) {
   return next;
 }
 
+async function loadInventoryOverrides(inventoryPath) {
+  const map = new Map();
+  if (!inventoryPath || !fs.existsSync(inventoryPath)) return map;
+  const rl = readline.createInterface({
+    input: fs.createReadStream(inventoryPath, { encoding: 'utf8' }),
+    crlfDelay: Infinity,
+  });
+  let first = true;
+  for await (const line of rl) {
+    if (first) {
+      first = false;
+      continue;
+    }
+    const cols = line.match(/"([^"]*)"/g);
+    if (!cols || cols.length < 5) continue;
+    const values = cols.map((cell) => cell.slice(1, -1));
+    const isbn = normalizeIsbn(values[0]);
+    if (!isValidIsbn(isbn)) continue;
+    map.set(isbn, {
+      isbn,
+      title: String(values[1] || '').trim(),
+      author: String(values[2] || '').trim(),
+      publisher: String(values[3] || '').trim(),
+      category: String(values[4] || '').trim(),
+    });
+  }
+  return map;
+}
+
+function applyInventoryOverride(record, inventoryMap) {
+  const override = inventoryMap.get(record.isbn);
+  if (!override || !override.title) return record;
+  const next = { ...record };
+  const sameTitle = normalizeSearchText(override.title) === normalizeSearchText(record.title);
+  if (sameTitle) return next;
+  next.title = override.title;
+  if (override.author) next.author = override.author;
+  if (override.publisher) next.publisher = override.publisher;
+  if (override.category) next.category = override.category;
+  next.inventoryOverride = true;
+  return next;
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[\s·・,，.。:：;；'"“”‘’《》<>【】\[\]()（）\-_=＝/\\|]+/g, '');
+}
+
+function finalizeCatalogRecord(raw, pricingMap, inventoryMap) {
+  const merged = mergePricing(raw, pricingMap);
+  const withInventory = applyInventoryOverride(merged, inventoryMap);
+  const quality = assessCatalogRecord({
+    ...withInventory,
+    rawSummary: [withInventory.summary, withInventory.authorIntro, withInventory.rawTail].filter(Boolean).join(' '),
+  });
+  const normalized = normalizeCatalogRecord(withInventory);
+  if (!normalized) return null;
+  if (merged.medianPrice > 0) normalized.medianPrice = merged.medianPrice;
+  normalized.catalogQuality = quality.quality;
+  if (quality.reasons.length) normalized.catalogQualityReasons = quality.reasons;
+  if (withInventory.inventoryOverride) normalized.inventoryOverride = true;
+  return normalized;
+}
+
 function writeBatch(outDir, batchIndex, docs) {
   const file = path.join(outDir, `batch-${String(batchIndex).padStart(4, '0')}.jsonl`);
   const body = docs.map((doc) => JSON.stringify(doc)).join('\n');
@@ -128,10 +202,14 @@ function writeBatch(outDir, batchIndex, docs) {
 
 async function buildCatalog(args) {
   const pricingMap = await loadPricingMap(args.pricing);
+  const inventoryMap = await loadInventoryOverrides(args.inventory);
   const outDir = path.resolve(args.out);
   if (!args.dryRun) {
     fs.mkdirSync(outDir, { recursive: true });
   }
+
+  let suspect = 0;
+  let inventoryOverrides = 0;
 
   const rl = readline.createInterface({
     input: fs.createReadStream(args.catalog, { encoding: 'utf8' }),
@@ -158,13 +236,13 @@ async function buildCatalog(args) {
       skipped += 1;
       continue;
     }
-    const merged = mergePricing(raw, pricingMap);
-    const normalized = normalizeCatalogRecord(merged);
+    const normalized = finalizeCatalogRecord(raw, pricingMap, inventoryMap);
     if (!normalized || seen.has(normalized.isbn)) {
       skipped += 1;
       continue;
     }
-    if (merged.medianPrice > 0) normalized.medianPrice = merged.medianPrice;
+    if (normalized.catalogQuality === 'suspect') suspect += 1;
+    if (normalized.inventoryOverride) inventoryOverrides += 1;
 
     seen.add(normalized.isbn);
     parsed += 1;
@@ -185,6 +263,9 @@ async function buildCatalog(args) {
 
   return {
     pricingRows: pricingMap.size,
+    inventoryRows: inventoryMap.size,
+    inventoryOverrides,
+    suspect,
     parsed,
     skipped,
     unique: seen.size,
@@ -212,5 +293,9 @@ module.exports = {
   parsePricingRow,
   parseCatalogRow,
   mergePricing,
+  loadInventoryOverrides,
+  loadPricingMap,
+  applyInventoryOverride,
+  finalizeCatalogRecord,
   buildCatalog,
 };

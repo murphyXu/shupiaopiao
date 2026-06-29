@@ -7,10 +7,14 @@ async function fetchPendingShipSummary() {
   }
   try {
     const res = await api.getDriftSummary();
-    return { pendingShip: Number(res.pendingShip) || 0 };
+    return { pendingShip: totalPendingShipCount(res) };
   } catch (err) {
     return { pendingShip: 0 };
   }
+}
+
+function totalPendingShipCount(summary = {}) {
+  return (Number(summary.pendingShip) || 0) + (Number(summary.waitingShipReceived) || 0);
 }
 
 function formatTabBadge(count) {
@@ -22,5 +26,6 @@ function formatTabBadge(count) {
 
 module.exports = {
   fetchPendingShipSummary,
+  totalPendingShipCount,
   formatTabBadge,
 };

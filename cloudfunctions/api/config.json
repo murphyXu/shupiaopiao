@@ -14,6 +14,14 @@
       "name": "scheduledTasks",
       "type": "timer",
       "config": "0 30 * * * * *"
+    },
+    {
+      "name": "adminHttp",
+      "type": "apigw",
+      "config": {
+        "path": "/admin",
+        "method": ["POST", "OPTIONS"]
+      }
     }
   ]
 }

@@ -5,9 +5,23 @@ function parseListPrice(value) {
   return match ? Number(match[1]) : 0;
 }
 
+function parseMedianPrice(book) {
+  const direct = Number(book && book.medianPrice);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  if (book && book.listPriceSource === 'pricing_cache') {
+    return parseListPrice(book.listPrice);
+  }
+  return 0;
+}
+
 function calculateSystemCoinValue(book, condition) {
+  const medianPrice = parseMedianPrice(book);
+  const factor = CONDITION_FACTORS[condition] || 0.8;
+  if (medianPrice > 0) {
+    return Math.max(Math.round(medianPrice * factor), 0);
+  }
   const price = parseListPrice(book && book.listPrice);
-  return Math.max(Math.round(price * (CONDITION_FACTORS[condition] || 0.8) * 0.2), 0);
+  return Math.max(Math.round(price * factor * 0.2), 0);
 }
 
 function clampCoinValue(coinValue, systemCoinValue) {
@@ -31,16 +45,18 @@ function coinHintText(coinValue, systemCoinValue) {
 function pricingState(book, condition, currentCoinValue) {
   const sourceIsEstimate = book && book.listPriceSource === 'pricing_cache';
   const listPrice = sourceIsEstimate ? 0 : parseListPrice(book && book.listPrice);
-  const systemCoinValue = listPrice ? calculateSystemCoinValue(book, condition) : 0;
-  const coinValue = listPrice
+  const medianPrice = parseMedianPrice(book);
+  const canPrice = listPrice > 0 || medianPrice > 0;
+  const systemCoinValue = canPrice ? calculateSystemCoinValue(book, condition) : 0;
+  const coinValue = canPrice
     ? clampCoinValue(currentCoinValue === undefined ? systemCoinValue : currentCoinValue, systemCoinValue)
     : 0;
   return {
-    listPrice,
+    listPrice: listPrice || medianPrice,
     systemCoinValue,
     coinValue,
     coinHint: coinHintText(coinValue, systemCoinValue),
-    hasListPrice: listPrice > 0,
+    hasListPrice: canPrice,
   };
 }
 

@@ -1,45 +1,57 @@
 <view class="page page-tab" style="padding-top: {{navPaddingTop}}px;">
+  <custom-nav-bar title="书漂漂" />
   <image class="share-cover-preload" src="/assets/share/share-cover.jpg" />
   <view class="page-header">
     <view class="pool-title-row">
       <view class="page-title">漂流广场</view>
-      <view class="guide-entry" bindtap="goGuide">玩法介绍</view>
+      <view class="pool-value-slogan">闲置漂出去，好书接回来</view>
+      <view class="guide-entry" bindtap="goGuide">玩法介绍 ›</view>
     </view>
     <view class="pool-point-row">
-      <view class="page-sub pool-point-line">{{loggedIn ? '剩余可用公益积分 ' + stats.availableCoin : '登录后查看可用公益积分'}}</view>
+      <view class="page-sub pool-point-line">
+        <block wx:if="{{loggedIn}}">
+          <text class="pool-point-label">剩余可用公益积分</text>
+          <text class="pool-point-num">{{stats.availableCoin}}</text>
+        </block>
+        <text wx:else>登录后查看可用公益积分</text>
+      </view>
       <view class="earn-point-action" bindtap="showEarnPointGuide">获得积分</view>
     </view>
   </view>
 
-  <view class="pool-search-box">
-    <input placeholder="搜索书名 · 作者 · ISBN" value="{{keyword}}" bindinput="onInput" bindconfirm="loadList" />
-  </view>
-
-  <view class="primary-tabs">
-    <view wx:for="{{filterModes}}" wx:key="key" class="primary-tab {{activeFilterMode === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="filterMode">{{item.label}}</view>
-  </view>
-
-  <scroll-view scroll-x class="filter-scroll">
-    <view class="secondary-tabs">
-      <view wx:for="{{secondaryTabs}}" wx:key="key" class="secondary-tab {{activeFilterKey === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="filterSecondary">{{item.label}}</view>
+  <view class="sticky-search-filter" style="top: {{stickyTop}}px;">
+    <view class="pool-search-box">
+      <input placeholder="搜索书名 · 作者 · ISBN" value="{{keyword}}" bindinput="onInput" bindconfirm="loadList" />
     </view>
-  </scroll-view>
+
+    <view class="pool-filter-bar">
+      <view class="filter-chips">
+        <view wx:for="{{categoryChips}}" wx:key="key" class="filter-chip {{activeCategory === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="onCategoryChip">{{item.label}}</view>
+        <view class="filter-chip more {{moreActive ? 'active' : ''}}" bindtap="openMoreFilter">更多<text class="chip-caret">{{showMoreFilter ? '▴' : '▾'}}</text></view>
+      </view>
+    </view>
+  </view>
 
   <view id="pool-list" class="grid-2 pool-grid">
     <view wx:for="{{list}}" wx:key="id" class="grid-book-card" data-id="{{item.id}}" data-category="{{item.category}}" data-book-id="{{item.bookId}}" data-author="{{item.book.author}}" bindtap="goDetail">
       <view class="grid-book-cover-frame">
+        <view wx:if="{{item.isMine}}" class="pool-mine-tag">我的赠书</view>
         <image class="book-cover" src="{{item.book.cover}}" mode="aspectFit" binderror="onCoverError" data-index="{{index}}" data-list-key="list" data-nested-key="book" data-isbn="{{item.book.isbn}}" />
       </view>
       <view class="grid-book-title">{{item.book.title}}</view>
       <view class="grid-book-meta">
         <text class="coin">{{item.coinValue}} 公益积分</text>
         <text class="pill">{{item.categoryLabel}}</text>
+        <text wx:if="{{item.setLabel}}" class="pill">{{item.setLabel}}</text>
       </view>
-      <view wx:if="{{item.isMine}}" class="apply-action mine" data-mine="1" catchtap="goApply">我的赠书</view>
-      <view wx:else class="apply-action" data-id="{{item.id}}" catchtap="goApply">申请接漂</view>
     </view>
   </view>
-  <view wx:if="{{!list.length}}" class="empty">漂流池暂无图书，来做第一个赠书人吧</view>
+  <view wx:if="{{!list.length && !loading}}" class="empty">漂流池暂无图书，来做第一个赠书人吧</view>
+  <view wx:if="{{list.length}}" class="pool-list-footer">
+    <view wx:if="{{loadingMore}}" class="footer">加载更多…</view>
+    <view wx:elif="{{hasMore}}" class="footer">上拉加载更多</view>
+    <view wx:else class="footer">已加载全部 {{list.length}} 本</view>
+  </view>
 
   <view class="pool-publish-entry" bindtap="goPublish">
     <text class="publish-icon">＋</text>
@@ -52,3 +64,36 @@
   guide="{{earnGuide}}"
   bind:close="hideEarnPointGuide"
   bind:confirm="confirmEarnPointGuide" />
+
+<page-container
+  show="{{showMoreFilter}}"
+  position="bottom"
+  round
+  overlay
+  z-index="10050"
+  bind:clickoverlay="closeMoreFilter">
+  <view class="more-filter-panel {{filterCompact ? 'compact' : ''}}">
+    <view class="mf-head">
+      <text>更多筛选</text>
+      <text class="mf-close" bindtap="closeMoreFilter">✕</text>
+    </view>
+    <view class="mf-body">
+      <view class="mf-section">
+        <view class="mf-label">公益积分区间</view>
+        <view class="mf-opts">
+          <view wx:for="{{valueTabs}}" wx:key="key" class="mf-opt {{draftValue === item.key ? 'on' : ''}}" data-key="{{item.key}}" bindtap="onDraftValue">{{item.label}}</view>
+        </view>
+      </view>
+      <view class="mf-section">
+        <view class="mf-label">品相</view>
+        <view class="mf-opts">
+          <view wx:for="{{conditionTabs}}" wx:key="key" class="mf-opt {{draftCondition === item.key ? 'on' : ''}}" data-key="{{item.key}}" bindtap="onDraftCondition">{{item.label}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="mf-foot" style="padding-bottom: {{filterFootPadding}}px;">
+      <view class="mf-btn ghost" bindtap="resetMoreFilter">重置</view>
+      <view class="mf-btn primary" bindtap="applyMoreFilter">查看结果</view>
+    </view>
+  </view>
+</page-container>

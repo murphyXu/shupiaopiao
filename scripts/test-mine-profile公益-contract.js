@@ -44,6 +44,8 @@ const walletJsonText = read('miniprogram/pages/mine/wallet.json');
 const creditJson = read('miniprogram/pages/mine/credit.json');
 
 assert.ok(mineWxml.includes('name-line') && mineWxml.includes('edit-profile') && mineWxml.indexOf('edit-profile') < mineWxml.indexOf('公益积分'), 'profile edit entry should move next to nickname');
+assert.ok(mineWxml.includes("bindtap=\"{{loggedIn ? 'goProfile' : 'goLogin'}}\""), 'mine avatar and nickname row should open profile when logged in');
+assert.ok(mineJs.includes('goProfile'), 'mine page should route to profile editor');
 assert.ok(!mineWxml.includes('class="menu-item" bindtap="goProfile"') && !mineWxml.includes('>收货地址<'), 'profile and address should not remain as menu entries');
 assert.ok(!mineJs.includes('goAddress()'), 'mine page should not expose a separate address entry');
 
@@ -56,6 +58,8 @@ assert.ok(mineWxml.includes('invite-reward') && mineWxml.includes('inviteRewardR
 assert.ok(mineWxss.includes('.mine-stat-row') && !mineWxss.includes('.invite-stat-card'), 'mine top stat row should only style point cards');
 
 assert.ok(profileWxml.includes('收货地址') && profileWxml.includes('address-card') && profileWxml.includes('bindtap="chooseWxAddress"'), 'profile page should include address editing');
+assert.ok(profileWxml.includes('user-id-card') && profileWxml.includes('copyUserId') && profileWxml.includes('{{userId}}'), 'profile page should show user id with copy action');
+assert.ok(profileJs.includes('copyUserId') && profileJs.includes('wx.setClipboardData'), 'profile page should copy user id to clipboard');
 assert.ok(profileWxml.includes('addressName') && profileWxml.includes('addressPhone') && profileWxml.includes('addressRegion') && profileWxml.includes('addressDetail'), 'profile address fields should be bound in profile form');
 assert.ok(profileJs.includes('api.getAddresses') && profileJs.includes('api.addAddress') && profileJs.includes('api.updateAddress'), 'profile save should load and persist address');
 assert.ok(

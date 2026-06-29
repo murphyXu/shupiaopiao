@@ -7,20 +7,30 @@ function read(relativePath) {
 }
 
 const poolHandler = read('cloudfunctions/api/handlers/pool.js');
+const poolSnapshotSource = read('cloudfunctions/api/lib/poolFeedSnapshot.js');
 const poolRecommendSource = read('cloudfunctions/api/lib/poolRecommend.js');
 const poolRecommend = require('../cloudfunctions/api/lib/poolRecommend');
 const poolJs = read('miniprogram/pages/pool/index.js');
 const poolDetailJs = read('miniprogram/pages/pool/detail.js');
 const poolWxml = read('miniprogram/pages/pool/index.wxml');
 
-assert.ok(poolHandler.includes('poolRecommendProfile') && poolHandler.includes('rankPoolList'), 'pool list should use recommendation ranking');
-assert.ok(poolHandler.includes('applyGiverDensityCap'), 'pool list should cap same-giver density in first screen');
+assert.ok(poolSnapshotSource.includes('rankPoolList') && poolSnapshotSource.includes('applyPlatformFeedRanking'), 'pool feed snapshot should use platform recommendation ranking');
+assert.ok(poolSnapshotSource.includes('applyGiverDensityCap'), 'pool feed snapshot should cap same-giver density');
 assert.ok(poolHandler.includes('giverId: drift.userId'), 'pool items should expose giver id for density cap');
-assert.ok(poolHandler.includes('data.claimableOnly !== false'), 'logged-in pool list should exclude own drifts by default');
+assert.ok(poolSnapshotSource.includes("claimableOnly && user && entry.giverId === user._id"), 'pool snapshot reader should support claimable-only filter');
 assert.ok(poolRecommendSource.includes('DEFAULT_PRIORITIZE_CATEGORY'), 'pool recommend should define children-first category key');
 assert.ok(poolRecommendSource.includes('PLATFORM_CHILDREN_BOOST'), 'pool recommend should boost children books by default');
 assert.ok(poolRecommendSource.includes('promoteTopLowPointChildren'), 'pool recommend should promote low-point children to top slots');
-assert.ok(poolHandler.includes('promoteTopLowPointChildren'), 'recommend feed should promote low-point children after ranking');
+assert.ok(poolSnapshotSource.includes('promoteTopLowPointChildren'), 'recommend feed snapshot should promote low-point children after ranking');
+assert.ok(poolSnapshotSource.includes('applyOpsPinnedItems'), 'recommend feed snapshot should apply ops pin after all ranking');
+
+const poolOps = require('../cloudfunctions/api/lib/poolOps');
+const pinAfterRank = poolOps.applyOpsPinnedItems([
+  { id: 'b', category: 'literature' },
+  { id: 'a', opsPinned: true, opsPinRank: 2 },
+  { id: 'c', opsPinned: true, opsPinRank: 1 },
+]);
+assert.deepStrictEqual(pinAfterRank.map((item) => item.id), ['c', 'a', 'b'], 'ops pin should win over recommend ranking');
 
 assert.strictEqual(typeof poolRecommend.diversifyPoolList, 'function', 'diversifyPoolList exported');
 assert.strictEqual(typeof poolRecommend.rankPoolList, 'function', 'rankPoolList exported');
@@ -90,10 +100,16 @@ assert.ok(
   'first six slots should be filled with 0-5 point children when enough are available',
 );
 
-assert.ok(poolJs.includes("b.category === 'children'"), 'pool recommend sort should prioritize children books');
-assert.ok(poolJs.includes('promoteTopLowPointChildren'), 'pool page recommend sort should promote low-point children to top six');
-assert.ok(poolJs.includes('claimableOnly: true'), 'pool page should default to claimable-only feed');
-assert.ok(poolJs.includes('claimableOnly: loggedIn'), 'pool page should exclude own drifts for logged-in users');
+assert.ok(poolJs.includes('feedVersion'), 'pool page should track server feed version');
+assert.ok(poolJs.includes('pageCache'), 'pool page should cache list for stale-while-revalidate');
+assert.ok(!poolJs.includes('recommendSort'), 'pool page should trust server feed order');
+assert.ok(poolJs.includes('claimableOnly: false'), 'pool page should include own drifts for logged-in givers');
+assert.ok(!poolJs.includes('claimableOnly: loggedIn'), 'pool page should not exclude own drifts when logged in');
+assert.ok(poolJs.includes('onReachBottom'), 'pool page should support scroll pagination');
+assert.ok(poolJs.includes('valueKey:'), 'pool page should send value filter to backend');
+assert.ok(poolJs.includes('mergePoolList'), 'pool page should append later pages without dropping earlier items');
+assert.ok(poolSnapshotSource.includes('matchesValueKey'), 'pool snapshot reader should filter by value range');
+assert.ok(poolSnapshotSource.includes('hasMore:'), 'pool snapshot reader should expose pagination state');
 assert.ok(poolJs.includes("page: 'pool/index'") && poolJs.includes('pool_card_click'), 'pool list should emit browse click signals');
 assert.ok(poolDetailJs.includes('category: item.category') && poolDetailJs.includes('author:'), 'pool detail should emit category and author');
 assert.ok(poolWxml.includes('data-category="{{item.category}}"'), 'pool cards should pass category into browse signals');

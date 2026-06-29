@@ -1,5 +1,6 @@
-<view class="page" wx:if="{{item}}">
+<view class="page {{item.isMine ? 'page-mine' : 'page-claimable'}}" wx:if="{{item}}">
   <view class="shot-frame">
+    <view wx:if="{{item.isMine}}" class="detail-mine-tag">我的赠书</view>
     <image src="{{item.book.cover}}" mode="aspectFit" class="slide-img" binderror="onCoverError" data-single="item.book" data-isbn="{{item.book.isbn}}" />
   </view>
 
@@ -7,15 +8,26 @@
     <view class="title">{{item.book.title}}</view>
     <view class="muted author">{{item.book.author}}</view>
     <view class="row-meta">
-      <text class="coin big">流转积分 {{item.coinValue}}</text>
+      <text class="coin big">公益积分 {{item.coinValue}}</text>
       <text class="pill">{{item.conditionLabel}}</text>
       <text wx:if="{{item.lightweightHint}}" class="pill lightweight">轻量</text>
     </view>
+    <view wx:if="{{item.isMine}}" class="mine-status-line">正在等待书友申请接漂</view>
     <view wx:if="{{item.conditionIssueLabels && item.conditionIssueLabels.length}}" class="issue-row">
       <text wx:for="{{item.conditionIssueLabels}}" wx:key="*this" class="pill issue-pill">{{item}}</text>
     </view>
+    <view wx:if="{{item.shipFrom}}" class="detail-ship-line">从 {{item.shipFrom.label}} 寄出 · 快递到付</view>
+    <view wx:if="{{item.setDisplayText}}" class="detail-set-line">赠出内容：{{item.setDisplayText}}</view>
     <view class="report-link" bindtap="reportItem">举报</view>
   </view>
+
+  <view wx:if="{{item.canClaim}}" class="card know-card">
+    <view class="know-title">{{knowTitle}}</view>
+    <view class="know-line">{{knowOccupyLine}}</view>
+    <view class="know-line">{{knowCodLine}}</view>
+    <view class="know-line">{{inflightLimit}}</view>
+  </view>
+  <view wx:if="{{item.canClaim}}" class="guide-link" bindtap="goGuide">{{guideLinkText}}</view>
 
   <view class="card">
     <view class="section-title">内容介绍</view>
@@ -31,12 +43,13 @@
       <view class="info-row"><text>出版时间</text><text>{{item.book.pubDate || '未记录'}}</text></view>
       <view class="info-row"><text>定价</text><text>{{item.book.listPrice || '未记录'}}</text></view>
       <view class="info-row"><text>图书分类</text><text>{{item.categoryLabel || item.book.category || '未记录'}}</text></view>
+      <view wx:if="{{item.setDisplayText}}" class="info-row"><text>赠出内容</text><text>{{item.setDescription || item.setDisplayText}}</text></view>
     </view>
   </view>
 
   <view wx:if="{{item.sameGiverPool}}" class="card same-giver-card">
     <view class="same-giver-label">{{item.sameGiverPool.label}}</view>
-    <view class="muted same-giver-tip">凑单通常只需一次到付运费，点击查看详情</view>
+    <view class="muted same-giver-tip">{{item.sameGiverPool.hint || sameGiverHint}}</view>
     <view
       wx:for="{{item.sameGiverPool.items}}"
       wx:key="id"
@@ -49,7 +62,7 @@
       <view class="same-giver-info">
         <view class="same-giver-title">{{item.book.title}}</view>
         <view class="same-giver-meta">
-          <text class="coin">流转积分 {{item.coinValue}}</text>
+          <text class="coin">公益积分 {{item.coinValue}}</text>
           <text wx:if="{{item.lightweightHint}}" class="pill lightweight">轻量</text>
         </view>
       </view>
@@ -68,11 +81,10 @@
     </view>
   </view>
 
-  <view class="tip">运费采用快递到付，由接漂方与快递公司线下结算，平台不收取任何费用{{item.shipFrom ? '；实际运费以快递员收费为准' : ''}}。</view>
+  <view wx:if="{{item.isMine}}" class="mine-given-link" bindtap="goGivenProgress">查看赠出进度 ›</view>
 
-  <view class="fixed-actions {{item.isMine ? 'mine-actions' : ''}}">
-    <view wx:if="{{!item.isMine}}" class="btn-ghost want-btn {{item.wanted ? 'active' : ''}}" bindtap="toggleWant">{{item.wanted ? '已想要' : '想要接漂'}}</view>
+  <view wx:if="{{!item.isMine}}" class="fixed-actions">
+    <view class="btn-ghost want-btn {{item.wanted ? 'active' : ''}}" bindtap="toggleWant">{{item.wanted ? '已想要' : '想要'}}</view>
     <view wx:if="{{item.canClaim}}" class="btn-primary claim-btn" bindtap="goClaim">申请接漂</view>
-    <view wx:elif="{{item.isMine}}" class="btn-ghost claim-btn mine-only-btn">我的赠书</view>
   </view>
 </view>

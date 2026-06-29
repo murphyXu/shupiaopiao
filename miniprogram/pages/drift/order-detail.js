@@ -1,13 +1,22 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
-const { shippingInfoText, hasShippingInfo } = require('../../utils/shipping');
+const { shippingInfoText, hasShippingInfo, formatShipDeadlineRemaining, formatAutoCompleteRemaining, formatDeadlineClock } = require('../../utils/shipping');
 const { tryShowMilestonePrompt } = require('../../utils/officialAccountPrompt');
+const { buildOrderMetaLine } = require('../../utils/orderMeta');
+const {
+  buildCancelSuccessTitle,
+  buildConfirmReceiveContent,
+  buildConfirmReceiveSuccessTitle,
+  cancelCreditDelta,
+  promptCancelConfirm,
+} = require('../../utils/pointFeedback');
 
 Page({
   data: {
     detail: null,
     statusMap: ORDER_STATUS,
     showOaMilestone: false,
+    deadlineHint: '',
   },
 
   onLoad(options) {
@@ -41,7 +50,29 @@ Page({
       return;
     }
     try {
-      this.setData({ detail: await api.getOrderDetail(this.orderId, this.role) });
+      const detail = await api.getOrderDetail(this.orderId, this.role);
+      const order = detail.order || {};
+      let deadlineHint = '';
+      if (order.status === 'PENDING_SHIP' && detail.role === 'giver') {
+        const remain = formatShipDeadlineRemaining(order.shipDeadlineAt);
+        deadlineHint = remain ? `${remain}，超时未寄出将自动取消订单` : '';
+      }
+      if (order.status === 'SHIPPED' && detail.role === 'receiver') {
+        const remain = formatAutoCompleteRemaining(order.autoCompleteAt);
+        deadlineHint = remain ? `${remain}；也可手动确认收货` : '';
+      }
+      this.setData({
+        detail: {
+          ...detail,
+          order: {
+            ...order,
+            shipDeadlineText: formatDeadlineClock(order.shipDeadlineAt),
+            autoCompleteText: formatDeadlineClock(order.autoCompleteAt),
+          },
+        },
+        orderMetaLine: buildOrderMetaLine(order),
+        deadlineHint,
+      });
     } catch (err) {
       console.error(err);
       setTimeout(() => wx.navigateBack(), 800);
@@ -63,20 +94,34 @@ Page({
 
   dispute() { wx.navigateTo({ url: `/pages/drift/dispute?orderId=${this.orderId}` }); },
   review() { wx.navigateTo({ url: `/pages/drift/review?orderId=${this.orderId}` }); },
-  cancel() {
-    const text = this.data.detail.role === 'giver' ? '取消漂流' : '取消接漂';
-    wx.showModal({ title: text, content: '发货前取消将记录信用积分变化，是否继续？', success: async (res) => {
-      if (!res.confirm) return;
-      await api.cancelOrder(this.orderId, text);
-      await this.load();
-    } });
+  async cancel() {
+    const detail = this.data.detail || {};
+    const order = detail.order || {};
+    const role = detail.role === 'giver' ? 'GIVER' : 'RECEIVER';
+    const text = detail.role === 'giver' ? '取消漂流' : '取消接漂';
+    const confirmed = await promptCancelConfirm({
+      title: text,
+      role,
+      coinValue: order.coinValue,
+      creditDelta: cancelCreditDelta(role),
+    });
+    if (!confirmed) return;
+    await api.cancelOrder(this.orderId, text);
+    wx.showToast({ title: buildCancelSuccessTitle(), icon: 'none' });
+    await this.load();
   },
   confirm() {
-    wx.showModal({ title: '确认收到图书', content: '确认后将完成公益积分记录。', success: async (res) => {
-      if (!res.confirm) return;
-      await api.confirmOrder(this.orderId);
-      await this.load();
-    } });
+    const order = (this.data.detail && this.data.detail.order) || {};
+    wx.showModal({
+      title: '确认收到图书',
+      content: buildConfirmReceiveContent({ coinValue: order.coinValue }),
+      success: async (res) => {
+        if (!res.confirm) return;
+        const result = await api.confirmOrder(this.orderId);
+        wx.showToast({ title: buildConfirmReceiveSuccessTitle(result.pointEffects), icon: 'none' });
+        await this.load();
+      },
+    });
   },
   async addToShelf() {
     const result = await api.addReceivedBook(this.orderId);

@@ -1,7 +1,10 @@
 <view class="page" wx:if="{{detail}}">
-  <view class="card row">
-    <image class="book-cover-sm" src="{{detail.order.book.cover}}" mode="aspectFill" />
-    <view class="info"><view class="title">{{detail.order.book.title}}</view><view class="badge">{{statusMap[detail.order.status]}}</view></view>
+  <view class="card">
+    <view wx:if="{{orderMetaLine}}" class="order-meta">{{orderMetaLine}}</view>
+    <view class="row">
+      <image class="book-cover-sm" src="{{detail.order.book.cover}}" mode="aspectFill" />
+      <view class="info"><view class="title">{{detail.order.book.title}}</view><view class="badge">{{statusMap[detail.order.status]}}</view></view>
+    </view>
   </view>
 
   <official-account-tip-bar
@@ -16,8 +19,9 @@
 
   <view class="card">
     <view>系统流转积分值：{{detail.order.coinValue}}</view>
-    <view wx:if="{{detail.order.shipDeadlineAt}}" class="muted">最晚寄出：{{detail.order.shipDeadlineAt}}</view>
-    <view wx:if="{{detail.order.autoCompleteAt}}" class="muted">预计自动完成：{{detail.order.autoCompleteAt}}</view>
+    <view wx:if="{{deadlineHint}}" class="deadline-hint">{{deadlineHint}}</view>
+    <view wx:if="{{detail.order.shipDeadlineText}}" class="muted">最晚寄出：{{detail.order.shipDeadlineText}}</view>
+    <view wx:if="{{detail.order.autoCompleteText}}" class="muted">预计自动完成：{{detail.order.autoCompleteText}}</view>
     <view wx:if="{{detail.order.expressCompany}}">{{detail.order.expressCompany}} {{detail.order.trackingNo}}</view>
   </view>
   <view wx:if="{{detail.order.addressSnapshot}}" class="card"><view class="label">寄送地址</view><view>{{detail.order.addressSnapshot.name}} {{detail.order.addressSnapshot.phone}}</view><view>{{detail.order.addressSnapshot.region}} {{detail.order.addressSnapshot.detail}}</view></view>

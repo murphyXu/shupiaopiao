@@ -45,9 +45,10 @@
 
   <view class="card rule-card">
     <view class="section-title">几条简单约定</view>
-    <view class="rule-item">接漂时会先占用公益积分，完成前不会直接结算。</view>
+    <view class="rule-item">接漂后，赠书方需在 72 小时内发货；超时未寄出，订单会自动取消。</view>
+    <view class="rule-item">发货后，接漂方需在 10 天内确认收货；超时未反馈，系统会自动确认完成。</view>
     <view class="rule-item">还未寄出前，发货前可取消，让书回到可漂流状态。</view>
-    <view class="rule-item">对方确认收书或到期自动完成后，公益积分完成后结算。</view>
+    <view class="rule-item">对方确认收书或到期自动完成后，公益积分完成结算。</view>
   </view>
 
   <view class="closing-card">

@@ -1,6 +1,7 @@
 const { ok, fail } = require('../lib/utils');
 const {
   db, _, requireUser, getBookById, getBooksByIds, getUsersByIds, formatBook, safeQuery, getUserByOpenid,
+  queryRowsByIdChunks,
 } = require('../lib/db');
 const { CONDITION_LABELS } = require('../lib/pricing');
 const { resolveShelfCategory } = require('../lib/bookCategory');
@@ -11,6 +12,8 @@ const { formatShipFromField } = require('../lib/shipRegion');
 const { hashUid } = require('../lib/analytics');
 const { loadUserInterestProfile } = require('../lib/poolRecommendProfile');
 const { rankPoolList, applyGiverDensityCap, promoteTopLowPointChildren } = require('../lib/poolRecommend');
+const { applyOpsPinnedItems, isPinnedActive } = require('../lib/poolOps');
+const { listFromPoolFeedSnapshot, schedulePoolFeedRebuild } = require('../lib/poolFeedSnapshot');
 
 const CATEGORY_LABELS = {
   children: '童书',
@@ -33,12 +36,22 @@ const SHELF_BOOK_CLASS_TO_POOL_CATEGORY = {
 
 const REPORT_HIDE_THRESHOLD = 3;
 const INVALID_DRIFT_STATUSES = ['CANCELLED', 'REJECTED'];
+const POOL_LIST_MAX = 500;
+const POOL_FETCH_BATCH = 100;
+
+const VALUE_RANGES = {
+  low: { min: 0, max: 5 },
+  middle: { min: 6, max: 10 },
+  high: { min: 11, max: 20 },
+  premium: { min: 21 },
+};
 
 function poolCategoryFromShelfRow(shelfRow = null) {
   return shelfRow ? SHELF_BOOK_CLASS_TO_POOL_CATEGORY[shelfRow.bookClass] || '' : '';
 }
 
-function classifyCategory(book = {}, shelfRow = null) {
+function classifyCategory(book = {}, shelfRow = null, drift = {}) {
+  if (drift.opsCategory) return drift.opsCategory;
   const shelfCategory = poolCategoryFromShelfRow(shelfRow);
   if (shelfCategory) return shelfCategory;
   const { key } = resolveShelfCategory(book);
@@ -49,39 +62,81 @@ function wantIdFor(userId, driftId) {
   return `${userId}_${driftId}`;
 }
 
+function matchesValueKey(item, key) {
+  if (!key || key === 'all') return true;
+  const range = VALUE_RANGES[key];
+  if (!range) return true;
+  const value = Number(item.coinValue) || 0;
+  if (range.min !== undefined && value < range.min) return false;
+  if (range.max !== undefined && value > range.max) return false;
+  return true;
+}
+
+async function fetchAllInPoolDrifts(query) {
+  const { total: rawTotal } = await safeQuery('drifts', (col) => col.where(query).count());
+  const total = Math.min(rawTotal || 0, POOL_LIST_MAX);
+  if (!total) return [];
+
+  const rows = [];
+  for (let skip = 0; skip < total; skip += POOL_FETCH_BATCH) {
+    const limit = Math.min(POOL_FETCH_BATCH, total - skip);
+    const { data } = await safeQuery('drifts', (col) =>
+      col.where(query).orderBy('createdAt', 'desc').skip(skip).limit(limit).get());
+    rows.push(...(data || []));
+    if (!data || data.length < limit) break;
+  }
+  return rows.slice(0, POOL_LIST_MAX);
+}
+
 async function getWantedDriftIds(userId, driftIds = []) {
   if (!userId || !driftIds.length) return new Set();
-  const { data: rows } = await safeQuery('drift_wants', (col) =>
-    col.where({ userId, driftId: _.in(driftIds) }).limit(100).get());
-  return new Set(rows.map((row) => row.driftId));
+  const unique = [...new Set(driftIds.filter(Boolean))];
+  const wanted = new Set();
+  for (let i = 0; i < unique.length; i += POOL_FETCH_BATCH) {
+    const chunk = unique.slice(i, i + POOL_FETCH_BATCH);
+    const { data: rows } = await safeQuery('drift_wants', (col) =>
+      col.where({ userId, driftId: _.in(chunk) }).limit(chunk.length).get());
+    rows.forEach((row) => wanted.add(row.driftId));
+  }
+  return wanted;
 }
 
 async function hiddenDriftIdsByReports(driftIds = []) {
   const ids = [...new Set(driftIds.filter(Boolean))];
   if (!ids.length) return new Set();
-  const { data: reports } = await safeQuery('reports', (col) =>
-    col.where({
-      targetType: 'drift',
-      targetId: _.in(ids),
-      status: _.neq('RESOLVED'),
-    }).limit(500).get());
   const counts = {};
-  reports.forEach((report) => {
-    counts[report.targetId] = (counts[report.targetId] || 0) + 1;
-  });
+  for (let i = 0; i < ids.length; i += POOL_FETCH_BATCH) {
+    const chunk = ids.slice(i, i + POOL_FETCH_BATCH);
+    const { data: reports } = await safeQuery('reports', (col) =>
+      col.where({
+        targetType: 'drift',
+        targetId: _.in(chunk),
+        status: _.neq('RESOLVED'),
+      }).limit(500).get());
+    (reports || []).forEach((report) => {
+      counts[report.targetId] = (counts[report.targetId] || 0) + 1;
+    });
+  }
   return new Set(Object.keys(counts).filter((id) => counts[id] >= REPORT_HIDE_THRESHOLD));
 }
 
 async function hiddenDriftIdsByCancelledOrders(driftIds = []) {
   const ids = [...new Set(driftIds.filter(Boolean))];
   if (!ids.length) return new Set();
-  const { data: rows } = await safeQuery('drift_orders', (col) =>
-    col.where({
-      driftId: _.in(ids),
-      status: 'CANCELLED',
-      cancelledBy: _.in(['GIVER', 'SYSTEM']),
-    }).limit(500).get());
-  return new Set(rows.map((row) => row.driftId).filter(Boolean));
+  const hidden = new Set();
+  for (let i = 0; i < ids.length; i += POOL_FETCH_BATCH) {
+    const chunk = ids.slice(i, i + POOL_FETCH_BATCH);
+    const { data: rows } = await safeQuery('drift_orders', (col) =>
+      col.where({
+        driftId: _.in(chunk),
+        status: 'CANCELLED',
+        cancelledBy: 'GIVER',
+      }).limit(500).get());
+    rows.forEach((row) => {
+      if (row.driftId) hidden.add(row.driftId);
+    });
+  }
+  return hidden;
 }
 
 async function filterVisibleDrifts(drifts = []) {
@@ -90,7 +145,10 @@ async function filterVisibleDrifts(drifts = []) {
     hiddenDriftIdsByReports(driftIds),
     hiddenDriftIdsByCancelledOrders(driftIds),
   ]);
-  return drifts.filter((drift) => !hiddenIds.has(drift._id) && !cancelledIds.has(drift._id));
+  return drifts.filter((drift) =>
+    !drift.opsHidden
+    && !hiddenIds.has(drift._id)
+    && !cancelledIds.has(drift._id));
 }
 
 async function formatWantedList(user) {
@@ -150,8 +208,7 @@ async function countGivenDrifts(userId) {
 async function getShelfRowsByIds(ids = []) {
   const shelfBookIds = [...new Set(ids.filter(Boolean))];
   if (!shelfBookIds.length) return {};
-  const { data: rows } = await safeQuery('shelf_books', (col) =>
-    col.where({ _id: _.in(shelfBookIds) }).limit(500).get());
+  const rows = await queryRowsByIdChunks('shelf_books', shelfBookIds);
   const map = {};
   rows.forEach((row) => { map[row._id] = row; });
   return map;
@@ -230,7 +287,7 @@ function formatSetInfo(drift = {}) {
 }
 
 function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds = new Set(), shelfRow = null) {
-  const category = classifyCategory(book, shelfRow);
+  const category = classifyCategory(book, shelfRow, drift);
   const conditionIssueLabels = drift.conditionIssueLabels || [];
   const isAnonymous = !!drift.isAnonymous;
   const isMine = !!currentUserId && drift.userId === currentUserId;
@@ -264,68 +321,27 @@ function formatPoolItem(drift, book, giver, currentUserId = '', wantedDriftIds =
       creditScore: giver.creditScore,
     },
     shipFrom: formatShipFromField(drift.shipRegion),
+    opsPinned: isPinnedActive(drift),
+    opsPinRank: Number(drift.opsPinRank) || 0,
+    opsPinnedUntil: drift.opsPinnedUntil || '',
   };
 }
 
 async function list(data, openid) {
   const user = openid ? await getUserByOpenid(openid) : null;
-  const claimableOnly = user ? data.claimableOnly !== false : !!data.claimableOnly;
-  if (claimableOnly && !user) return ok({ list: [], page: 1, size: 0 });
-  const page = Math.max(Number(data.page) || 1, 1);
-  const size = Math.min(Number(data.size) || 30, 50);
-  const fetchSize = Math.min(size * 2, 100);
-
-  const query = { status: 'IN_POOL' };
-  if (claimableOnly) query.userId = _.neq(user._id);
-
-  const { data: rawDrifts } = await safeQuery('drifts', (col) =>
-    col.where(query).orderBy('createdAt', 'desc').limit(fetchSize).get());
-  const drifts = await filterVisibleDrifts(rawDrifts);
-  const bookIds = drifts.map((d) => d.bookId);
-  const userIds = drifts.map((d) => d.userId);
-  const [rawBooks, users, wantedDriftIds] = await Promise.all([
-    getBooksByIds(bookIds),
-    getUsersByIds(userIds),
-    getWantedDriftIds(user ? user._id : '', drifts.map((d) => d._id)),
-  ]);
-  const shelfRows = await getShelfRowsByIds(drifts.map((d) => d.shelfBookId));
-  cacheBooksForList(db, rawBooks, 12).catch((err) => console.warn('[pool.list] cover cache skipped', err.message || err));
-  const books = rawBooks;
-
-  let list = drifts
-    .filter((d) => books[d.bookId])
-    .map((d) => formatPoolItem(
-      d,
-      books[d.bookId],
-      users[d.userId] || {},
-      user ? user._id : '',
-      wantedDriftIds,
-      shelfRows[d.shelfBookId],
-    ));
-
-  const keyword = (data.keyword || '').trim();
-  if (keyword) {
-    const kw = keyword.toLowerCase();
-    list = list.filter((item) =>
-      item.book.title.toLowerCase().includes(kw)
-      || item.book.author.toLowerCase().includes(kw)
-      || item.book.isbn.includes(kw));
+  const claimableOnly = data.claimableOnly === true;
+  if (claimableOnly && !user) {
+    return ok({
+      list: [], page: 1, size: 0, total: 0, hasMore: false, feedVersion: 0,
+    });
   }
-  if (data.category && data.category !== 'all') list = list.filter((item) => item.category === data.category);
-
-  const keywordActive = !!keyword;
-  const isRecommendFeed = !data.category || data.category === 'all';
-  if (!keywordActive) {
-    const profile = user
-      ? await loadUserInterestProfile(user._id, openid)
-      : { isColdStart: true, categoryWeights: {}, authorWeights: {}, signalCount: 0 };
-    list = rankPoolList(list, profile, { uidHash: hashUid(openid) });
-    list = applyGiverDensityCap(list);
-    if (isRecommendFeed) list = promoteTopLowPointChildren(list);
+  try {
+    const result = await listFromPoolFeedSnapshot(data, user);
+    return ok(result);
+  } catch (err) {
+    console.error('[pool.list] failed', err);
+    return fail(500, '漂流列表加载失败，请稍后重试');
   }
-
-  const paged = list.slice((page - 1) * size, page * size);
-  return ok({ list: paged, page, size, total: list.length });
 }
 
 async function stats(openid) {
@@ -427,5 +443,5 @@ async function wants(openid) {
 }
 
 module.exports = {
-  list, stats, detail, toggleWant, wants,
+  list, stats, detail, toggleWant, wants, schedulePoolFeedRebuild,
 };

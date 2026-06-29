@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>申请接漂 · 收货地址栏合并草图</title>
+  <style>
+    :root {
+      --green: #2FBE77;
+      --green-dark: #0C7A4B;
+      --green-soft: #EAFBF2;
+      --text: #15211B;
+      --muted: #8a988f;
+      --border: #eef3ef;
+      --bg: #f4f7f5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 16px 48px;
+      line-height: 1.5;
+    }
+    h1 { font-size: 20px; margin-bottom: 6px; }
+    .intro { font-size: 13px; color: #5d6d64; max-width: 720px; margin-bottom: 28px; }
+    section { max-width: 920px; margin: 0 auto 36px; }
+    section h2 { font-size: 15px; margin-bottom: 4px; }
+    .sec-desc { font-size: 12px; color: #6d7d74; margin-bottom: 14px; }
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 680px) { .compare { grid-template-columns: 1fr; } }
+    .panel { background: #fff; border-radius: 14px; border: 1px solid #e8eeea; overflow: hidden; }
+    .panel-head { padding: 10px 14px; font-size: 12px; font-weight: 700; border-bottom: 1px solid #f0f4f1; }
+    .panel-head.before { background: #fafafa; color: #6b7280; }
+    .panel-head.after { background: var(--green-soft); color: var(--green-dark); }
+    .phone {
+      width: 100%; max-width: 300px; margin: 14px auto 16px;
+      background: var(--bg); border-radius: 22px; border: 1px solid #dde5e0;
+      padding: 10px 10px 14px;
+    }
+    .phone-title { text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .card {
+      background: #fff; border-radius: 12px; border: 1px solid var(--border);
+      padding: 12px 14px; margin-bottom: 10px;
+    }
+    .label { font-size: 11px; color: #9aa8a0; margin-bottom: 6px; }
+    .name-line { font-size: 13px; font-weight: 600; }
+    .addr-line { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .placeholder { font-size: 12px; color: var(--muted); }
+    .btn-ghost {
+      text-align: center; padding: 10px; border-radius: 999px;
+      border: 1px solid #dce5df; background: #fff; color: #46564e;
+      font-size: 12px; font-weight: 600; margin-bottom: 10px;
+    }
+    .btn-ghost.del { opacity: 0.55; text-decoration: line-through; }
+    .address-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .address-head .label { margin-bottom: 0; }
+    .action-link {
+      flex-shrink: 0; color: var(--green-dark); font-size: 12px; font-weight: 700;
+    }
+    .address-body { cursor: pointer; }
+    .address-body:active { opacity: 0.75; }
+    .note {
+      font-size: 11px; color: #6d7d74; background: #fafcfb; border-top: 1px solid #f0f4f1;
+      padding: 10px 14px; line-height: 1.55;
+    }
+    .states { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+    @media (max-width: 680px) { .states { grid-template-columns: 1fr; } }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 999px; background: var(--green-soft); color: var(--green-dark);
+      margin-left: 6px; vertical-align: middle;
+    }
+    .flow {
+      background: #fff; border: 1px solid #e8eeea; border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: #46564e;
+    }
+    .flow ol { margin: 8px 0 0 18px; }
+    .flow li { margin-bottom: 6px; }
+    code { font-size: 11px; background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<h1>申请接漂 · 收货地址栏合并草图</h1>
+<p class="intro">
+  场景：<strong>用户已有收货地址</strong>时，去掉卡片下方独立的「读取微信地址」按钮，
+  在地址卡片标题行右侧合并「修改地址 ›」文字链；整块卡片仍可点击进入地址簿选择。
+</p>
+
+<!-- ========== FILLED STATE ========== -->
+<section>
+  <h2>已有地址 <span class="tag">核心改动</span></h2>
+  <p class="sec-desc">这是本次主要优化场景。</p>
+  <div class="compare">
+    <div class="panel">
+      <div class="panel-head before">现状</div>
+      <div class="phone">
+        <div class="phone-title">申请接漂</div>
+        <div class="card">
+          <view class="label">收货地址</view>
+          <div class="name-line">张三 138****8000</div>
+          <div class="addr-line">浙江省 杭州市 西湖区<br>文三路 888 号 XX 小区 3 幢 501</div>
+        </div>
+        <div class="btn-ghost">读取微信地址</div>
+        <div class="card" style="opacity:.45;height:48px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px">本次申请摘要 …</div>
+      </div>
+      <div class="note">问题：下方按钮与上方地址信息分离；已有地址时「读取微信地址」语义不对，且占一行。</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head after">目标稿</div>
+      <div class="phone">
+        <div class="phone-title">申请接漂</div>
+        <div class="card">
+          <div class="address-head">
+            <div class="label">收货地址</div>
+            <div class="action-link">修改地址 ›</div>
+          </div>
+          <div class="address-body">
+            <div class="name-line">张三 138****8000</div>
+            <div class="addr-line">浙江省 杭州市 西湖区<br>文三路 888 号 XX 小区 3 幢 501</div>
+          </div>
+        </div>
+        <div class="btn-ghost del">读取微信地址</div>
+        <div class="card" style="opacity:.45;height:48px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:11px">本次申请摘要 …</div>
+      </div>
+      <div class="note">「修改地址 ›」与标题同一行；点击链接或地址正文均进入 <code>/pages/mine/address?select=1</code>。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== EMPTY STATE ========== -->
+<section>
+  <h2>未填地址（建议一并规范）</h2>
+  <p class="sec-desc">空态仍保留快捷导入，但同样收进卡片内，避免下方独立按钮。</p>
+  <div class="states">
+    <div class="panel">
+      <div class="panel-head after">空态目标稿 A <span class="tag">推荐</span></div>
+      <div class="phone">
+        <div class="phone-title">申请接漂 · 无地址</div>
+        <div class="card">
+          <div class="address-head">
+            <div class="label">收货地址</div>
+            <div class="action-link">读取微信地址</div>
+          </div>
+          <div class="address-body">
+            <div class="placeholder">选择收货地址 ›</div>
+          </div>
+        </div>
+      </div>
+      <div class="note">标题行右侧保留「读取微信地址」；点击占位区域进入地址簿。</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head after">空态目标稿 B</div>
+      <div class="phone">
+        <div class="phone-title">申请接漂 · 无地址</div>
+        <div class="card">
+          <div class="address-head">
+            <div class="label">收货地址</div>
+          </div>
+          <div class="address-body">
+            <div class="placeholder">选择收货地址 ›</div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #eef2ef;text-align:center">
+            <span class="action-link" style="font-size:11px">读取微信地址</span>
+          </div>
+        </div>
+      </div>
+      <div class="note">卡片内底部分隔线放微信导入，适合强调两种入口并列。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== STRUCTURE + INTERACTION ========== -->
+<section>
+  <h2>结构与交互</h2>
+  <div class="flow">
+    <strong>wxml 结构（已有地址）</strong>
+    <ol>
+      <li><code>address-card</code> 单卡片，不再渲染下方 <code>wx-address-btn</code></li>
+      <li>标题行：<code>收货地址</code> + <code>修改地址 ›</code>（<code>catchtap="selectAddress"</code> 或共用父级 tap）</li>
+      <li>正文区：姓名电话 + 省市区详细地址（点击同样 <code>selectAddress</code>）</li>
+      <li>删除独立「读取微信地址」按钮；微信导入改在<strong>地址簿页</strong>或<strong>空态</strong>提供</li>
+    </ol>
+    <strong style="display:block;margin-top:12px">点击行为</strong>
+    <ol>
+      <li>点击「修改地址 ›」→ 地址簿选择页（现有 <code>selectAddress</code>）</li>
+      <li>点击地址正文 → 同上</li>
+      <li>从地址簿返回后刷新 <code>shippingHint</code>（现有逻辑不变）</li>
+    </ol>
+    <strong style="display:block;margin-top:12px">文案</strong>
+    <ol>
+      <li>有地址：右侧 <strong>修改地址 ›</strong></li>
+      <li>无地址：右侧 <strong>读取微信地址</strong>（方案 A）或卡片内底栏（方案 B）</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <h2>样式参考（对齐 profile 页 mini-link）</h2>
+  <div class="flow">
+    复用 <code>pages/auth/profile</code> 的 <code>.section-head</code> + <code>.mini-link</code> 模式：
+    左标题、右品牌绿文字链，与「玩法介绍 ›」「查看漂流玩法 ›」视觉一致。
+  </div>
+</section>
+
+</body>
+</html>

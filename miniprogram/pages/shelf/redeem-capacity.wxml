@@ -12,10 +12,11 @@
         <view class="muted">当前上限</view>
       </view>
       <view>
-        <view class="quota-num">{{balance}}</view>
+        <view class="quota-num">{{available}}</view>
         <view class="muted">可用公益积分</view>
       </view>
     </view>
+    <view wx:if="{{frozen > 0}}" class="frozen-note muted">另有 {{frozen}} 公益积分接漂占用中，暂不可用于兑换</view>
   </view>
 
   <view class="card">
@@ -29,7 +30,7 @@
       <view class="quick-chip" data-count="50" bindtap="setQuickCount">50 本</view>
       <view class="quick-chip" data-count="100" bindtap="setQuickCount">100 本</view>
     </view>
-    <view class="cost-line">需消耗 {{coinCost}} 公益积分，兑换后上限 {{dashboard.shelfLimit + redeemCount}} 本</view>
+    <view class="cost-line">需消耗 {{coinCost}} 公益积分，兑换后上限 {{nextShelfLimit}} 本</view>
   </view>
 
   <view class="btn-primary" bindtap="submitRedeem">确认兑换</view>

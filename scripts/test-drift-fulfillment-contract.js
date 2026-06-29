@@ -30,18 +30,18 @@ assert.ok(dbLib.includes('coinFrozen: 0') && dbLib.includes('SIGNUP_BONUS = 0'),
 assert.ok(dbLib.includes('INVITE_REWARD = 2'), 'invite reward should be two');
 assert.ok(wallet.includes('available') && wallet.includes('frozen'), 'wallet should expose available and frozen');
 assert.ok(walletWxml.includes('可用公益积分') && walletWxml.includes('占用中'), 'wallet should display occupied points');
-assert.ok(shelf.includes('availableCoin(user)'), 'shelf redemption should use available points');
+assert.ok(shelf.includes('availableCoin('), 'shelf redemption should use available points');
 collections.forEach((source) => assert.ok(source.includes("'drift_disputes'") && source.includes("'drift_order_events'"), 'collections missing'));
 
 const migration = readOptional('cloudfunctions/api/lib/driftMigration.js');
 assert.ok(migration.includes('ensureAccountingV2') && migration.includes('legacy_accounting_migration'), 'legacy migration guard missing');
 assert.ok(routes.includes("'system.migrateDriftAccounting'"), 'migration route missing');
 
-assert.ok(drift.includes('shelfBookId') && drift.includes('calculateCoinValue'), 'publish must use exact shelf record and system pricing');
+assert.ok(drift.includes('shelfBookId') && read('cloudfunctions/api/lib/driftPolicy.js').includes('calculateCoinValue'), 'publish must use exact shelf record and system pricing');
 assert.ok(drift.includes('runTransaction') && drift.includes('coinFrozen') && drift.includes('shipDeadlineAt'), 'claim must lock and freeze');
 assert.ok(claimWxml.includes('可用公益积分') && claimWxml.includes('占用'), 'claim occupation copy missing');
 assert.ok(drift.includes('policy().inflightLimit') && drift.includes('INFLIGHT_LIMIT'), 'claim should enforce current in-flight limit');
-assert.ok(routes.includes('已有 5 单未收货，请先完成在途漂流') && claimWxml.includes('同时未收货最多 5 单'), 'claim limit copy should explain the five-order in-flight cap');
+assert.ok(routes.includes('已有 5 单未收货，请先完成在途漂流') && claimWxml.includes('同时未收货') && claimWxml.includes('inflightLimitSummary'), 'claim limit copy should explain the five-order in-flight cap');
 
 assert.ok(routes.includes("'drift.orderDetail'") && routes.includes("'drift.cancel'"), 'fulfillment routes missing');
 assert.ok(appJson.includes('pages/drift/order-detail') && appJson.includes('pages/drift/ship'), 'fulfillment pages missing');
@@ -53,6 +53,7 @@ assert.ok(drift.includes('claim_unfreeze') && drift.includes('settleOrder'), 'ca
 assert.ok(drift.includes('function normalizeOrderRecord') && drift.includes('normalizeOrderRecord(orderSnap.data, orderId)'), 'doc lookup should hydrate order id before cancel updates');
 assert.ok(drift.includes('resolveOrderCoinValue') && drift.includes('buildRevokePublishRewardEffects'), 'cancel should resolve coin value and merge giver reward rollback');
 assert.ok(drift.includes('maintainDriftOrders') && drift.includes('autoCompleteAt'), 'maintenance missing');
+assert.ok(read('cloudfunctions/api/lib/driftPolicy.js').includes('SHIP_DEADLINE_HOURS'), 'drift policy should centralize ship deadline hours');
 
 assert.ok(routes.includes("'drift.dispute'") && routes.includes("'drift.resolveDispute'"), 'dispute routes missing');
 assert.ok(drift.includes('DISPUTE_RESTRICTED') && drift.includes('user.disputeRestricted'), 'restricted dispute users should be blocked by backend');

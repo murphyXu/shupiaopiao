@@ -5,34 +5,34 @@
 
 .pool-title-row {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  align-items: baseline;
+  min-width: 0;
   gap: 14rpx;
 }
 
 .pool-title-row .page-title {
-  flex: 0 1 216rpx;
+  flex-shrink: 0;
   min-width: 0;
+}
+
+.pool-value-slogan {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 22rpx;
+  color: #6b8278;
 }
 
 .guide-entry {
   flex-shrink: 0;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 156rpx;
-  height: 48rpx;
-  padding: 0;
-  border: 1rpx solid #e7eee9;
-  border-radius: 24rpx;
-  color: #52605a;
-  background: #f0f3f1;
+  padding: 8rpx 0;
+  color: #0C7A4B;
   font-size: 22rpx;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  transform: rotate(-2deg);
 }
 
 .pool-point-row {
@@ -44,13 +44,28 @@
 }
 
 .pool-point-line {
-  flex: 0 1 216rpx;
+  flex: 0 1 auto;
+  max-width: calc(100% - 146rpx);
   min-width: 0;
   margin-top: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   white-space: nowrap;
   font-size: 22rpx;
+}
+
+.pool-point-label {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pool-point-num {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: #0C7A4B;
 }
 
 .earn-point-action {
@@ -95,9 +110,128 @@
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
 }
 
-.filter-scroll {
-  white-space: nowrap;
-  margin-bottom: 26rpx;
+/* 更多筛选抽屉 */
+.more-filter-panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 28rpx 32rpx 0;
+  background: #fff;
+}
+
+.mf-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #15211B;
+}
+
+.mf-close {
+  margin-left: auto;
+  color: #9aa8a0;
+  font-size: 34rpx;
+  padding: 8rpx 0 8rpx 16rpx;
+}
+
+.mf-body {
+  flex-shrink: 0;
+  margin-top: 8rpx;
+}
+
+.mf-section + .mf-section {
+  margin-top: 24rpx;
+}
+
+.mf-label {
+  margin: 0 0 14rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #7b8a82;
+}
+
+.mf-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.mf-opt {
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  border: 1rpx solid #e6eee9;
+  background: #fff;
+  color: #46564e;
+  font-size: 23rpx;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mf-opt.on {
+  background: #EAFBF2;
+  border-color: #2FBE77;
+  color: #0C7A4B;
+  font-weight: 700;
+}
+
+.mf-foot {
+  flex-shrink: 0;
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+  padding-top: 8rpx;
+}
+
+.mf-btn {
+  height: 84rpx;
+  border-radius: 42rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.more-filter-panel.compact {
+  padding-top: 24rpx;
+}
+
+.more-filter-panel.compact .mf-section + .mf-section {
+  margin-top: 18rpx;
+}
+
+.more-filter-panel.compact .mf-label {
+  margin-bottom: 12rpx;
+}
+
+.more-filter-panel.compact .mf-opt {
+  height: 52rpx;
+  padding: 0 22rpx;
+  font-size: 22rpx;
+}
+
+.more-filter-panel.compact .mf-foot {
+  margin-top: 22rpx;
+}
+
+.more-filter-panel.compact .mf-btn {
+  height: 76rpx;
+  font-size: 27rpx;
+}
+
+.mf-btn.ghost {
+  flex: 1;
+  background: #f0f5f1;
+  color: #46564e;
+}
+
+.mf-btn.primary {
+  flex: 2;
+  background: #2FBE77;
+  color: #fff;
 }
 
 .pool-search-box {
@@ -150,23 +284,22 @@
   margin-top: 8rpx;
 }
 
-.apply-action {
-  margin-top: 14rpx;
-  height: 60rpx;
-  line-height: 60rpx;
-  border-radius: 28rpx;
-  text-align: center;
-  color: #fff;
-  background: #2FBE77;
-  border: 1rpx solid #2FBE77;
-  font-size: 24rpx;
-  font-weight: 700;
+.pool-grid .grid-book-cover-frame {
+  position: relative;
 }
 
-.apply-action.mine {
+.pool-mine-tag {
+  position: absolute;
+  top: 10rpx;
+  left: 10rpx;
+  z-index: 2;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 600;
   color: #7b8a82;
-  background: #f0f5f1;
-  border-color: #e6eee9;
+  background: rgba(240, 245, 241, 0.94);
+  border: 1rpx solid #e6eee9;
 }
 
 .pool-publish-entry {
@@ -198,4 +331,15 @@
 .publish-text {
   font-size: 24rpx;
   font-weight: 700;
+}
+
+.pool-list-footer {
+  padding: 8rpx 0 160rpx;
+}
+
+.pool-list-footer .footer {
+  text-align: center;
+  font-size: 24rpx;
+  color: #b3c0b8;
+  margin-top: 24rpx;
 }

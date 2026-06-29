@@ -1,45 +1,73 @@
 const api = require('../../utils/api');
 const {
-  CATEGORIES, BOOK_CLASSES, SHELF_LOCATIONS, isLoggedIn, requireLogin,
+  CATEGORIES, SHELF_LOCATIONS, isLoggedIn, requireLogin,
 } = require('../../utils/util');
 const { onCoverError: baseOnCoverError } = require('../../utils/cover');
 const safeAreaBehavior = require('../../behaviors/safe-area');
-const { setTabBarIndex, refreshTabBarPendingShip } = require('../../utils/tab-bar');
+const { setTabBarIndex, setTabBarHidden, refreshTabBarPendingShip } = require('../../utils/tab-bar');
 const { trackPageView } = require('../../utils/track');
 const { shelfShare } = require('../../utils/share');
+const { measureMoreFilterLayout } = require('../../utils/poolMoreFilterLayout');
+const {
+  readPageCache, writePageCache, shouldUseCachedPage, invalidatePageCache,
+} = require('../../utils/pageCache');
 
-const PRIMARY_TABS = [
-  { key: 'class', label: '书籍分类' },
-  { key: 'status', label: '阅读状态' },
-  { key: 'location', label: '书架位置' },
+// 一级横滑分类（与漂流首页横滑逻辑一致）
+const CATEGORY_CHIPS = [
+  { key: 'all', label: '全部' },
+  { key: '童书', label: '童书' },
+  { key: '文学', label: '文学' },
+  { key: '经管', label: '经管' },
+  { key: '其他', label: '其他' },
 ];
-const ALL_TAB = { key: 'all', label: '全部' };
+// 更多筛选：阅读状态
+const STATUS_OPTS = [
+  { key: 'all', label: '全部' },
+  ...CATEGORIES,
+];
 const MAX_SHELF_NAME = 12;
 const BACK_TOP_BOOK_THRESHOLD = 20;
+const FIRST_SCREEN_SHELF_SIZE = 30;
 const DEFAULT_DASHBOARD = {
   totalBooks: 0,
   totalValue: 0,
   shelfLimit: 100,
   remainingCapacity: 100,
 };
-const KNOWN_SERIES_NAMES = [
-  '屁屁侦探',
-  '神奇校车',
-  '不一样的卡梅拉',
-  '小猪佩奇',
-  '米小圈',
-  '故宫里的大怪兽',
-  '可怕的科学',
-  '猫武士',
-  '哈利·波特',
-];
-
 function defaultLocations() {
   return SHELF_LOCATIONS.map((item) => ({ key: item.label, label: item.label }));
 }
 
+function shelfListCacheKey(data = {}) {
+  const {
+    activeCategory = 'all',
+    activeStatus = 'all',
+    activeLocation = 'all',
+    searchKeyword = '',
+  } = data;
+  return [
+    'shelf/list',
+    activeCategory || 'all',
+    activeStatus || 'all',
+    activeLocation || 'all',
+    String(searchKeyword || '').trim() || '-',
+  ].join(':');
+}
+
 function shelfCategoryLabel(item = {}) {
-  return (item.bookClassLabel || item.displayCategory || item.sourceCategory || '未分类').trim();
+  return (item.bookClassLabel || '其他').trim();
+}
+
+function shouldDeferCategoryList(data = {}) {
+  return data.activeCategory !== 'all' && !data.shelfFullLoadDone;
+}
+
+function mergeShelfBookRows(prev = [], incoming = []) {
+  if (!incoming.length) return prev;
+  if (!prev.length || incoming.length >= prev.length) return incoming;
+  const patchById = {};
+  incoming.forEach((item) => { patchById[item.id] = item; });
+  return prev.map((item) => patchById[item.id] || item);
 }
 
 function sourceCategory(item = {}) {
@@ -63,73 +91,6 @@ function matchesShelfSearch(item = {}, keyword = '') {
   return text.includes(keyword.toLowerCase());
 }
 
-function hasRealCover(cover = '') {
-  const value = String(cover || '').trim();
-  return !!value && !/default\.png|brand\/logo|placeholder|undefined|null/.test(value);
-}
-
-function pickSeriesCover(items = []) {
-  const withCover = items.find((item) => hasRealCover(((item.book || {}).cover)));
-  const source = (withCover || items[0] || {}).book || {};
-  return {
-    cover: source.cover || '',
-    isbn: source.isbn || '',
-  };
-}
-
-function cleanSeriesTitle(title = '') {
-  return String(title)
-    .replace(/[《》]/g, '')
-    .replace(/[（(][^）)]*(第[一二三四五六七八九十百\d]+[册卷部本]|全[一二三四五六七八九十百\d]+册|共[一二三四五六七八九十百\d]+册|套装|全套|全集)[^）)]*[）)]/g, '')
-    .replace(/[:：][^:：]*(第[一二三四五六七八九十百\d]+[册卷部本]|套装|全套|全集|全[一二三四五六七八九十百\d]+册|共[一二三四五六七八九十百\d]+册).*$/g, '')
-    .replace(/\s+/g, '')
-    .trim();
-}
-
-function seriesMeta(item = {}) {
-  const rawTitle = String(((item.book || {}).title || '')).replace(/[《》]/g, '').replace(/\s+/g, '').trim();
-  const isSet = /套装|全套|全集|套书|礼盒|全[一二三四五六七八九十百\d]+册|共[一二三四五六七八九十百\d]+册/.test(rawTitle);
-  const knownSeriesName = KNOWN_SERIES_NAMES.find((name) => rawTitle.includes(name));
-  if (knownSeriesName) {
-    return {
-      key: knownSeriesName,
-      title: `${knownSeriesName}系列`,
-      typeLabel: isSet ? '套装' : '系列',
-      standalone: isSet,
-    };
-  }
-  const title = cleanSeriesTitle(rawTitle);
-  if (!title) return null;
-  let key = title
-    .replace(/[（(].*?[）)]/g, '')
-    .replace(/(套装|全套|全集|套书|礼盒|全[一二三四五六七八九十百\d]+册|共[一二三四五六七八九十百\d]+册).*$/g, '')
-    .replace(/第[一二三四五六七八九十百\d]+[册卷部本].*$/g, '')
-    .replace(/[·:：-]?[上下中][册卷部本]?$/g, '')
-    .replace(/\s+/g, '')
-    .trim();
-  let isSeries = isSet || key !== title;
-  if (!isSeries && /系列|丛书/.test(title)) {
-    key = title.replace(/(系列|丛书).*$/g, '$1');
-    isSeries = true;
-  }
-  if (!isSeries && title.includes('·')) {
-    const parts = title.split('·');
-    const secondPart = (parts[1] || '').replace(/[与和:：-].*$/g, '');
-    const prefix = secondPart ? `${parts[0]}·${secondPart}` : parts[0];
-    if (prefix.length >= 2 && prefix.length <= 10) {
-      key = prefix;
-      isSeries = true;
-    }
-  }
-  if (!key || key.length < 2) return null;
-  return {
-    key,
-    title: /系列|丛书|全集|套装|全套|套书/.test(key) ? key : `${key}系列`,
-    typeLabel: isSet ? '套装' : '系列',
-    standalone: isSet,
-  };
-}
-
 Page({
   behaviors: [safeAreaBehavior],
   data: {
@@ -140,14 +101,28 @@ Page({
     shelfName: '我的书架',
     editingShelfName: false,
     shelfNameInput: '',
-    primaryTabs: PRIMARY_TABS,
-    activePrimary: 'class',
-    secondaryTabs: [ALL_TAB].concat(BOOK_CLASSES),
-    activeSecondary: 'all',
+    categoryChips: CATEGORY_CHIPS,
+    activeCategory: 'all',
+    statusOpts: STATUS_OPTS,
+    locationOpts: [{ key: 'all', label: '全部' }],
+    // 已生效的更多筛选
+    activeStatus: 'all',
+    activeLocation: 'all',
+    moreActive: false,
+    // 抽屉草稿值
+    showMoreFilter: false,
+    filterFootPadding: 0,
+    filterCompact: false,
+    draftStatus: 'all',
+    draftLocation: 'all',
     allBooks: [],
     books: [],
-    shelfEntries: [],
-    seriesCollapsed: {},
+    shelfTotal: 0,
+    shelfHasMore: false,
+    shelfLoadingMore: false,
+    shelfPage: 1,
+    shelfFullLoadDone: true,
+    categoryFilterPending: false,
     searchKeyword: '',
     showBackTop: false,
     dashboard: DEFAULT_DASHBOARD,
@@ -165,7 +140,7 @@ Page({
 
   onShow() {
     setTabBarIndex.call(this, 1);
-    refreshTabBarPendingShip();
+    setTimeout(() => refreshTabBarPendingShip(), 500);
     trackPageView('shelf/index');
     if (wx.getStorageSync('forceOwnShelf')) {
       wx.removeStorageSync('forceOwnShelf');
@@ -179,35 +154,99 @@ Page({
     if (this.data.shareMode) {
       this.loadSharedData();
     } else if (loggedIn) {
-      reloadIfCoversUpdated(() => this.loadData());
-      this.loadData();
+      reloadIfCoversUpdated(() => this.loadData(true));
+      const cacheKey = shelfListCacheKey(this.data);
+      const cached = readPageCache(cacheKey);
+      if (cached && cached.data) this.applyShelfPayload(cached.data, { mergeOnly: false });
+      if (!shouldUseCachedPage(cacheKey) || !cached) this.loadData(true);
     } else {
       this.setData({
         allBooks: [],
         books: [],
-        shelfEntries: [],
         showBackTop: false,
+        shelfTotal: 0,
+        shelfHasMore: false,
+        shelfFullLoadDone: true,
+        categoryFilterPending: false,
         dashboard: DEFAULT_DASHBOARD,
       });
     }
   },
 
-  async loadData() {
-    try {
-      const user = wx.getStorageSync('userInfo') || {};
-      const [shelf, dashboard] = await Promise.all([
-        api.getShelfBooks('all'),
-        api.getDashboard(),
-      ]);
+  onReachBottom() {
+    if (this.data.shareMode || !this.data.loggedIn) return;
+    if (this.data.shelfHasMore && !this.data.shelfLoadingMore) this.loadData(false);
+  },
+
+  buildShelfListParams(page = 1) {
+    const { activeCategory, activeStatus, activeLocation, searchKeyword } = this.data;
+    return {
+      page,
+      size: FIRST_SCREEN_SHELF_SIZE,
+      includeDashboard: page === 1,
+      category: 'all',
+      bookClassChip: activeCategory !== 'all' ? activeCategory : '',
+      readingStatus: activeStatus !== 'all' ? activeStatus : '',
+      shelfLocationName: activeLocation !== 'all' ? activeLocation : '',
+      searchKeyword: String(searchKeyword || '').trim(),
+    };
+  },
+
+  applyShelfPayload(shelf, options = {}) {
+    const incoming = shelf.list || [];
+    const allBooks = options.mergeOnly
+      ? mergeShelfBookRows(this.data.allBooks || [], incoming)
+      : incoming;
+    const user = wx.getStorageSync('userInfo') || {};
+    this.setData({
+      allBooks,
+      books: allBooks,
+      shelfTotal: Number(shelf.total) || allBooks.length,
+      shelfHasMore: !!shelf.hasMore,
+      shelfPage: shelf.page || this.data.shelfPage,
+      shelfFullLoadDone: !shelf.hasMore,
+      categoryFilterPending: false,
+      shelfLoadingMore: false,
+      dashboard: shelf.dashboard || this.data.dashboard,
+      shelfName: (user.shelfName || '我的书架').slice(0, MAX_SHELF_NAME),
+      shelfNameInput: (user.shelfName || '我的书架').slice(0, MAX_SHELF_NAME),
+    });
+    this.refreshSecondaryTabs();
+  },
+
+  onHide() {
+    setTabBarHidden(false);
+  },
+
+  async loadData(reset = true) {
+    const requestId = Date.now();
+    this.lastShelfRequestId = requestId;
+    const page = reset ? 1 : (this.data.shelfPage || 1) + 1;
+    const cacheKey = shelfListCacheKey(this.data);
+    if (!reset) this.setData({ shelfLoadingMore: true });
+    else if (!readPageCache(cacheKey)) {
       this.setData({
-        allBooks: shelf.list,
-        dashboard,
-        shelfName: (user.shelfName || '我的书架').slice(0, MAX_SHELF_NAME),
-        shelfNameInput: (user.shelfName || '我的书架').slice(0, MAX_SHELF_NAME),
+        shelfFullLoadDone: false,
+        categoryFilterPending: shouldDeferCategoryList(this.data),
       });
-      this.refreshSecondaryTabs();
+    }
+
+    try {
+      const shelf = await api.getShelfBooks('all', this.buildShelfListParams(page), {
+        deferCoverEnrichment: true,
+        onEnriched: (enriched) => {
+          if (this.lastShelfRequestId !== requestId) return;
+          this.applyShelfPayload(enriched, { mergeOnly: !reset });
+        },
+      });
+      if (this.lastShelfRequestId !== requestId) return;
+      this.applyShelfPayload(shelf, { mergeOnly: !reset });
+      if (reset) writePageCache(cacheKey, shelf);
     } catch (e) {
       console.error(e);
+      if (this.lastShelfRequestId === requestId) {
+        this.setData({ shelfFullLoadDone: true, categoryFilterPending: false, shelfLoadingMore: false });
+      }
     }
   },
 
@@ -218,6 +257,9 @@ Page({
         owner: res.owner,
         shelfName: (res.owner && res.owner.shelfName) || 'TA的书架',
         allBooks: res.list || [],
+        shelfTotal: (res.list || []).length,
+        shelfFullLoadDone: true,
+        categoryFilterPending: false,
         dashboard: res.dashboard || DEFAULT_DASHBOARD,
       });
       this.refreshSecondaryTabs();
@@ -227,141 +269,100 @@ Page({
     }
   },
 
+  // 兼容旧调用：刷新书架位置选项并重新筛选
   refreshSecondaryTabs() {
-    const { activePrimary } = this.data;
-    let secondaryTabs = [ALL_TAB].concat(CATEGORIES);
-    let activeSecondary = this.data.activeSecondary;
-    if (activePrimary === 'class') {
-      secondaryTabs = this.buildClassTabs();
+    const map = new Map(defaultLocations().map((item) => [item.key, item]));
+    this.data.allBooks.forEach((item) => {
+      const name = item.shelfLocationName || '默认书架 1';
+      map.set(name, { key: name, label: name });
+    });
+    const locationOpts = [{ key: 'all', label: '全部' }].concat([...map.values()]);
+    let { activeLocation } = this.data;
+    if (!locationOpts.some((item) => item.key === activeLocation)) {
+      activeLocation = 'all';
     }
-    if (activePrimary === 'location') {
-      const map = new Map(defaultLocations().map((item) => [item.key, item]));
-      this.data.allBooks.forEach((item) => {
-        const name = item.shelfLocationName || '默认书架 1';
-        map.set(name, { key: name, label: name });
-      });
-      secondaryTabs = [ALL_TAB].concat([...map.values()]);
-    }
-    if (!secondaryTabs.some((item) => item.key === activeSecondary)) {
-      activeSecondary = secondaryTabs[0] ? secondaryTabs[0].key : '';
-    }
-    this.setData({ secondaryTabs, activeSecondary });
+    this.setData({ locationOpts, activeLocation });
     this.filterBooks();
   },
 
-  buildClassTabs() {
-    const labelsInUse = new Set();
-    this.data.allBooks.forEach((item) => {
-      labelsInUse.add(shelfCategoryLabel(item));
-    });
-    const ordered = BOOK_CLASSES
-      .filter((item) => labelsInUse.has(item.label))
-      .map((item) => ({ key: item.label, label: item.label }));
-    if (!ordered.length) {
-      return [ALL_TAB].concat(BOOK_CLASSES.map((item) => ({ key: item.label, label: item.label })));
-    }
-    return [ALL_TAB].concat(ordered);
-  },
-
   filterBooks() {
-    const {
-      activePrimary, activeSecondary, allBooks, searchKeyword,
-    } = this.data;
-    const keyword = String(searchKeyword || '').trim().toLowerCase();
-    const books = allBooks.filter((item) => {
-      let matchedTab = true;
-      if (activeSecondary !== 'all') {
-        if (activePrimary === 'status') matchedTab = item.readingStatus === activeSecondary;
-        if (activePrimary === 'class') matchedTab = shelfCategoryLabel(item) === activeSecondary;
-        if (activePrimary === 'location') matchedTab = (item.shelfLocationName || '默认书架 1') === activeSecondary;
-      }
-      return matchedTab && matchesShelfSearch(item, keyword);
-    });
-    this.setData({ books, shelfEntries: this.buildShelfEntries(books) });
+    this.setData({ books: this.data.allBooks || [] });
   },
 
   onShelfSearchInput(e) {
     this.setData({ searchKeyword: e.detail.value || '' });
-    this.filterBooks();
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => {
+      invalidatePageCache('shelf/');
+      this.loadData(true);
+    }, 400);
   },
 
   clearShelfSearch() {
     this.setData({ searchKeyword: '' });
-    this.filterBooks();
+    invalidatePageCache('shelf/');
+    this.loadData(true);
   },
 
-  buildShelfEntries(books, collapsedState = this.data.seriesCollapsed) {
-    const groups = new Map();
-    books.forEach((bookItem, index) => {
-      const meta = seriesMeta(bookItem);
-      if (!meta) return;
-      if (!groups.has(meta.key)) {
-        groups.set(meta.key, {
-          ...meta,
-          firstIndex: index,
-          books: [],
-        });
-      }
-      const group = groups.get(meta.key);
-      group.books.push(bookItem);
-      group.standalone = group.standalone || meta.standalone;
-    });
-
-    const accepted = new Map();
-    groups.forEach((group, key) => {
-      if (group.standalone || group.books.length > 1) accepted.set(key, group);
-    });
-
-    const emitted = new Set();
-    const entries = [];
-    books.forEach((bookItem) => {
-      const meta = seriesMeta(bookItem);
-      const group = meta ? accepted.get(meta.key) : null;
-      if (!group) {
-        entries.push({ type: 'book', ...bookItem });
-        return;
-      }
-      if (emitted.has(group.key)) return;
-      emitted.add(group.key);
-      const seriesCover = pickSeriesCover(group.books);
-      entries.push({
-        type: 'series',
-        id: `series-${group.key}`,
-        seriesKey: group.key,
-        seriesTitle: group.title,
-        seriesTypeLabel: group.typeLabel,
-        count: group.books.length,
-        cover: seriesCover.cover,
-        coverIsbn: seriesCover.isbn,
-        books: group.books,
-        collapsed: collapsedState[group.key] !== false,
-      });
-    });
-    return entries;
-  },
-
-  toggleSeries(e) {
-    const seriesKey = e.currentTarget.dataset.key;
-    const seriesCollapsed = {
-      ...this.data.seriesCollapsed,
-      [seriesKey]: this.data.seriesCollapsed[seriesKey] === false,
-    };
+  onCategoryChip(e) {
+    if (!this.data.shareMode && !requireLogin('登录后可管理个人书架')) return;
+    const key = e.currentTarget.dataset.key || 'all';
+    invalidatePageCache('shelf/');
     this.setData({
-      seriesCollapsed,
-      shelfEntries: this.buildShelfEntries(this.data.books, seriesCollapsed),
+      activeCategory: key,
+      books: [],
+      allBooks: [],
+      categoryFilterPending: key !== 'all',
+      shelfFullLoadDone: false,
+    }, () => this.loadData(true));
+  },
+
+  openMoreFilter() {
+    if (!this.data.shareMode && !requireLogin('登录后可管理个人书架')) return;
+    setTabBarHidden(true);
+    const layout = measureMoreFilterLayout();
+    this.setData({
+      showMoreFilter: true,
+      filterFootPadding: layout.filterFootPadding,
+      filterCompact: layout.filterCompact,
+      draftStatus: this.data.activeStatus,
+      draftLocation: this.data.activeLocation,
     });
   },
 
-  switchPrimary(e) {
-    if (!this.data.shareMode && !requireLogin('登录后可管理个人书架')) return;
-    this.setData({ activePrimary: e.currentTarget.dataset.key, activeSecondary: 'all' });
-    this.refreshSecondaryTabs();
+  closeMoreFilter() {
+    setTabBarHidden(false);
+    this.setData({ showMoreFilter: false });
   },
 
-  switchSecondary(e) {
-    if (!this.data.shareMode && !requireLogin('登录后可管理个人书架')) return;
-    this.setData({ activeSecondary: e.currentTarget.dataset.key });
-    this.filterBooks();
+  onDraftStatus(e) {
+    this.setData({ draftStatus: e.currentTarget.dataset.key || 'all' });
+  },
+
+  onDraftLocation(e) {
+    this.setData({ draftLocation: e.currentTarget.dataset.key || 'all' });
+  },
+
+  resetMoreFilter() {
+    this.setData({ draftStatus: 'all', draftLocation: 'all' });
+  },
+
+  applyMoreFilter() {
+    const { draftStatus, draftLocation } = this.data;
+    const moreActive = draftStatus !== 'all' || draftLocation !== 'all';
+    setTabBarHidden(false);
+    this.setData({
+      activeStatus: draftStatus,
+      activeLocation: draftLocation,
+      moreActive,
+      showMoreFilter: false,
+      books: [],
+      allBooks: [],
+      shelfFullLoadDone: false,
+    }, () => {
+      invalidatePageCache('shelf/');
+      this.loadData(true);
+    });
   },
 
   goDashboard() {
@@ -459,11 +460,10 @@ Page({
   exitShareMode() {
     wx.setStorageSync('forceOwnShelf', true);
     this.setData({ shareMode: false, shareUserId: '', owner: null });
-    if (isLoggedIn()) this.loadData();
+    if (isLoggedIn()) this.loadData(true);
     else this.setData({
       allBooks: [],
       books: [],
-      shelfEntries: [],
       showBackTop: false,
       dashboard: DEFAULT_DASHBOARD,
     });

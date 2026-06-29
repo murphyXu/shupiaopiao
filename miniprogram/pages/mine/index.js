@@ -41,6 +41,7 @@ Page({
     driftSummary: {
       pendingShip: 0,
       expiringSoon: 0,
+      waitingShipReceived: 0,
       toConfirm: 0,
       disputing: 0,
       toReview: 0,
@@ -83,6 +84,7 @@ Page({
           ['待评价', summary.toReviewGiven],
         ]),
         receivedBadges: buildTodoBadges([
+          ['待发货', summary.waitingShipReceived],
           ['待确认', summary.toConfirm],
           ['申诉', summary.disputingReceived],
           ['待评价', summary.toReviewReceived],
@@ -96,6 +98,7 @@ Page({
         driftSummary: {
           pendingShip: 0,
           expiringSoon: 0,
+          waitingShipReceived: 0,
           toConfirm: 0,
           disputing: 0,
           toReview: 0,
@@ -133,6 +136,7 @@ Page({
   goWallet() { this.guard(() => wx.navigateTo({ url: '/pages/mine/wallet' })); },
   goGiven() { this.guard(() => wx.navigateTo({ url: '/pages/drift/given' })); },
   goReceived() { this.guard(() => wx.navigateTo({ url: '/pages/drift/received' })); },
+  goWants() { this.guard(() => wx.navigateTo({ url: '/pages/pool/wants' })); },
   goCredit() { this.guard(() => wx.navigateTo({ url: '/pages/mine/credit' })); },
   goDisputes() { this.guard(() => wx.navigateTo({ url: '/pages/mine/disputes' })); },
   goDashboard() { this.guard(() => wx.navigateTo({ url: '/pages/admin/dashboard' })); },

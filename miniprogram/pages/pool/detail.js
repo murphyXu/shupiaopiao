@@ -3,6 +3,7 @@ const { requireLogin } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { trackPageView } = require('../../utils/track');
 const { driftShare } = require('../../utils/share');
+const driftCopy = require('../../utils/driftCopy');
 
 const SUMMARY_FOLD_THRESHOLD = 96;
 
@@ -16,7 +17,18 @@ function buildSummaryView(summary = '') {
 }
 
 Page({
-  data: { item: null, summaryText: '', summaryNeedsFold: false, summaryExpanded: false },
+  data: {
+    item: null,
+    summaryText: '',
+    summaryNeedsFold: false,
+    summaryExpanded: false,
+    knowTitle: driftCopy.KNOW_TITLE,
+    knowCodLine: driftCopy.formatKnowCodLine(),
+    inflightLimit: driftCopy.INFLIGHT_LIMIT,
+    guideLinkText: driftCopy.GUIDE_LINK_TEXT,
+    sameGiverHint: driftCopy.SAME_GIVER_HINT,
+    knowOccupyLine: '',
+  },
 
   onLoad(options) {
     this.driftId = options.id;
@@ -26,7 +38,11 @@ Page({
   loadDetail() {
     return api.getPoolDetail(this.driftId).then((item) => {
       const book = item.book || {};
-      this.setData({ item, ...buildSummaryView(book.summary) });
+      this.setData({
+        item,
+        knowOccupyLine: driftCopy.formatKnowOccupyLine(item.coinValue),
+        ...buildSummaryView(book.summary),
+      });
       trackPageView('pool/detail', {
         driftId: this.driftId,
         bookId: item.bookId,
@@ -43,6 +59,14 @@ Page({
     }
     if (!requireLogin('申请接漂需登录，以便管理漂流记录与公益积分')) return;
     wx.navigateTo({ url: `/pages/drift/claim?driftId=${this.driftId}` });
+  },
+
+  goGivenProgress() {
+    wx.navigateTo({ url: '/pages/drift/given?status=IN_POOL' });
+  },
+
+  goGuide() {
+    wx.navigateTo({ url: driftCopy.GUIDE_PATH });
   },
 
   goSameGiverItem(e) {

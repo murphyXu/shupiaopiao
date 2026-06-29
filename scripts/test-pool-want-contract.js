@@ -36,9 +36,10 @@ assert.ok(poolHandler.includes('async function wants') && poolHandler.includes('
 assert.ok(poolHandler.includes('countWanted') && poolHandler.includes('wantCount: activeWantedCount'), 'pool stats should count current user wanted drift records');
 assert.ok(poolHandler.includes('getWantedDriftIds') && poolHandler.includes('wanted:'), 'pool list/detail should expose whether current user wanted each book');
 
-assert.ok(poolIndexWxml.includes('catchtap="goApply"') && poolIndexWxml.includes('apply-action') && poolIndexWxml.includes('申请接漂'), 'pool list card should expose apply-to-claim entry');
+assert.ok(poolIndexWxml.includes('pool-mine-tag') && poolIndexWxml.includes('我的赠书'), 'pool list should mark own drift cards with cover tag');
+assert.ok(!poolIndexWxml.includes('apply-action') && !poolIndexWxml.includes('申请接漂'), 'pool list card should not expose apply-to-claim button');
 assert.ok(!poolIndexWxml.includes("{{item.wanted ? '已想要' : '想要接漂'}}"), 'pool list card should not use want-to-claim copy as the primary entry');
-assert.ok(poolIndexJs.includes('goApply') && !poolIndexJs.includes('async toggleWant'), 'pool index card should navigate toward application instead of toggling want state');
+assert.ok(!poolIndexJs.includes('goApply') && !poolIndexJs.includes('async toggleWant'), 'pool index card should open detail via card tap only');
 assert.ok(poolIndexJs.includes('/pages/pool/wants'), 'want stat should navigate to dedicated wants list page');
 assert.ok(appJson.pages.includes('pages/pool/wants'), 'app pages should register pool wants page');
 assert.ok(exists('miniprogram/pages/pool/wants.js') && exists('miniprogram/pages/pool/wants.wxml') && exists('miniprogram/pages/pool/wants.wxss') && exists('miniprogram/pages/pool/wants.json'), 'pool wants page files should exist');
@@ -52,17 +53,18 @@ assert.ok(poolDetailWxml.includes('want-btn') && poolDetailWxml.includes('bindta
 assert.ok(poolDetailJs.includes('toggleWant') && poolDetailJs.includes('api.togglePoolWant'), 'pool detail should toggle want state');
 
 const poolModuleOrder = [
+  poolIndexWxml.indexOf('sticky-search-filter'),
   poolIndexWxml.indexOf('pool-search-box'),
-  poolIndexWxml.indexOf('primary-tabs'),
-  poolIndexWxml.indexOf('filter-scroll'),
+  poolIndexWxml.indexOf('filter-chips'),
   poolIndexWxml.indexOf('id="pool-list"'),
 ];
 assert.ok(poolModuleOrder.every((position) => position >= 0), 'pool home modules should all exist');
 assert.deepStrictEqual(
   poolModuleOrder,
   [...poolModuleOrder].sort((left, right) => left - right),
-  'pool home should order search, primary filters, secondary filters, then list',
+  'pool home should order sticky tools before list',
 );
+assert.ok(!poolIndexWxml.includes('filter-scroll'), 'pool filter bar should not use horizontal scroll');
 assert.ok(!poolIndexWxml.includes('stat-row') && !poolIndexWxml.includes('stat-card'), 'pool home should not render the top stats row');
 assert.ok(shelfWxml.includes('shelf-search') && !shelfWxml.includes('shelf-stat-row'), 'shelf home should keep search without the top stats row');
 assert.ok(shelfWxss.includes('.shelf-search') && commonWxss.includes('.stat-card'), 'shelf/common styles should define the shared target layout');
