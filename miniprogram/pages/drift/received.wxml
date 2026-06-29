@@ -11,7 +11,18 @@
     </view>
   </scroll-view>
 
+  <official-account-tip-bar
+    wx:if="{{showOaMilestone}}"
+    visible="{{showOaMilestone}}"
+    title="接漂申请已提交"
+    desc="公众号会整理发货步骤与常见问题，需要时可回看"
+    scene="claim"
+    bind:dismiss="dismissOaMilestone"
+    bind:follow="onOaFollow"
+  />
+
   <view wx:for="{{orders}}" wx:key="id" class="card order-card">
+    <view wx:if="{{item.orderMetaLine}}" class="order-meta">{{item.orderMetaLine}}</view>
     <view class="header">
       <text class="badge status">{{statusMap[item.status]}}</text>
       <text wx:if="{{item.bundleBadge}}" class="bundle-badge">{{item.bundleBadge}}</text>
@@ -25,6 +36,7 @@
         <view wx:else class="muted">品相：{{item.conditionLabel}}</view>
       </view>
     </view>
+    <view wx:if="{{item.deadlineHint}}" class="deadline-hint muted">{{item.deadlineHint}}</view>
     <view wx:if="{{item.trackingNo}}" class="logistics" data-no="{{item.trackingNo}}" data-company="{{item.expressCompany}}" bindtap="viewLogistics">查看物流 ›</view>
     <view wx:if="{{item.status === 'SHIPPED'}}" class="btn-accent small" data-id="{{item.id}}" bindtap="confirm">确认收货</view>
     <view wx:if="{{item.status === 'DONE'}}" class="btn-ghost small" data-id="{{item.id}}" bindtap="review">去评价</view>

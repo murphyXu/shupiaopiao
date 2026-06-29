@@ -3,6 +3,11 @@ const { isLoggedIn, requireLogin } = require('../../utils/util');
 const { onCoverError } = require('../../utils/cover');
 const { shippingDistanceHint } = require('../../utils/shipRegion');
 const { trackPageView, track } = require('../../utils/track');
+const {
+  buildClaimConfirmContent,
+  buildClaimSuccessTitle,
+} = require('../../utils/pointFeedback');
+const driftCopy = require('../../utils/driftCopy');
 
 function buildShippingHint(item, address) {
   if (!item || !item.shipFrom) return '';
@@ -10,7 +15,18 @@ function buildShippingHint(item, address) {
 }
 
 Page({
-  data: { item: null, address: null, balance: 0, available: 0, frozen: 0, shippingHint: '' },
+  data: {
+    item: null,
+    address: null,
+    balance: 0,
+    available: 0,
+    frozen: 0,
+    shippingHint: '',
+    codShort: driftCopy.COD_SHORT,
+    addressPlaceholder: driftCopy.ADDRESS_PLACEHOLDER,
+    inflightLimitSummary: driftCopy.INFLIGHT_LIMIT_SUMMARY,
+    sameGiverHint: driftCopy.SAME_GIVER_HINT,
+  },
 
   onLoad(options) {
     if (!isLoggedIn()) {
@@ -88,21 +104,25 @@ Page({
 
   async confirm() {
     if (!this.data.address) {
-      wx.showToast({ title: '请选择地址', icon: 'none' });
+      wx.showToast({ title: '先选择收货地址', icon: 'none' });
       return;
     }
-    try {
-      track('drift_claim_submit', { driftId: this.driftId });
-      const result = await api.claimDrift(this.driftId, this.data.address.id);
-      if (result.merged) {
-        wx.showToast({ title: '已与上一本合并寄出', icon: 'none' });
-      } else {
-        wx.showToast({ title: '申请已提交' });
-      }
-      setTimeout(() => wx.redirectTo({ url: '/pages/drift/received' }), 1000);
-    } catch (e) {
-      console.error(e);
-    }
+    const coinValue = this.data.item && this.data.item.coinValue;
+    wx.showModal({
+      title: '确认申请接漂',
+      content: buildClaimConfirmContent(coinValue),
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          track('drift_claim_submit', { driftId: this.driftId });
+          const result = await api.claimDrift(this.driftId, this.data.address.id);
+          wx.showToast({ title: buildClaimSuccessTitle(result), icon: 'none' });
+          setTimeout(() => wx.redirectTo({ url: '/pages/drift/received?milestone=claim' }), 1000);
+        } catch (e) {
+          console.error(e);
+        }
+      },
+    });
   },
 
   onCoverError,

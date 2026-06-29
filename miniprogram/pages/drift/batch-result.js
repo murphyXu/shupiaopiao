@@ -1,8 +1,13 @@
+const { tryShowMilestonePrompt } = require('../../utils/officialAccountPrompt');
+
+const GIVEN_LIST_URL = '/pages/drift/given?status=IN_POOL';
+
 Page({
   data: {
     results: [],
     successCount: 0,
     failCount: 0,
+    showOaMilestone: false,
   },
 
   onLoad() {
@@ -10,12 +15,21 @@ Page({
     const results = Array.isArray(payload.results) ? payload.results : [];
     const successCount = results.filter((item) => item.ok).length;
     const failCount = results.length - successCount;
-    this.setData({ results, successCount, failCount });
+    const showOaMilestone = tryShowMilestonePrompt('batch', { successCount });
+    this.setData({ results, successCount, failCount, showOaMilestone });
     wx.removeStorageSync('driftBatchPublishResult');
   },
 
-  goPool() {
-    wx.switchTab({ url: '/pages/pool/index' });
+  dismissOaMilestone() {
+    this.setData({ showOaMilestone: false });
+  },
+
+  onOaFollow() {
+    this.setData({ showOaMilestone: false });
+  },
+
+  goGivenList() {
+    wx.redirectTo({ url: GIVEN_LIST_URL });
   },
 
   goPublish() {

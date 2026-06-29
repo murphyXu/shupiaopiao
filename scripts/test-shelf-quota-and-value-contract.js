@@ -24,8 +24,8 @@ assert.ok(shelfHandler.includes('parseListPrice') && shelfHandler.includes('tota
 assert.ok(!shelfHandler.includes('estimateFromCache'), 'shelf dashboard should no longer use second-hand price estimate for homepage value');
 
 assert.ok(miniApi.includes('redeemShelfCapacity'), 'frontend api should wrap shelf capacity redemption');
-assert.ok(shelfWxml.includes('剩余可收藏') && shelfWxml.includes('dashboard.remainingCapacity'), 'shelf header should show remaining collectible slots');
-assert.ok(!shelfWxml.includes('/ 上限') && !shelfWxml.includes('dashboard.shelfLimit'), 'shelf home header should only show remaining collectible slots');
+assert.ok(shelfWxml.includes('在架 {{dashboard.totalBooks}} 本') && shelfWxml.includes('剩余可添加 {{dashboard.remainingCapacity}} 本'), 'shelf header should show on-shelf count and remaining addable slots');
+assert.ok(!shelfWxml.includes('剩余可收藏') && !shelfWxml.includes('/ 上限') && !shelfWxml.includes('dashboard.shelfLimit'), 'shelf home header should use addable-slot wording');
 assert.ok(shelfWxml.includes('兑换额度') && shelfJs.includes('goRedeemCapacity'), 'shelf page should provide capacity redemption entry');
 assert.ok(!shelfWxml.includes('定价合计') && dashboardWxml.includes('定价合计'), 'shelf dashboard should still label total value as list price sum');
 assert.ok(!shelfWxml.includes('本月新增') && !dashboardWxml.includes('本月新增'), 'shelf stats should no longer show monthly new books');

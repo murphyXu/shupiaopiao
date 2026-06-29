@@ -38,3 +38,44 @@
   margin-top: 8rpx;
   font-size: 22rpx;
 }
+.finish-link {
+  margin: 0 0 16rpx;
+  text-align: right;
+  color: #0C7A4B;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+.continuous-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  background: #f6fbf8;
+  border-radius: 28rpx;
+  padding: 20rpx 24rpx;
+}
+.switch-dot {
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  border: 4rpx solid #c9d8d0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.switch-dot.active {
+  border-color: #2FBE77;
+  background: #2FBE77;
+  box-shadow: inset 0 0 0 8rpx #fff;
+}
+.continuous-title {
+  font-size: 28rpx;
+  color: #15211B;
+  font-weight: 700;
+}
+.batch-message {
+  margin-top: 16rpx;
+  color: #0C7A4B;
+  background: #EAFBF2;
+  border-radius: 22rpx;
+  padding: 12rpx 18rpx;
+  font-size: 24rpx;
+}

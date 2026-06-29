@@ -1,0 +1,6 @@
+<view wx:if="{{visible}}" class="oa-tip-bar">
+  <view class="oa-tip-title">{{title}}</view>
+  <view class="oa-tip-desc">{{desc}}</view>
+  <official-account-follow-block bind:follow="onFollow" />
+  <view wx:if="{{showDismiss}}" class="oa-tip-dismiss" bindtap="onDismiss">下次再说</view>
+</view>

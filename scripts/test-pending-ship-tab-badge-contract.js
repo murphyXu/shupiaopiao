@@ -16,9 +16,15 @@ const config = read('miniprogram/config/index.js');
 const poolJs = read('miniprogram/pages/pool/index.js');
 const shelfJs = read('miniprogram/pages/shelf/index.js');
 const mineJs = read('miniprogram/pages/mine/index.js');
+const pendingShipUtil = require('../miniprogram/utils/pendingShip');
 
 assert.ok(pendingShip.includes('getDriftSummary'), 'pending ship summary should query drift.summary');
 assert.ok(pendingShip.includes('formatTabBadge') && pendingShip.includes("'9+'"), 'tab badge should cap at 9+');
+assert.strictEqual(
+  pendingShipUtil.totalPendingShipCount({ pendingShip: 3, waitingShipReceived: 2 }),
+  5,
+  'tab badge count should include given pending ship and received waiting shipment',
+);
 
 assert.ok(tabBarUtil.includes('refreshTabBarPendingShip') && tabBarUtil.includes('mineBadge'), 'tab bar util should refresh mine badge only');
 assert.ok(!tabBarUtil.includes('banner') && !customWxml.includes('banner'), 'P0 should not add tab banner strip');

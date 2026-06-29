@@ -11,6 +11,16 @@
     </view>
   </view>
 
-  <view class="btn-primary" bindtap="goPublish">继续选书上漂</view>
-  <view class="btn-line" bindtap="goPool">查看漂流广场</view>
+  <view class="btn-primary" bindtap="goGivenList">查看我送出的书</view>
+  <view class="btn-line" bindtap="goPublish">继续选书上漂</view>
+
+  <official-account-tip-bar
+    wx:if="{{showOaMilestone}}"
+    visible="{{showOaMilestone}}"
+    title="关注书漂漂公众号"
+    desc="新手指南与漂流故事，方便随时回看"
+    scene="batch"
+    bind:dismiss="dismissOaMilestone"
+    bind:follow="onOaFollow"
+  />
 </view>

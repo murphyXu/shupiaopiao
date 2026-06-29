@@ -1,6 +1,14 @@
 const api = require('../../utils/api');
 const { ORDER_STATUS } = require('../../utils/util');
 const { prepareOrderList, resolveActiveTabFromStatus } = require('../../utils/orderList');
+const { buildOrderMetaLine } = require('../../utils/orderMeta');
+const { formatShipDeadlineRemaining } = require('../../utils/shipping');
+const { SHIP_DEADLINE_LABEL } = require('../../utils/driftPolicy');
+const {
+  buildCancelSuccessTitle,
+  cancelCreditDelta,
+  promptCancelConfirm,
+} = require('../../utils/pointFeedback');
 
 const OPEN_DRIFT_CANCEL_STATUSES = ['PENDING_REVIEW', 'IN_POOL'];
 
@@ -17,7 +25,11 @@ function progressText(order) {
 }
 
 function progressHint(order) {
-  if (order.status === 'PENDING_SHIP') return '复制地址去寄快递，收到单号后回来填写';
+  if (order.status === 'PENDING_SHIP') {
+    const deadline = formatShipDeadlineRemaining(order.shipDeadlineAt);
+    const base = '复制地址去寄快递，收到单号后回来填写';
+    return deadline ? `${base}；${deadline}，超时将自动取消` : `${base}；请在 ${SHIP_DEADLINE_LABEL} 内寄出，超时将自动取消`;
+  }
   if (order.status === 'SHIPPED') return '对方确认收货后，公益积分会自动到账';
   if (order.status === 'IN_POOL') return '有人申请接漂后，这里会提醒你寄出';
   return '';
@@ -28,6 +40,7 @@ function withProgress(list = []) {
     ...order,
     progressText: progressText(order),
     progressHint: progressHint(order),
+    orderMetaLine: buildOrderMetaLine(order),
     canCancelOpen: !order.receiverId && !!order.driftId && OPEN_DRIFT_CANCEL_STATUSES.includes(order.status),
   }));
 }
@@ -48,14 +61,16 @@ function buildDisplayItems(orders = []) {
           orders: bundleOrders,
           status: 'PENDING_SHIP',
           receiverNickname: bundleOrders[0].receiverNickname,
+          shipDeadlineAt: bundleOrders[0].shipDeadlineAt,
+          orderMetaLine: buildOrderMetaLine(bundleOrders[0]),
           progressText: `合并 ${bundleOrders.length} 本待寄出`,
-          progressHint: '复制地址去寄快递，一次填单号即可',
+          progressHint: progressHint(bundleOrders[0]),
         });
         return;
       }
     }
     if (order.bundleId && seenBundles.has(order.bundleId)) return;
-    items.push({ kind: 'single', displayId: order.id, order });
+    items.push({ kind: 'single', displayId: order.id, order, orderMetaLine: order.orderMetaLine });
   });
   return items;
 }
@@ -67,6 +82,7 @@ Page({
     statusMap: ORDER_STATUS,
     activeTab: 'all',
     statusTabs: [],
+    shipDeadlineLabel: SHIP_DEADLINE_LABEL,
   },
 
   onLoad(options) {
@@ -111,19 +127,20 @@ Page({
     wx.navigateTo({ url: `/pages/drift/order-detail?orderId=${orderId}&role=given` });
   },
 
-  cancel(e) {
+  async cancel(e) {
     const orderId = e.currentTarget.dataset.id;
     if (!orderId) return;
-    wx.showModal({
+    const order = (this._orders || []).find((item) => item.id === orderId) || {};
+    const confirmed = await promptCancelConfirm({
       title: '取消漂流',
-      content: '发货前取消将释放接漂方占用积分，并记录信用积分变化。是否继续？',
-      success: async (res) => {
-        if (!res.confirm) return;
-        await api.cancelOrder(orderId, '取消漂流');
-        wx.showToast({ title: '已取消', icon: 'none' });
-        this.onShow();
-      },
+      role: 'GIVER',
+      coinValue: order.coinValue,
+      creditDelta: cancelCreditDelta('GIVER'),
     });
+    if (!confirmed) return;
+    await api.cancelOrder(orderId, '取消漂流');
+    wx.showToast({ title: buildCancelSuccessTitle(), icon: 'none' });
+    this.onShow();
   },
 
   cancelOpenDrift(e) {

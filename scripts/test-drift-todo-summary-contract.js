@@ -23,10 +23,11 @@ assert.ok(pendingShipJs.includes('getDriftSummary'), 'pending ship badge should 
 const { buildDriftTodoSummary } = require('../cloudfunctions/api/lib/driftTodoSummary');
 const sample = buildDriftTodoSummary(
   [{ status: 'PENDING_SHIP', shipDeadlineAt: new Date(Date.now() + 3600 * 1000).toISOString() }, { status: 'DISPUTED' }],
-  [{ status: 'SHIPPED' }, { status: 'DONE' }],
+  [{ status: 'PENDING_SHIP' }, { status: 'PENDING_SHIP' }, { status: 'SHIPPED' }, { status: 'DONE' }],
 );
 assert.strictEqual(sample.pendingShip, 1);
 assert.strictEqual(sample.expiringSoon, 1);
+assert.strictEqual(sample.waitingShipReceived, 2);
 assert.strictEqual(sample.toConfirm, 1);
 assert.strictEqual(sample.disputingGiven, 1);
 assert.strictEqual(sample.toReviewReceived, 1);

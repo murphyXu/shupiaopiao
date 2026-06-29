@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>接漂链路文案精简 · 设计稿 v1</title>
+  <style>
+    :root {
+      --green: #2FBE77;
+      --green-dark: #0C7A4B;
+      --green-soft: #EAFBF2;
+      --green-card: #edf8f2;
+      --green-border: #dcefe4;
+      --text: #15211B;
+      --muted: #8a988f;
+      --warn-bg: #fff8ed;
+      --warn-border: #f5dfc0;
+      --del-bg: #fef2f2;
+      --del-border: #fecaca;
+      --add-bg: #ecfdf5;
+      --add-border: #a7f3d0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      background: #f4f7f5;
+      color: var(--text);
+      padding: 24px 16px 64px;
+      line-height: 1.5;
+    }
+    .hero { max-width: 960px; margin: 0 auto 28px; }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; color: #5d6d64; max-width: 720px; }
+    .subtitle strong { color: var(--green-dark); }
+
+    .flow-bar {
+      max-width: 960px; margin: 0 auto 32px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      font-size: 13px; color: #5d6d64;
+    }
+    .flow-step {
+      background: #fff; border: 1px solid #e8eeea; border-radius: 999px;
+      padding: 6px 14px; font-weight: 600; color: var(--green-dark);
+    }
+    .flow-arrow { color: #b0bdb5; }
+
+    section { max-width: 960px; margin: 0 auto 36px; }
+    section > h2 {
+      font-size: 16px; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    section > .sec-desc { font-size: 13px; color: #6d7d74; margin-bottom: 16px; }
+    .badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--green-soft); color: var(--green-dark);
+    }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 720px) { .compare { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: #fff; border-radius: 16px; border: 1px solid #e8eeea;
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 12px 14px; font-size: 13px; font-weight: 700;
+      border-bottom: 1px solid #f0f4f1;
+    }
+    .panel-head.before { background: #fafafa; color: #6b7280; }
+    .panel-head.after { background: var(--green-soft); color: var(--green-dark); }
+
+    .phone {
+      width: 100%; max-width: 300px; margin: 14px auto 16px;
+      background: #f4f7f5; border-radius: 24px;
+      border: 1px solid #dde5e0; padding: 10px 10px 14px;
+    }
+    .phone-title {
+      text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 8px;
+    }
+
+    .card {
+      background: #fff; border-radius: 12px; border: 1px solid #eef3ef;
+      padding: 10px 12px; margin-bottom: 8px; font-size: 11px;
+    }
+    .card-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .card-muted { color: var(--muted); font-size: 10px; }
+    .coin { color: var(--green-dark); font-weight: 700; }
+
+    .know {
+      background: var(--green-card); border-color: var(--green-border);
+    }
+    .know-h { font-size: 12px; font-weight: 800; color: var(--green-dark); margin-bottom: 6px; }
+    .know li { font-size: 10px; color: #46564e; margin-left: 14px; margin-bottom: 3px; }
+
+    .tip-old {
+      background: #f9fafb; border: 1px dashed #d1d5db;
+      font-size: 9px; color: #6b7280; padding: 8px; border-radius: 8px; margin-bottom: 8px;
+    }
+    .tip-del { text-decoration: line-through; opacity: 0.65; }
+
+    .link-new {
+      text-align: center; font-size: 10px; color: var(--green-dark);
+      padding: 6px; margin-bottom: 8px;
+    }
+
+    .summary-row {
+      display: flex; justify-content: space-between; font-size: 10px;
+      padding: 4px 0; border-bottom: 1px dashed #eef2ef;
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .sk { color: var(--muted); }
+
+    .hint-box {
+      background: #f0f9ff; border: 1px solid #bae6fd;
+      border-radius: 8px; padding: 8px; font-size: 10px; color: #0369a1; margin-bottom: 8px;
+    }
+
+    .note-del {
+      background: var(--del-bg); border: 1px solid var(--del-border);
+      border-radius: 8px; padding: 8px; font-size: 9px; color: #991b1b;
+      margin-bottom: 8px; text-decoration: line-through; opacity: 0.8;
+    }
+
+    .btn-row { display: flex; gap: 6px; margin-top: 4px; }
+    .btn {
+      flex: 1; text-align: center; padding: 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+    }
+    .btn-primary { background: var(--green); color: #fff; }
+    .btn-ghost { background: #fff; border: 1px solid #dce5df; color: #46564e; }
+    .btn-accent { background: #15211B; color: #fff; margin-top: 4px; }
+
+    .modal-overlay {
+      background: rgba(0,0,0,0.35); border-radius: 12px; padding: 24px 12px;
+      margin: 14px auto 16px; max-width: 300px;
+    }
+    .modal {
+      background: #fff; border-radius: 14px; padding: 16px 14px; text-align: center;
+    }
+    .modal-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+    .modal-body { font-size: 11px; color: #46564e; line-height: 1.7; text-align: left; margin-bottom: 14px; }
+    .modal-actions { display: flex; border-top: 1px solid #eee; margin: 0 -14px -16px; }
+    .modal-actions span { flex: 1; padding: 12px; font-size: 12px; }
+    .modal-actions .cancel { color: #6b7280; border-right: 1px solid #eee; }
+    .modal-actions .ok { color: var(--green-dark); font-weight: 600; }
+
+    .legend {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px; margin-top: 20px;
+    }
+    .legend-item {
+      font-size: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid;
+    }
+    .legend-item.del { background: var(--del-bg); border-color: var(--del-border); }
+    .legend-item.add { background: var(--add-bg); border-color: var(--add-border); }
+    .legend-item.keep { background: #f9fafb; border-color: #e5e7eb; }
+
+    .term-table {
+      width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px;
+    }
+    .term-table th, .term-table td {
+      border: 1px solid #e8eeea; padding: 8px 10px; text-align: left;
+    }
+    .term-table th { background: var(--green-soft); color: var(--green-dark); }
+
+    .open-q {
+      background: var(--warn-bg); border: 1px solid var(--warn-border);
+      border-radius: 12px; padding: 14px 16px; font-size: 13px;
+    }
+    .open-q ol { margin-left: 18px; margin-top: 8px; }
+    .open-q li { margin-bottom: 6px; }
+
+    .cover-mini {
+      height: 80px; background: #fff; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 8px;
+    }
+    .book {
+      width: 44px; height: 60px; border-radius: 3px;
+      background: linear-gradient(145deg, #dff4e8, #c3ead4);
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>接漂链路文案精简 · 设计稿 v1</h1>
+  <p class="subtitle">
+    三屏递进：<strong>详情决策</strong> → <strong>申请填表</strong> → <strong>弹窗确认</strong>。
+    配套说明见 <code>claim-flow-copy-redesign.md</code>。
+  </p>
+</div>
+
+<div class="flow-bar">
+  <span class="flow-step">① 漂流详情 pool/detail</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">② 申请接漂 claim</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">③ 确认弹窗 modal</span>
+</div>
+
+<!-- ========== SCREEN 1 ========== -->
+<section>
+  <h2>① 漂流详情 <span class="badge">pool/detail</span></h2>
+  <p class="sec-desc">职责：让用户判断「要不要接」— 规则集中进「接漂须知」，删掉底部重复 tip。</p>
+  <div class="compare">
+    <div class="panel">
+      <div class="panel-head before">现状</div>
+      <div class="phone">
+        <div class="phone-title">漂流详情</div>
+        <div class="cover-mini"><div class="book"></div></div>
+        <div class="card">
+          <div class="card-title">人类简史</div>
+          <div class="card-muted">尤瓦尔 · 赫拉利</div>
+          <div class="coin" style="margin-top:6px">公益积分 12 · 九成新</div>
+          <div style="font-size:10px;margin-top:4px;color:#46564e">从 杭州 · 西湖区 寄出 · 快递到付</div>
+        </div>
+        <div class="card know">
+          <div class="know-h">接漂前知道</div>
+          <ul class="know">
+            <li>申请成功后会先占用 12 公益积分</li>
+            <li>运费为快递到付，收件时向快递员支付</li>
+            <li>确认收货后完成本次公益积分记录</li>
+          </ul>
+        </div>
+        <div class="tip-old tip-del">
+          运费采用快递到付，由接漂方与快递公司线下结算，平台不收取任何费用；实际运费以快递员收费为准。
+        </div>
+        <div class="btn-row">
+          <div class="btn btn-ghost">想要</div>
+          <div class="btn btn-primary">申请接漂</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head after">目标稿</div>
+      <div class="phone">
+        <div class="phone-title">漂流详情</div>
+        <div class="cover-mini"><div class="book"></div></div>
+        <div class="card">
+          <div class="card-title">人类简史</div>
+          <div class="card-muted">尤瓦尔 · 赫拉利</div>
+          <div class="coin" style="margin-top:6px">公益积分 12 · 九成新</div>
+          <div style="font-size:10px;margin-top:4px;color:#46564e">从 杭州 · 西湖区 寄出 · 快递到付</div>
+        </div>
+        <div class="card know">
+          <div class="know-h">接漂须知</div>
+          <ul class="know">
+            <li><strong>先占用 12 公益积分</strong>，确认收货后完成积分记录</li>
+            <li>快递到付，<strong>平台不代收运费</strong></li>
+            <li>在途接漂最多 5 单</li>
+          </ul>
+        </div>
+        <div class="link-new">查看漂流玩法 › → /pages/drift/guide</div>
+        <div class="btn-row">
+          <div class="btn btn-ghost">想要</div>
+          <div class="btn btn-primary">申请接漂</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SCREEN 2 ========== -->
+<section>
+  <h2>② 申请接漂 <span class="badge">drift/claim</span></h2>
+  <p class="sec-desc">职责：填地址、看数字 — 摘要保留，删除两个 note-box，仅保留动态运费 hint。</p>
+  <div class="compare">
+    <div class="panel">
+      <div class="panel-head before">现状</div>
+      <div class="phone">
+        <div class="phone-title">申请接漂</div>
+        <div class="card row" style="display:flex;gap:8px">
+          <div class="book" style="width:36px;height:48px;flex-shrink:0"></div>
+          <div><div class="card-title" style="font-size:12px">人类简史</div><div class="coin" style="font-size:10px">公益积分 12</div></div>
+        </div>
+        <div class="card">
+          <div class="card-muted">收货地址</div>
+          <div style="font-size:10px;margin-top:4px">请选择收货地址，用于赠书方寄出到付件 ›</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="font-size:11px">本次申请摘要</div>
+          <div class="summary-row"><span class="sk">将占用公益积分</span><span class="coin">12</span></div>
+          <div class="summary-row"><span class="sk">运费方式</span><span>快递到付，收件时支付</span></div>
+          <div class="summary-row"><span class="sk">同时未收货</span><span>最多 5 单</span></div>
+          <div class="summary-row"><span class="sk">当前可用公益积分</span><span>28（占用中 4）</span></div>
+        </div>
+        <div class="note-del">平台不收取物流费用，赠书方寄出到付件，收件时向快递员支付运费。…</div>
+        <div class="note-del">申请成功后会先占用 12 公益积分，确认收货后…；同时未收货最多 5 单…</div>
+        <div class="btn btn-accent">确认申请接漂</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head after">目标稿</div>
+      <div class="phone">
+        <div class="phone-title">申请接漂</div>
+        <div class="card row" style="display:flex;gap:8px">
+          <div class="book" style="width:36px;height:48px;flex-shrink:0"></div>
+          <div><div class="card-title" style="font-size:12px">人类简史</div><div class="coin" style="font-size:10px">公益积分 12</div></div>
+        </div>
+        <div class="card">
+          <div class="card-muted">收货地址</div>
+          <div style="font-size:10px;margin-top:4px;color:#8a988f">选择收货地址 ›</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="font-size:11px">本次申请摘要</div>
+          <div class="summary-row"><span class="sk">将占用公益积分</span><span class="coin">12</span></div>
+          <div class="summary-row"><span class="sk">运费方式</span><span>快递到付，收件时付运费</span></div>
+          <div class="summary-row"><span class="sk">寄出参考地</span><span>杭州 · 西湖区</span></div>
+          <div class="summary-row"><span class="sk">同时未收货</span><span>最多 5 单</span></div>
+          <div class="summary-row"><span class="sk">当前可用公益积分</span><span>28（占用中 4）</span></div>
+        </div>
+        <div class="hint-box">💡 与您同城寄递，到付运费通常较低；实际运费以快递员收费为准</div>
+        <div class="btn btn-accent">确认申请接漂</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SCREEN 3 ========== -->
+<section>
+  <h2>③ 确认弹窗 <span class="badge">buildClaimConfirmContent</span></h2>
+  <p class="sec-desc">职责：最后确认占用数字 — 不重复到付、5 单、平台收费。</p>
+  <div class="compare">
+    <div class="panel">
+      <div class="panel-head before">现状</div>
+      <div class="modal-overlay">
+        <div class="modal">
+          <div class="modal-title">确认申请接漂</div>
+          <div class="modal-body">
+            占用 12 公益积分<br>
+            完成接漂收货后，将从总记录值中扣除对应公益积分<br>
+            是否确认申请？
+          </div>
+          <div class="modal-actions">
+            <span class="cancel">取消</span>
+            <span class="ok">确定</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head after">目标稿</div>
+      <div class="modal-overlay">
+        <div class="modal">
+          <div class="modal-title">确认申请接漂</div>
+          <div class="modal-body">
+            先占用 12 公益积分<br>
+            确认收货后从占用中结算<br>
+            <br>
+            是否确认申请？
+          </div>
+          <div class="modal-actions">
+            <span class="cancel">取消</span>
+            <span class="ok">确定</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TERMINOLOGY ========== -->
+<section>
+  <h2>统一术语表（driftCopy.js）</h2>
+  <p class="sec-desc">实现时三页 + 弹窗 + shippingHint 均引用此表，避免再出现多种说法。</p>
+  <table class="term-table">
+    <thead>
+      <tr><th>场景</th><th>统一文案</th><th>不再使用</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>运费方式（短）</td>
+        <td>快递到付，收件时付运费</td>
+        <td>收件时向快递员支付 / 收件时支付（混用）</td>
+      </tr>
+      <tr>
+        <td>平台立场</td>
+        <td>平台不代收运费</td>
+        <td>平台不收取任何费用 / 平台不收取物流费用</td>
+      </tr>
+      <tr>
+        <td>积分占用</td>
+        <td>先占用 N 公益积分</td>
+        <td>申请成功后会先占用…（过长）</td>
+      </tr>
+      <tr>
+        <td>积分结算</td>
+        <td>确认收货后从占用中结算</td>
+        <td>从总记录值中扣除对应公益积分 / 完成积分记录（弹窗旧稿）</td>
+      </tr>
+      <tr>
+        <td>在途上限</td>
+        <td>在途接漂最多 5 单</td>
+        <td>同时未收货最多 5 单，请先完成在途漂流（长句）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="legend">
+    <div class="legend-item del">删除：重复 note-box、底部 long tip</div>
+    <div class="legend-item add">新增：guide 链接、动态 hint 独立区、5 单进详情</div>
+    <div class="legend-item keep">保留：摘要结构、合规用词、成功 toast「申请已提交」</div>
+  </div>
+</section>
+
+<!-- ========== CONFIRMED + NAV ========== -->
+<section>
+  <h2>已确认决策</h2>
+  <div class="open-q" style="background:var(--add-bg);border-color:var(--add-border)">
+    <ul style="list-style:none;margin:0">
+      <li>✅ 5 单上限 → 详情「接漂须知」第 3 条</li>
+      <li>✅ 申请摘要保留「同时未收货」行</li>
+      <li>✅ 「查看漂流玩法 ›」文字链 → <code>/pages/drift/guide</code></li>
+      <li>✅ 弹窗：「确认收货后从占用中结算」（不用「扣除」）</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>「查看漂流玩法 ›」跳哪里？</h2>
+  <p class="sec-desc">与漂流池首页「玩法介绍 ›」同一页，不新建路由。</p>
+  <table class="term-table">
+    <thead><tr><th>入口</th><th>文案</th><th>跳转</th></tr></thead>
+    <tbody>
+      <tr><td>漂流池首页</td><td>玩法介绍 ›</td><td rowspan="2"><code>/pages/drift/guide</code><br><span style="font-size:11px;color:#6d7d74">导航栏标题：漂流玩法</span></td></tr>
+      <tr><td>漂流详情（接漂）</td><td>查看漂流玩法 ›</td></tr>
+    </tbody>
+  </table>
+  <div class="legend" style="margin-top:14px">
+    <div class="legend-item keep">guide 已有：三步流、72h/10天、积分结算、情感文案</div>
+    <div class="legend-item add">guide 未写：到付细节、5 单上限 → 由详情 know-card 3 条承担</div>
+    <div class="legend-item add">v1 可选：guide 约定区补 2 条到付/5 单（非必须）</div>
+  </div>
+</section>
+
+</body>
+</html>

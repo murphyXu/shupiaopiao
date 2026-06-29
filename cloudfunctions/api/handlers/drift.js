@@ -7,7 +7,8 @@ const { buildDriftTodoSummary } = require('../lib/driftTodoSummary');
 const { runAutoCheck, CONDITION_LABELS, CONDITION_ISSUE_LABELS } = require('../lib/pricing');
 const { assertSafeTextFields, assertSafeMediaFiles } = require('../lib/contentSecurity');
 const {
-  policyForStage, calculateCoinValue, resolveRequestedCoinValue, availableCoin, addHours, addDays,
+  policyForStage, resolveRequestedCoinValue, availableCoin, addHours, addDays,
+  shipDeadlineAt, autoCompleteAt, SHIP_DEADLINE_HOURS,
   cancelCreditChange,
   applyPendingPenalty,
   splitViolationPenalty,
@@ -16,6 +17,15 @@ const {
 const { writeCoinEvent, writeCreditEvent, writeOrderEvent } = require('../lib/driftAccounting');
 const { ensureAccountingV2 } = require('../lib/driftMigration');
 const { ensureCollection } = require('../lib/collections');
+const { schedulePoolFeedRebuild } = require('../lib/poolFeedSnapshot');
+const { invalidateShelfDashboardCache } = require('../lib/shelfDashboard');
+const { prepareGivenList } = require('../lib/driftOrderList');
+const { enrichOrderList, buildOrderDetailBundle } = require('../lib/bundleDisplay');
+const {
+  buildCancelPointEffects,
+  buildConfirmPointEffects,
+  buildRevokePublishRewardAmount,
+} = require('../lib/pointEffects');
 const {
   loadBundleAttachPlan,
   applyBundleAttachPlan,
@@ -27,9 +37,22 @@ const {
   BUNDLE_MAX_ORDERS,
 } = require('../lib/shipmentBundle');
 const { normalizeShipRegion, parseRegionString } = require('../lib/shipRegion');
+const { resolveDriftCoinFields, pricingChanged } = require('../lib/driftPricingRecalc');
+const { detectSetBookRisk, normalizeSetConfirmation } = require('../lib/setBookRisk');
 const {
   recordSubscribeGrants, notifyGiverOnClaim, sendShipRemindBatch, subscribeDebug, resendClaimNotifyForGrant,
 } = require('../lib/subscribeMessage');
+const { countShelfCapacityUsage } = require('../lib/shelfCapacity');
+const {
+  PENDING_SHIP_SCAN_LIMIT,
+  SHIPPED_SCAN_LIMIT,
+  resolveShipDeadline,
+  resolveAutoCompleteDeadline,
+  isShipDeadlinePassed,
+  isAutoCompletePassed,
+  partitionPendingShipMaintenance,
+  partitionShippedMaintenance,
+} = require('../lib/driftMaintenance');
 
 const REPORT_HIDE_THRESHOLD = 3;
 const ACTIVE_ORDER_STATUSES = ['PENDING_SHIP', 'SHIPPED', 'DISPUTED'];
@@ -71,6 +94,7 @@ function buildRevokePublishRewardEffects(drift, driftId, now, reason = '取消�
   if (!credited && !offset) return effects;
   if (credited) effects.userPatch.coinBalance = _.inc(-credited);
   if (offset) effects.userPatch.coinPenaltyPending = _.inc(offset);
+  effects.userPatch.publishRewardCount = _.inc(-1);
   effects.driftPatch = { publishRewardRevoked: true, publishRewardRevokedAt: now };
   effects.resolvedDriftId = resolvedDriftId;
   if (credited) {
@@ -154,12 +178,24 @@ async function isDriftHiddenByReports(driftId) {
   return total >= REPORT_HIDE_THRESHOLD;
 }
 
+function formatOrderNo(id) {
+  if (!id || String(id).startsWith('drift-')) return '';
+  return String(id).replace(/-/g, '').slice(-8).toUpperCase();
+}
+
+function formatOrderTimeText(iso) {
+  if (!iso) return '';
+  return String(iso).replace('T', ' ').slice(0, 16);
+}
+
 function formatOrder(row, drift, book, giver, receiver) {
   const issues = drift.conditionIssues || [];
   const labels = drift.conditionIssueLabels || conditionIssueLabels(issues);
   const anonymous = !!drift.isAnonymous;
   return {
     id: row._id,
+    orderNo: formatOrderNo(row._id),
+    orderTimeText: formatOrderTimeText(row.claimedAt || row.createdAt),
     driftId: row.driftId,
     giverId: row.giverId,
     receiverId: row.receiverId,
@@ -168,9 +204,9 @@ function formatOrder(row, drift, book, giver, receiver) {
     status: row.status,
     createdAt: row.createdAt,
     claimedAt: row.claimedAt || row.createdAt,
-    shipDeadlineAt: row.shipDeadlineAt || '',
+    shipDeadlineAt: resolveShipDeadline(row),
     shippedAt: row.shippedAt || '',
-    autoCompleteAt: row.autoCompleteAt || '',
+    autoCompleteAt: resolveAutoCompleteDeadline(row),
     confirmedAt: row.confirmedAt || '',
     bundleId: row.bundleId || '',
     bundleSeq: Number(row.bundleSeq) || 0,
@@ -208,17 +244,20 @@ async function findShelfRecord(userId, data) {
 
 async function grantPublishReward(userId, driftId) {
   const config = policy();
-  if (!config.publishReward || !config.publishRewardCap) return;
+  if (!config.publishReward || !config.publishRewardCap) return 0;
+  let creditedAmount = 0;
   await db.runTransaction(async (transaction) => {
     const driftSnap = await transaction.collection('drifts').doc(driftId).get();
     const userSnap = await transaction.collection('users').doc(userId).get();
     const drift = driftSnap.data;
     const user = userSnap.data;
     if (!drift || drift.publishRewardGranted === true) return;
-    const awarded = Number(user.publishRewardCount) || 0;
-    const amount = Math.min(config.publishReward, Math.max(config.publishRewardCap - awarded, 0));
+    const awardedTimes = Number(user.publishRewardCount) || 0;
+    if (awardedTimes >= config.publishRewardCap) return;
+    const amount = config.publishReward;
     if (!amount) return;
     const { credited, offset } = applyPendingPenalty(amount, user.coinPenaltyPending);
+    creditedAmount = credited;
     await transaction.collection('drifts').doc(driftId).update({
       data: {
         publishRewardGranted: true,
@@ -229,7 +268,7 @@ async function grantPublishReward(userId, driftId) {
       },
     });
     await transaction.collection('users').doc(userId).update({
-      data: { coinBalance: _.inc(credited), coinPenaltyPending: _.inc(-offset), publishRewardCount: _.inc(amount) },
+      data: { coinBalance: _.inc(credited), coinPenaltyPending: _.inc(-offset), publishRewardCount: _.inc(1) },
     });
     await writeCoinEvent(transaction, {
       userId, refId: driftId, type: 'publish_reward', balanceDelta: amount, frozenDelta: 0,
@@ -240,6 +279,7 @@ async function grantPublishReward(userId, driftId) {
       description: '历史违规待抵扣', createdAt: nowIso(),
     });
   });
+  return creditedAmount;
 }
 
 async function revokePublishReward(transaction, drift, now, reason = '取消漂流退回上漂奖励', driftId = '') {
@@ -291,8 +331,16 @@ async function publish(openid, data) {
   if (!shelfRow) return fail(400, '请选择本人书架中的具体图书');
   const book = await getBookById(shelfRow.bookId);
   if (!book) return fail(404, '图书不存在');
+  const setBookRisk = detectSetBookRisk(book);
+  const setConfirmation = normalizeSetConfirmation(data, setBookRisk);
+  if (!setConfirmation.ok) return fail(400, setConfirmation.message);
   const listPrice = parseListPrice(book.listPrice);
-  if (!listPrice) return fail(400, '图书定价缺失，暂不能发起漂流');
+  const pricing = await resolveDriftCoinFields(db, {
+    condition: data.condition || 'like_new',
+    listPrice,
+    coinValue: data.coinValue,
+  }, book);
+  if (!pricing.listPrice && !pricing.medianPrice) return fail(400, '图书定价缺失，暂不能发起漂流');
 
   const dayAgo = new Date(Date.now() - 86400000).toISOString();
   const [{ total: recentCount }, { total: activeDuplicateCount }] = await Promise.all([
@@ -306,7 +354,7 @@ async function publish(openid, data) {
   const condition = data.condition || 'like_new';
   const imageResult = normalizeImageMap(data);
   const issues = normalizeConditionIssues(data.conditionIssues);
-  const systemCoinValue = calculateCoinValue(listPrice, condition);
+  const systemCoinValue = pricing.systemCoinValue;
   const coinResolution = resolveRequestedCoinValue(systemCoinValue, data.coinValue);
   if (coinResolution.error === 'COIN_VALUE_TOO_LOW') return fail(400, '流转积分不能小于 0');
   if (coinResolution.error === 'COIN_VALUE_TOO_HIGH') return fail(400, '流转积分不能高于系统建议值');
@@ -325,9 +373,14 @@ async function publish(openid, data) {
     imageMap: imageResult.imageMap,
     remark: '',
     isAnonymous: data.isAnonymous !== false,
-    listPrice,
+    listPrice: pricing.listPrice || listPrice,
     systemCoinValue,
     coinValue,
+    setBookRisk: !!setBookRisk.setBookRisk,
+    setBookRiskLevel: setBookRisk.setBookRiskLevel || '',
+    setBookRiskReason: setBookRisk.setBookRiskReason || '',
+    setCompleteness: setConfirmation.setCompleteness,
+    setDescription: setConfirmation.setDescription,
     publishRewardGranted: false,
     status: 'PENDING_REVIEW',
     rejectReason: [],
@@ -349,10 +402,13 @@ async function publish(openid, data) {
     await db.collection('users').doc(user._id).update({ data: { defaultShipRegion: shipRegion } });
   }
   await settleInviteReward(user, 'drift_publish');
-  if (checkResult.passed) await grantPublishReward(user._id, driftId);
+  let publishReward = 0;
+  if (checkResult.passed) publishReward = await grantPublishReward(user._id, driftId);
+  if (checkResult.passed) schedulePoolFeedRebuild('drift_publish');
   return ok({
     driftId, status, coinValue: driftDoc.coinValue, passed: checkResult.passed,
     reasons: checkResult.reasons, checks: checkResult.checks || [], book: formatBook(book),
+    publishReward,
   });
 }
 
@@ -362,16 +418,36 @@ async function check(openid, data) {
   const { data: drift } = await db.collection('drifts').doc(data.driftId).get();
   if (!drift || drift.userId !== user._id) return fail(404, '漂流记录不存在');
   const book = await getBookById(drift.bookId);
-  return ok({ driftId: drift._id, status: drift.status, passed: drift.status === 'IN_POOL', coinValue: drift.coinValue, systemCoinValue: drift.systemCoinValue || drift.coinValue, reasons: drift.rejectReason || [], book });
+  return ok({
+    driftId: drift._id,
+    status: drift.status,
+    passed: drift.status === 'IN_POOL',
+    coinValue: drift.coinValue,
+    systemCoinValue: drift.systemCoinValue || drift.coinValue,
+    publishReward: buildRevokePublishRewardAmount(drift),
+    reasons: drift.rejectReason || [],
+    book,
+  });
 }
 
 async function appeal(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
-  const { data: drift } = await db.collection('drifts').doc(data.driftId).get();
+  const driftId = String(data.driftId || '').trim();
+  const reason = String(data.reason || '').trim().slice(0, 500);
+  if (!driftId) return fail(400, '缺少漂流记录');
+  if (!reason) return fail(400, '请填写申诉原因');
+  const { data: drift } = await db.collection('drifts').doc(driftId).get();
   if (!drift || drift.userId !== user._id) return fail(404, '漂流记录不存在');
-  await assertSafeTextFields(openid, { reason: data.reason }, { strict: true });
-  return ok({ message: '申诉已提交，将在 24 小时内处理' });
+  await assertSafeTextFields(openid, { reason }, { strict: true });
+  await db.collection('drifts').doc(driftId).update({
+    data: {
+      appealStatus: 'OPEN',
+      appealReason: reason,
+      appealAt: nowIso(),
+    },
+  });
+  return ok({ message: '申诉已提交，将在 24 小时内处理', driftId, appealStatus: 'OPEN' });
 }
 
 async function claim(openid, data) {
@@ -428,7 +504,7 @@ async function claim(openid, data) {
         status: 'PENDING_SHIP',
         claimedAt: now,
         createdAt: now,
-        shipDeadlineAt: addHours(now, 72),
+        shipDeadlineAt: shipDeadlineAt(now),
         expressCompany: '',
         trackingNo: '',
         accountingVersion: 2,
@@ -455,6 +531,8 @@ async function claim(openid, data) {
   } catch (err) {
     subscribeNotify = { ok: false, error: err.message || String(err) };
   }
+  schedulePoolFeedRebuild('drift_claim');
+  if (driftForInvite && driftForInvite.userId) invalidateShelfDashboardCache(driftForInvite.userId);
   return ok({
     orderId,
     status: 'PENDING_SHIP',
@@ -483,8 +561,15 @@ async function orders(openid, data) {
   const cond = { receiverId: user._id };
   if (data.status) cond.status = data.status;
   const { data: rows } = await db.collection('drift_orders').where(cond).orderBy('createdAt', 'desc').limit(50).get();
-  const { driftMap, books, users } = await loadOrderRelations(rows);
-  return ok({ list: rows.filter((row) => driftMap[row.driftId]).map((row) => formatOrder(row, driftMap[row.driftId], books[driftMap[row.driftId].bookId], users[row.giverId], users[row.receiverId])) });
+  const enforcedRows = await enforceDueShippedRows(await enforceDuePendingShipRows(rows));
+  const { driftMap, books, users } = await loadOrderRelations(enforcedRows);
+  const list = await enrichOrderList(
+    db,
+    _,
+    enforcedRows.filter((row) => driftMap[row.driftId]),
+    (row) => formatOrder(row, driftMap[row.driftId], books[driftMap[row.driftId].bookId], users[row.giverId], users[row.receiverId]),
+  );
+  return ok({ list });
 }
 
 async function givenOrders(user, data) {
@@ -494,24 +579,27 @@ async function givenOrders(user, data) {
     db.collection('drift_orders').where(orderCond).orderBy('createdAt', 'desc').limit(50).get(),
     db.collection('drifts').where({ userId: user._id }).orderBy('createdAt', 'desc').limit(100).get(),
   ]);
-  const { driftMap, books, users } = await loadOrderRelations(rows);
+  const enforcedRows = await enforceDuePendingShipRows(rows);
+  const { driftMap, books, users } = await loadOrderRelations(enforcedRows);
   userDrifts.forEach((item) => { driftMap[item._id] = item; });
-  const orderedIds = new Set(rows.map((row) => row.driftId));
-  const orderList = rows.filter((row) => driftMap[row.driftId]).map((row) => formatOrder(row, driftMap[row.driftId], books[driftMap[row.driftId].bookId] || {}, users[row.giverId] || user, users[row.receiverId]));
+  const orderedIds = new Set(enforcedRows.map((row) => row.driftId));
+  const orderList = enforcedRows.filter((row) => driftMap[row.driftId]).map((row) => formatOrder(row, driftMap[row.driftId], books[driftMap[row.driftId].bookId] || {}, users[row.giverId] || user, users[row.receiverId]));
   const missing = userDrifts.filter((item) => !orderedIds.has(item._id));
   const missingBooks = await getBooksByIds(missing.map((item) => item.bookId));
   const list = orderList.concat(missing.map((item) => formatDriftOnlyRecord(item, missingBooks[item.bookId], user)))
-    .filter((item) => !data.status || item.status === data.status)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 50);
-  return ok({ list });
+    .filter((item) => !data.status || item.status === data.status);
+  const enriched = await enrichOrderList(db, _, list, (row) => row);
+  return ok({ list: prepareGivenList(enriched, 50) });
 }
 
 async function orderDetail(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   if (!data.orderId) return fail(400, '缺少漂流记录');
-  const { data: order } = await db.collection('drift_orders').doc(data.orderId).get();
+  let { data: order } = await db.collection('drift_orders').doc(data.orderId).get();
   if (!order || (![order.giverId, order.receiverId].includes(user._id) && !isAdminOpenid(openid))) return fail(404, '漂流记录不存在');
+  order = await enforceDuePendingShipRow(order);
+  order = await enforceDueShippedRow(order);
   const { data: drift } = await db.collection('drifts').doc(order.driftId).get();
   if (!drift) return fail(404, '漂流内容不存在');
   const book = await getBookById(drift.bookId);
@@ -530,19 +618,16 @@ async function orderDetail(openid, data) {
           ? await db.collection('drift_orders').where({ _id: _.in(siblingIds) }).get()
           : { data: [] };
         const { driftMap, books } = await loadOrderRelations(siblings);
-        bundle = {
-          id: bundleRow._id,
-          orderCount: (bundleRow.orderIds || []).length,
-          siblings: siblings
-            .filter((row) => driftMap[row.driftId])
-            .sort((a, b) => (a.bundleSeq || 0) - (b.bundleSeq || 0))
-            .map((row) => ({
-              id: row._id,
-              status: row.status,
-              bundleSeq: row.bundleSeq || 0,
-              book: formatDisplayBook(books[driftMap[row.driftId].bookId] || {}),
-            })),
-        };
+        const siblingItems = siblings
+          .filter((row) => driftMap[row.driftId] && row.status !== 'CANCELLED')
+          .map((row) => ({
+            id: row._id,
+            status: row.status,
+            bundleSeq: row.bundleSeq || 0,
+            book: formatDisplayBook(books[driftMap[row.driftId].bookId] || {}),
+          }));
+        bundle = buildOrderDetailBundle(order, bundleRow, siblingItems);
+        if (bundle) bundle.siblings = siblingItems;
       }
     } catch (err) {
       bundle = null;
@@ -587,9 +672,10 @@ async function bundleDetail(openid, data) {
   }
 
   const orderIds = bundle.orderIds || [];
-  const { data: orderRows } = orderIds.length
+  const { data: orderRowsRaw } = orderIds.length
     ? await db.collection('drift_orders').where({ _id: _.in(orderIds) }).get()
     : { data: [] };
+  const orderRows = await enforceDuePendingShipRows(orderRowsRaw);
   const { driftMap, books, users } = await loadOrderRelations(orderRows);
   const list = orderRows
     .filter((row) => driftMap[row.driftId])
@@ -640,6 +726,12 @@ async function ship(openid, data) {
   const orderId = String(data.orderId || '').trim();
   if (!bundleId && !orderId) return fail(400, '缺少 bundleId 或 orderId');
 
+  if (orderId) {
+    const { data: rawOrder } = await db.collection('drift_orders').doc(orderId).get();
+    const enforced = await enforceDuePendingShipRow(rawOrder);
+    if (!enforced || enforced.status !== 'PENDING_SHIP') return fail(409, '当前状态不允许执行此操作');
+  }
+
   if (bundleId) {
     let shippedIds = [];
     await db.runTransaction(async (transaction) => {
@@ -664,9 +756,9 @@ async function ship(openid, data) {
     const migrated = await ensureAccountingV2(transaction, order, _, orderId);
     order = migrated.order;
     if (order.status !== 'PENDING_SHIP') throw new Error('INVALID_STATUS');
-    if (order.shipDeadlineAt && order.shipDeadlineAt <= now) throw new Error('SHIP_DEADLINE_EXPIRED');
+    if (isShipDeadlinePassed(order, now)) throw new Error('SHIP_DEADLINE_EXPIRED');
     await transaction.collection('drift_orders').doc(order._id).update({
-      data: { expressCompany, trackingNo, status: 'SHIPPED', shippedAt: now, autoCompleteAt: addDays(now, 10) },
+      data: { expressCompany, trackingNo, status: 'SHIPPED', shippedAt: now, autoCompleteAt: autoCompleteAt(now) },
     });
     await writeOrderEvent(transaction, { orderId: order._id, type: 'SHIPPED', actorId: user._id, createdAt: now });
   });
@@ -684,8 +776,54 @@ function driftPatchAfterOrderCancel(role, now, reason = '') {
   };
 }
 
+async function reloadOrderRow(orderId) {
+  const { data: row } = await db.collection('drift_orders').doc(orderId).get();
+  return row || null;
+}
+
+async function enforceDuePendingShipRow(order, now = nowIso()) {
+  if (!order || !isShipDeadlinePassed(order, now)) return order;
+  try {
+    await cancelOrderById(order._id, { system: true }, 'SHIP_TIMEOUT');
+    return reloadOrderRow(order._id) || { ...order, status: 'CANCELLED' };
+  } catch (err) {
+    console.warn('[drift] enforce ship timeout failed', order._id, err.message || err);
+    return order;
+  }
+}
+
+async function enforceDuePendingShipRows(rows = [], now = nowIso()) {
+  const next = [];
+  for (const row of rows) {
+    next.push(await enforceDuePendingShipRow(row, now));
+  }
+  return next;
+}
+
+async function enforceDueShippedRow(order, now = nowIso()) {
+  if (!order || !isAutoCompletePassed(order, now)) return order;
+  try {
+    const { total } = await db.collection('drift_disputes').where({ orderId: order._id, status: 'OPEN' }).count();
+    if (total) return order;
+    await settleOrder(order._id, 'AUTO');
+    return reloadOrderRow(order._id) || { ...order, status: 'DONE' };
+  } catch (err) {
+    console.warn('[drift] enforce auto complete failed', order._id, err.message || err);
+    return order;
+  }
+}
+
+async function enforceDueShippedRows(rows = [], now = nowIso()) {
+  const next = [];
+  for (const row of rows) {
+    next.push(await enforceDueShippedRow(row, now));
+  }
+  return next;
+}
+
 async function cancelOrderById(orderId, actor, reason = '') {
   const now = nowIso();
+  let pointEffects = null;
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(orderId).get();
     let order = normalizeOrderRecord(orderSnap.data, orderId);
@@ -702,6 +840,7 @@ async function cancelOrderById(orderId, actor, reason = '') {
     const driftSnap = role === 'GIVER' || role === 'SYSTEM'
       ? await transaction.collection('drifts').doc(order.driftId).get()
       : { data: null };
+    pointEffects = buildCancelPointEffects({ role, coinValue, drift: driftSnap.data });
 
     const receiverPatch = { coinFrozen: _.inc(-coinValue) };
     if (order.activeCounted === true) receiverPatch.activeClaimCount = _.inc(-1);
@@ -724,7 +863,15 @@ async function cancelOrderById(orderId, actor, reason = '') {
     }
 
     await transaction.collection('drift_orders').doc(order._id).update({
-      data: { status: 'CANCELLED', activeCounted: false, cancelledBy: role, cancelReason: reason, cancelledAt: now },
+      data: {
+        status: 'CANCELLED',
+        activeCounted: false,
+        cancelledBy: role,
+        cancelReason: reason,
+        cancelledAt: now,
+        bundleId: '',
+        bundleSeq: 0,
+      },
     });
     await transaction.collection('drifts').doc(order.driftId).update({
       data: driftPatchAfterOrderCancel(role, now, reason),
@@ -736,19 +883,20 @@ async function cancelOrderById(orderId, actor, reason = '') {
     const creditUserId = creditChange.target === 'receiver' ? order.receiverId : order.giverId;
     await writeCreditEvent(transaction, {
       userId: creditUserId, refId: order._id, reasonCode: role === 'SYSTEM' ? 'SHIP_TIMEOUT' : `${role}_CANCEL`,
-      delta: creditChange.delta, reason: role === 'SYSTEM' ? '72 小时未寄出' : '发货前取消漂流', createdAt: now,
+      delta: creditChange.delta, reason: role === 'SYSTEM' ? `${SHIP_DEADLINE_HOURS} 小时未寄出` : '发货前取消漂流', createdAt: now,
     });
     await writeOrderEvent(transaction, { orderId: order._id, type: `CANCELLED_${role}`, actorId: actor.userId || '', createdAt: now });
     await removeOrderFromBundle(transaction, order, _);
   });
+  return pointEffects;
 }
 
 async function cancel(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   if (!data.orderId) return fail(400, '缺少漂流记录');
-  await cancelOrderById(data.orderId, { userId: user._id }, String(data.reason || '').trim());
-  return ok({ orderId: data.orderId, status: 'CANCELLED' });
+  const pointEffects = await cancelOrderById(data.orderId, { userId: user._id }, String(data.reason || '').trim());
+  return ok({ orderId: data.orderId, status: 'CANCELLED', pointEffects: pointEffects || {} });
 }
 
 async function updateOpen(openid, data) {
@@ -774,12 +922,11 @@ async function updateOpen(openid, data) {
   }
 
   const book = await getBookById(drift.bookId);
-  const listPrice = parseListPrice(drift.listPrice || (book && book.listPrice));
-  const systemCoinValue = calculateCoinValue(listPrice, condition);
-  patch.systemCoinValue = systemCoinValue;
+  const pricing = await resolveDriftCoinFields(db, drift, book);
+  patch.systemCoinValue = pricing.systemCoinValue;
 
   const requestedCoin = data.coinValue !== undefined ? data.coinValue : drift.coinValue;
-  const coinResolution = resolveRequestedCoinValue(systemCoinValue, requestedCoin);
+  const coinResolution = resolveRequestedCoinValue(pricing.systemCoinValue, requestedCoin);
   if (coinResolution.error === 'COIN_VALUE_TOO_LOW') return fail(400, '流转积分不能小于 0');
   if (coinResolution.error === 'COIN_VALUE_TOO_HIGH') return fail(400, '流转积分不能高于系统建议值');
   if (coinResolution.error === 'INVALID_COIN_VALUE') return fail(400, '流转积分无效');
@@ -797,7 +944,7 @@ async function updateOpen(openid, data) {
     conditionIssueLabels: updated.conditionIssueLabels || conditionIssueLabels(updated.conditionIssues || []),
     coinValue: updated.coinValue,
     systemCoinValue: updated.systemCoinValue,
-    listPrice: updated.listPrice || listPrice,
+    listPrice: updated.listPrice || pricing.listPrice,
   });
 }
 
@@ -821,11 +968,14 @@ async function cancelOpen(openid, data) {
     });
     await revokePublishReward(transaction, drift, now, '取消漂流退回上漂奖励', driftId);
   });
+  schedulePoolFeedRebuild('drift_cancel_open');
+  invalidateShelfDashboardCache(user._id);
   return ok({ driftId, status: 'CANCELLED' });
 }
 
 async function settleOrder(orderId, completionType, actorUserId = '') {
   const now = nowIso();
+  let pointEffects = null;
   await db.runTransaction(async (transaction) => {
     const orderSnap = await transaction.collection('drift_orders').doc(orderId).get();
     let order = normalizeOrderRecord(orderSnap.data, orderId);
@@ -839,6 +989,7 @@ async function settleOrder(orderId, completionType, actorUserId = '') {
     } else if (order.status !== 'SHIPPED') {
       throw new Error('INVALID_STATUS');
     }
+    pointEffects = buildConfirmPointEffects(order.coinValue);
     const driftSnap = await transaction.collection('drifts').doc(order.driftId).get();
     const giverSnap = await transaction.collection('users').doc(order.giverId).get();
     const drift = driftSnap.data;
@@ -868,13 +1019,14 @@ async function settleOrder(orderId, completionType, actorUserId = '') {
     await writeCreditEvent(transaction, { userId: order.receiverId, refId: order._id, reasonCode: 'CLAIM_DONE', delta: 2, reason: '完成接漂', createdAt: now });
     await writeOrderEvent(transaction, { orderId: order._id, type: `COMPLETED_${completionType}`, actorId: actorUserId, createdAt: now });
   });
+  return pointEffects;
 }
 
 async function confirm(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
-  await settleOrder(data.orderId, 'USER', user._id);
-  return ok({ message: '确认收货成功，公益积分已结算' });
+  const pointEffects = await settleOrder(data.orderId, 'USER', user._id);
+  return ok({ message: '确认收货成功', pointEffects: pointEffects || {} });
 }
 
 async function addReceivedBook(openid, data) {
@@ -885,9 +1037,9 @@ async function addReceivedBook(openid, data) {
   if (!normalizedOrder || normalizedOrder.receiverId !== user._id || normalizedOrder.status !== 'DONE') return fail(404, '已完成的漂流记录不存在');
   const { data: existing } = await db.collection('shelf_books').where({ userId: user._id, sourceOrderId: normalizedOrder._id }).limit(1).get();
   if (existing.length) return ok({ id: existing[0]._id, existed: true });
-  const { total } = await db.collection('shelf_books').where({ userId: user._id }).count();
+  const used = await countShelfCapacityUsage(db, user._id);
   const shelfLimit = Math.max(Number(user.shelfLimit) || DEFAULT_SHELF_LIMIT, DEFAULT_SHELF_LIMIT);
-  if (total >= shelfLimit) return fail(400, '书架容量已满，请先整理书架');
+  if (used >= shelfLimit) return fail(400, '书架容量已满，请先整理书架');
   const { data: drift } = await db.collection('drifts').doc(normalizedOrder.driftId).get();
   const id = `received-${normalizedOrder._id}`;
   await db.collection('shelf_books').doc(id).set({
@@ -1058,15 +1210,32 @@ async function resendSubscribe(openid, data = {}) {
 async function maintainDriftOrders() {
   const now = nowIso();
   const shipReminds = await sendShipRemindBatch(now);
-  const [{ data: pending }, { data: shipped }] = await Promise.all([
-    db.collection('drift_orders').where({ status: 'PENDING_SHIP', shipDeadlineAt: _.lte(now) }).limit(50).get(),
-    db.collection('drift_orders').where({ status: 'SHIPPED', autoCompleteAt: _.lte(now) }).limit(50).get(),
-  ]);
   const results = [];
-  for (const order of pending) {
-    try { await cancelOrderById(order._id, { system: true }, 'SHIP_TIMEOUT'); results.push({ id: order._id, action: 'SHIP_TIMEOUT' }); } catch (err) { results.push({ id: order._id, error: err.message }); }
+  const [{ data: pendingRows }, { data: shippedRows }] = await Promise.all([
+    db.collection('drift_orders').where({ status: 'PENDING_SHIP' }).limit(PENDING_SHIP_SCAN_LIMIT).get(),
+    db.collection('drift_orders').where({ status: 'SHIPPED' }).limit(SHIPPED_SCAN_LIMIT).get(),
+  ]);
+  const { dueCancel, backfills: pendingBackfills } = partitionPendingShipMaintenance(pendingRows, now);
+  const { dueComplete, backfills: shippedBackfills } = partitionShippedMaintenance(shippedRows, now);
+  for (const patch of pendingBackfills) {
+    try {
+      await db.collection('drift_orders').doc(patch.id).update({ data: patch.patch });
+      results.push({ id: patch.id, action: 'BACKFILL_SHIP_DEADLINE' });
+    } catch (err) { results.push({ id: patch.id, error: err.message }); }
   }
-  for (const order of shipped) {
+  for (const order of dueCancel) {
+    try {
+      await cancelOrderById(order._id, { system: true }, 'SHIP_TIMEOUT');
+      results.push({ id: order._id, action: 'SHIP_TIMEOUT' });
+    } catch (err) { results.push({ id: order._id, error: err.message }); }
+  }
+  for (const patch of shippedBackfills) {
+    try {
+      await db.collection('drift_orders').doc(patch.id).update({ data: patch.patch });
+      results.push({ id: patch.id, action: 'BACKFILL_AUTO_COMPLETE' });
+    } catch (err) { results.push({ id: patch.id, error: err.message }); }
+  }
+  for (const order of dueComplete) {
     try {
       const { total } = await db.collection('drift_disputes').where({ orderId: order._id, status: 'OPEN' }).count();
       if (total) { results.push({ id: order._id, action: 'SKIP_OPEN_DISPUTE' }); continue; }
@@ -1074,7 +1243,15 @@ async function maintainDriftOrders() {
       results.push({ id: order._id, action: 'AUTO_COMPLETE' });
     } catch (err) { results.push({ id: order._id, error: err.message }); }
   }
-  return ok({ processed: results.length, results, shipReminds });
+  return ok({
+    processed: results.length,
+    scannedPending: pendingRows.length,
+    scannedShipped: shippedRows.length,
+    dueCancel: dueCancel.length,
+    dueComplete: dueComplete.length,
+    results,
+    shipReminds,
+  });
 }
 
 async function summary(openid) {
@@ -1085,6 +1262,64 @@ async function summary(openid) {
     db.collection('drift_orders').where({ receiverId: user._id }).orderBy('createdAt', 'desc').limit(200).get(),
   ]);
   return ok(buildDriftTodoSummary(givenRows, receivedRows));
+}
+
+async function migrateDriftPricing(openid, data = {}) {
+  const tokenAllowed = process.env.MIGRATION_TOKEN && data.migrationToken === process.env.MIGRATION_TOKEN;
+  if (!isAdminOpenid(openid) && !tokenAllowed) return fail(403, '无管理员权限');
+  const cond = { status: _.in(OPEN_DRIFT_EDIT_STATUSES) };
+  if (data.cursor) cond._id = _.gt(data.cursor);
+  const limit = Math.min(Math.max(Number(data.limit) || 50, 1), 100);
+  const { data: rows } = await db.collection('drifts').where(cond).orderBy('_id', 'asc').limit(limit).get();
+  if (!rows.length) {
+    return ok({ processed: 0, updated: 0, unchanged: 0, failed: 0, nextCursor: '' });
+  }
+
+  const books = await getBooksByIds(rows.map((row) => row.bookId));
+  let updated = 0;
+  let unchanged = 0;
+  const failed = [];
+  const samples = [];
+
+  for (const drift of rows) {
+    try {
+      const book = books[drift.bookId];
+      const pricing = await resolveDriftCoinFields(db, drift, book || {});
+      if (!pricingChanged(pricing, drift)) {
+        unchanged += 1;
+        continue;
+      }
+      await db.collection('drifts').doc(drift._id).update({
+        data: {
+          systemCoinValue: pricing.systemCoinValue,
+          coinValue: pricing.coinValue,
+          pricingRecalcAt: nowIso(),
+        },
+      });
+      updated += 1;
+      if (samples.length < 10) {
+        samples.push({
+          driftId: drift._id,
+          isbn: book && book.isbn,
+          condition: drift.condition,
+          from: { systemCoinValue: pricing.previousSystemCoinValue, coinValue: pricing.previousCoinValue },
+          to: { systemCoinValue: pricing.systemCoinValue, coinValue: pricing.coinValue, medianPrice: pricing.medianPrice },
+        });
+      }
+    } catch (err) {
+      failed.push({ id: drift._id, error: err.message || String(err) });
+    }
+  }
+
+  return ok({
+    processed: rows.length,
+    updated,
+    unchanged,
+    failed: failed.length,
+    failures: failed.slice(0, 5),
+    samples,
+    nextCursor: rows.length >= limit ? rows[rows.length - 1]._id : '',
+  });
 }
 
 async function migrateLegacyAccounting(openid, data = {}) {
@@ -1109,6 +1344,6 @@ async function migrateLegacyAccounting(openid, data = {}) {
 
 module.exports = {
   publish, check, appeal, claim, orders, orderDetail, bundleDetail, ship, cancel, cancelOpen, updateOpen, confirm, addReceivedBook,
-  dispute, listDisputes, resolveDispute, review, reportSubscribe, debugSubscribe, resendSubscribe, maintainDriftOrders, migrateLegacyAccounting,
-  settleOrder, summary,
+  dispute, listDisputes, resolveDispute, review, reportSubscribe, debugSubscribe, resendSubscribe, maintainDriftOrders, migrateLegacyAccounting, migrateDriftPricing,
+  settleOrder, cancelOrderById, summary,
 };

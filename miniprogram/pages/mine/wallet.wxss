@@ -14,6 +14,48 @@
   opacity: 0.88;
 }
 
+.hero-formula {
+  display: inline-block;
+  margin-top: 16rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 14rpx;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 22rpx;
+  opacity: 0.92;
+}
+
+.howto-card {
+  background: #edf8f2;
+  border: 1rpx solid #dcefe4;
+}
+
+.howto-title {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #0C7A4B;
+  margin-bottom: 14rpx;
+}
+
+.howto-line {
+  position: relative;
+  padding-left: 26rpx;
+  font-size: 25rpx;
+  line-height: 1.8;
+  color: #46564e;
+}
+
+.howto-line::before {
+  content: "";
+  position: absolute;
+  left: 6rpx;
+  top: 18rpx;
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #2FBE77;
+}
+
 .wallet-earn-action {
   display: inline-flex;
   align-items: center;

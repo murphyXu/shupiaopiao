@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "official-account-follow-block": "/components/official-account-follow-block/index"
+  }
+}

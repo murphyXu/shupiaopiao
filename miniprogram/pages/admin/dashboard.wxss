@@ -41,6 +41,12 @@
   padding: 2rpx 12rpx; border-radius: 8rpx; margin-left: 4rpx;
 }
 .cumulative-rates { margin-top: 16rpx; }
+.today-live-extra { margin-top: 16rpx; }
+.live-loading {
+  background: #fff; border-radius: 24rpx; padding: 36rpx 28rpx; text-align: center;
+  font-size: 26rpx; color: #8a9b91; box-shadow: 0 4rpx 16rpx rgba(47,190,119,0.06);
+}
+.week-val.abnormal { color: #b3938a; font-size: 26rpx; }
 .cumulative-breakdown { margin-top: 16rpx; }
 .breakdown-head { font-weight: 600; color: #15211B; }
 .row-sub { font-size: 22rpx; color: #8a9b91; font-weight: 400; }

@@ -5,6 +5,11 @@ const api = require('../../utils/api');
 const { trackPageView, track } = require('../../utils/track');
 const { mineInviteShare } = require('../../utils/share');
 const { inviteRewardSummary } = require('../../utils/pointRules');
+const {
+  isOfficialAccountConfigured,
+  openOfficialAccountProfile,
+  trackOaEvent,
+} = require('../../utils/officialAccountPrompt');
 
 function normalizeMineUser(user = {}) {
   const balance = Number(user.coinBalance) || 0;
@@ -32,9 +37,11 @@ Page({
     givenBadges: [],
     receivedBadges: [],
     inviteRewardRule: inviteRewardSummary(),
+    showOaMineCard: false,
     driftSummary: {
       pendingShip: 0,
       expiringSoon: 0,
+      waitingShipReceived: 0,
       toConfirm: 0,
       disputing: 0,
       toReview: 0,
@@ -49,6 +56,7 @@ Page({
     setTabBarIndex.call(this, 2);
     refreshTabBarPendingShip();
     trackPageView('mine/index');
+    this.refreshOaMineCard();
     const loggedIn = isLoggedIn();
     if (!loggedIn) {
       this.setData({ loggedIn: false, user: {} });
@@ -76,6 +84,7 @@ Page({
           ['待评价', summary.toReviewGiven],
         ]),
         receivedBadges: buildTodoBadges([
+          ['待发货', summary.waitingShipReceived],
           ['待确认', summary.toConfirm],
           ['申诉', summary.disputingReceived],
           ['待评价', summary.toReviewReceived],
@@ -89,6 +98,7 @@ Page({
         driftSummary: {
           pendingShip: 0,
           expiringSoon: 0,
+          waitingShipReceived: 0,
           toConfirm: 0,
           disputing: 0,
           toReview: 0,
@@ -99,6 +109,19 @@ Page({
         },
       });
     }
+  },
+
+  refreshOaMineCard() {
+    const showOaMineCard = isOfficialAccountConfigured();
+    if (showOaMineCard && !this.data.showOaMineCard) {
+      trackOaEvent('oa_mine_card_show', 'mine');
+    }
+    this.setData({ showOaMineCard });
+  },
+
+  openOaProfile() {
+    trackOaEvent('oa_follow_click', 'mine');
+    openOfficialAccountProfile();
   },
 
   goLogin() {
@@ -113,6 +136,7 @@ Page({
   goWallet() { this.guard(() => wx.navigateTo({ url: '/pages/mine/wallet' })); },
   goGiven() { this.guard(() => wx.navigateTo({ url: '/pages/drift/given' })); },
   goReceived() { this.guard(() => wx.navigateTo({ url: '/pages/drift/received' })); },
+  goWants() { this.guard(() => wx.navigateTo({ url: '/pages/pool/wants' })); },
   goCredit() { this.guard(() => wx.navigateTo({ url: '/pages/mine/credit' })); },
   goDisputes() { this.guard(() => wx.navigateTo({ url: '/pages/mine/disputes' })); },
   goDashboard() { this.guard(() => wx.navigateTo({ url: '/pages/admin/dashboard' })); },

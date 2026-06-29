@@ -1,5 +1,6 @@
 const { ok, fail, nowIso } = require('../lib/utils');
 const { db, _, formatBook, getBookById, requireUser } = require('../lib/db');
+const { attachMedianPrices } = require('../lib/pricingCache');
 const { normalizeIsbn, isValidIsbn } = require('../lib/bookCatalog');
 const { resolveByIsbn, searchBooks } = require('../lib/bookLookup');
 const { cacheRemoteBookCover } = require('../lib/coverCache');
@@ -15,17 +16,12 @@ async function formatBookWithPrice(book) {
 
 async function formatBooksWithPrices(books = []) {
   const formatted = books.map(formatBook);
-  const isbns = formatted.filter((book) => !book.listPrice && book.isbn).map((book) => book.isbn);
+  const isbns = [...new Set(formatted.map((book) => normalizeIsbn(book.isbn)).filter(Boolean))];
   if (!isbns.length) return formatted;
   const { data: prices } = await db.collection('pricing_cache').where({ isbn: db.command.in(isbns) }).get();
   const priceMap = {};
   prices.forEach((item) => { priceMap[item.isbn] = item; });
-  return formatted.map((book) => {
-    if (book.listPrice) return book;
-    const cached = priceMap[book.isbn];
-    if (!cached || !cached.medianPrice) return book;
-    return { ...book, listPrice: `¥${cached.medianPrice}`, listPriceSource: 'pricing_cache' };
-  });
+  return attachMedianPrices(formatted, priceMap);
 }
 
 async function enforceScanLookupLimit(openid, source) {

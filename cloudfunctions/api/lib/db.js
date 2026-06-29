@@ -12,6 +12,7 @@ const { isCollectionMissing } = require('./collections');
 const { applyPendingPenalty } = require('./driftPolicy');
 
 const DEFAULT_SHELF_LIMIT = 100;
+const IN_QUERY_BATCH = 100;
 const SIGNUP_BONUS = 0;
 const INVITE_REWARD = 2;
 const INVITE_LIFETIME_CAP = 10;
@@ -178,9 +179,22 @@ async function getBookById(bookId) {
   }
 }
 
+async function queryRowsByIdChunks(collectionName, ids = []) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return [];
+  const rows = [];
+  for (let i = 0; i < unique.length; i += IN_QUERY_BATCH) {
+    const chunk = unique.slice(i, i + IN_QUERY_BATCH);
+    const { data } = await safeQuery(collectionName, (col) =>
+      col.where({ _id: _.in(chunk) }).limit(chunk.length).get());
+    rows.push(...(data || []));
+  }
+  return rows;
+}
+
 async function getBooksByIds(ids) {
   if (!ids.length) return {};
-  const { data } = await db.collection('books').where({ _id: _.in(ids) }).get();
+  const data = await queryRowsByIdChunks('books', ids);
   const map = {};
   data.forEach((b) => { map[b._id] = b; });
   return map;
@@ -188,7 +202,7 @@ async function getBooksByIds(ids) {
 
 async function getUsersByIds(ids) {
   if (!ids.length) return {};
-  const { data } = await db.collection('users').where({ _id: _.in(ids) }).get();
+  const data = await queryRowsByIdChunks('users', ids);
   const map = {};
   data.forEach((u) => { map[u._id] = u; });
   return map;
@@ -197,7 +211,7 @@ async function getUsersByIds(ids) {
 function formatBook(b) {
   const title = cleanBookTitle(b.title) || b.title;
   const resolved = resolveShelfCategory(b);
-  return {
+  const formatted = {
     id: b._id,
     isbn: b.isbn,
     isbn10: b.isbn10 || '',
@@ -221,6 +235,11 @@ function formatBook(b) {
     versionLabel: versionLabel({ ...b, title }),
     lookupStatus: b.lookupStatus || 'found',
   };
+  const medianPrice = Number(b.medianPrice);
+  if (Number.isFinite(medianPrice) && medianPrice > 0) {
+    formatted.medianPrice = medianPrice;
+  }
+  return formatted;
 }
 
 module.exports = {
@@ -229,6 +248,8 @@ module.exports = {
   _,
   isCollectionMissing,
   safeQuery,
+  queryRowsByIdChunks,
+  IN_QUERY_BATCH,
   getUserByOpenid,
   requireUser,
   getOrCreateUser,

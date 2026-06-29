@@ -1,0 +1,8 @@
+<view class="custom-nav-bar" style="padding-top: {{statusBarHeight}}px;">
+  <view class="custom-nav-bar__inner {{showBack ? 'custom-nav-bar__inner--back' : ''}}" style="height: {{navBarHeight}}px;">
+    <view wx:if="{{showBack}}" class="custom-nav-bar__back" bindtap="onBack" hover-class="custom-nav-bar__back-hover">
+      <text class="custom-nav-bar__back-icon" aria-hidden="true">‹</text>
+    </view>
+    <text wx:if="{{title}}" class="custom-nav-bar__title">{{title}}</text>
+  </view>
+</view>

@@ -125,14 +125,19 @@ assert.ok(
 );
 const capacityRow = extractViewByClass(shelfWxml, 'capacity-row');
 const capacityRowChildren = directChildOpeningTags(capacityRow);
-assert.deepStrictEqual(
-  capacityRowChildren.map((tag) => classNamesFromTag(tag).join(' ')),
-  ['page-sub capacity-line', 'quota-action'],
-  'remaining capacity and redeem action should share one row',
+assert.ok(
+  capacityRowChildren.some((tag) => classNamesFromTag(tag).join(' ') === 'capacity-stats page-sub'),
+  'capacity row should include shelf stats text',
 );
 assert.ok(
-  capacityRowChildren[1].includes('wx:if="{{loggedIn && !shareMode}}"')
-    && capacityRowChildren[1].includes('bindtap="goRedeemCapacity"'),
+  capacityRowChildren.some((tag) => classNamesFromTag(tag).join(' ') === 'quota-action'),
+  'capacity row should include redeem action',
+);
+const quotaActionTag = capacityRowChildren.find((tag) => classNamesFromTag(tag).join(' ') === 'quota-action');
+assert.ok(
+  quotaActionTag
+    && quotaActionTag.includes('wx:if="{{loggedIn && !shareMode}}"')
+    && quotaActionTag.includes('bindtap="goRedeemCapacity"'),
   'quota action should preserve its visibility and navigation behavior',
 );
 const headerActionRule = shelfWxss.match(/\.header-action\s*\{([^}]*)\}/s);
@@ -161,42 +166,45 @@ assert.ok(
   'shelf title should stay on one line',
 );
 assert.ok(
-  /\.capacity-row\s*\{[^}]*display:\s*flex[^}]*align-items:\s*center/s.test(shelfWxss),
-  'capacity row should vertically align text and redeem action',
+  /\.capacity-row\s*\{[^}]*display:\s*flex[^}]*align-items:\s*center/s.test(shelfWxss)
+    && !/\.capacity-row\s*\{[^}]*justify-content:\s*space-between/s.test(shelfWxss),
+  'capacity row should keep stats and redeem action grouped together',
 );
-const capacityLineRule = shelfWxss.match(/\.capacity-line\s*\{([^}]*)\}/s);
+const capacityStatsRule = shelfWxss.match(/\.capacity-stats\s*\{([^}]*)\}/s);
 assert.ok(
-  capacityLineRule && /min-width:\s*0/.test(capacityLineRule[1]),
-  'capacity text should be allowed to shrink',
-);
-assert.ok(
-  capacityLineRule && /(?:^|;)\s*overflow:\s*hidden(?:;|$)/.test(capacityLineRule[1]),
-  'capacity text should stay within the row',
+  capacityStatsRule && /min-width:\s*0/.test(capacityStatsRule[1]),
+  'capacity stats should be allowed to shrink',
 );
 assert.ok(
-  capacityLineRule && /text-overflow:\s*ellipsis/.test(capacityLineRule[1]),
-  'capacity text should ellipsize on narrow screens',
+  capacityStatsRule && /(?:^|;)\s*overflow:\s*hidden(?:;|$)/.test(capacityStatsRule[1]),
+  'capacity stats should stay within the row',
 );
 assert.ok(
-  capacityLineRule && /white-space:\s*nowrap/.test(capacityLineRule[1]),
-  'capacity text should stay on one line',
+  capacityStatsRule && /text-overflow:\s*ellipsis/.test(capacityStatsRule[1]),
+  'capacity stats should ellipsize on narrow screens',
 );
 assert.ok(
-  capacityLineRule && /margin-top:\s*0/.test(capacityLineRule[1]),
-  'capacity text should cancel the global subtitle top margin',
+  capacityStatsRule && /white-space:\s*nowrap/.test(capacityStatsRule[1]),
+  'capacity stats should stay on one line',
+);
+assert.ok(
+  capacityStatsRule && /margin-top:\s*0/.test(capacityStatsRule[1]),
+  'capacity stats should cancel the global subtitle top margin',
 );
 const quotaActionRule = shelfWxss.match(/\.quota-action\s*\{([^}]*)\}/s);
 assert.ok(
   quotaActionRule
     && /height:\s*56rpx/.test(quotaActionRule[1])
     && /width:\s*132rpx/.test(quotaActionRule[1])
-    && /flex-shrink:\s*0/.test(quotaActionRule[1]),
-  'quota action should match edit action size and remain clickable',
+    && /flex-shrink:\s*0/.test(quotaActionRule[1])
+    && !/margin-left:\s*auto/.test(quotaActionRule[1]),
+  'quota action should sit beside stats without being pushed to the far edge',
 );
 assert.ok(
   /\.title-row\s*\{[^}]*gap:\s*14rpx/s.test(shelfWxss)
-    && /\.capacity-row\s*\{[^}]*gap:\s*14rpx/s.test(shelfWxss),
-  'shelf header actions should sit close to the title while staying aligned',
+    && /\.capacity-row\s*\{[^}]*gap:\s*14rpx/s.test(shelfWxss)
+    && !/\.quota-action\s*\{[^}]*margin-left:\s*auto/s.test(shelfWxss),
+  'shelf header should keep stats and redeem action close with shared spacing',
 );
 
 const poolPointRow = extractViewByClass(poolWxml, 'pool-point-row');
@@ -214,18 +222,30 @@ assert.ok(
 assert.ok(
   /\.pool-title-row\s*\{[^}]*gap:\s*14rpx/s.test(poolWxss)
     && /\.pool-point-row\s*\{[^}]*gap:\s*14rpx/s.test(poolWxss),
-  'pool guide and earn-points actions should sit close to the title while staying aligned',
+  'pool title row and point row should share the same inter-item spacing',
 );
 assert.ok(
-  /\.pool-title-row \.page-title\s*\{[^}]*flex:\s*0\s+1\s+216rpx/s.test(poolWxss)
-    && /\.pool-point-line\s*\{[^}]*flex:\s*0\s+1\s+216rpx/s.test(poolWxss),
-  'pool title and point text should share a compact left column',
+  /\.pool-value-slogan\s*\{[^}]*flex:\s*0\s+1\s+auto/s.test(poolWxss)
+    && !/\.pool-value-slogan\s*\{[^}]*flex:\s*1;/s.test(poolWxss),
+  'pool slogan should sit beside guide entry instead of stretching to the right edge',
 );
 assert.ok(
-  /\.guide-entry\s*\{[^}]*width:\s*156rpx/s.test(poolWxss)
+  /\.pool-point-line\s*\{[^}]*max-width:\s*calc\(100%\s*-\s*146rpx\)/s.test(poolWxss)
+    && /\.pool-point-num\s*\{[^}]*flex-shrink:\s*0/s.test(poolWxss),
+  'pool point line should reserve earn-action space and keep the coin value fully visible',
+);
+assert.ok(
+  poolPointRow.includes('pool-point-label')
+    && poolPointRow.includes('pool-point-num')
+    && poolPointRow.includes('stats.availableCoin'),
+  'pool point row should split label and available coin for adaptive layout',
+);
+assert.ok(
+  /\.guide-entry\s*\{[^}]*color:\s*#0C7A4B/s.test(poolWxss)
     && /\.guide-entry\s*\{[^}]*white-space:\s*nowrap/s.test(poolWxss)
+    && !/\.guide-entry\s*\{[^}]*width:/s.test(poolWxss)
     && /\.earn-point-action\s*\{[^}]*width:\s*132rpx/s.test(poolWxss),
-  'pool guide entry should stay on one line and earn-points action should keep the aligned column',
+  'pool guide entry should stay as a compact text link and earn-points action should keep the aligned column',
 );
 
 const shelfPage = extractViewByClass(shelfWxml, 'shelf-page');
@@ -256,7 +276,7 @@ assert.deepStrictEqual(
   [...poolOrder].sort((left, right) => left - right),
   'pool modules should be search, primary tabs, secondary tabs, then list',
 );
-assert.ok(!poolWxml.includes('stat-row'), 'pool home should not render the top stats row');
+assert.ok(!poolWxml.includes('stat-row') && !poolWxml.includes('pool-user-metrics'), 'pool home should not render the top stats row');
 
 const alignedStyleRules = [
   ['.primary-tabs', '.primary-tabs'],
@@ -268,9 +288,6 @@ const alignedStyleRules = [
   ['.secondary-tab.active', '.secondary-tab.active'],
   ['.shelf-search', '.pool-search-box'],
   ['.shelf-search input', '.pool-search-box input'],
-  ['.capacity-row', '.pool-point-row'],
-  ['.capacity-line', '.pool-point-line'],
-  ['.quota-action', '.earn-point-action'],
 ];
 alignedStyleRules.forEach(([shelfSelector, poolSelector]) => {
   assert.deepStrictEqual(

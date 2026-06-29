@@ -1,6 +1,0 @@
-1. 01-cover.png
-2. 02-step.png
-3. 03-note.png
-4. 04-pool-detail.png
-5. 05-claim.png
-6. 06-cta.png

@@ -2,6 +2,7 @@ const api = require('../../utils/api');
 
 Page({
   data: {
+    userId: '',
     nickname: '',
     avatar: '',
     childAgeRange: '',
@@ -21,11 +22,31 @@ Page({
   onLoad() {
     const user = wx.getStorageSync('userInfo') || {};
     this.setData({
+      userId: user.id || '',
       nickname: user.nickname || '',
       avatar: user.avatar || '',
       childAgeRange: user.childAgeRange || '',
     });
     this.loadDefaultAddress();
+  },
+
+  onShow() {
+    const user = wx.getStorageSync('userInfo') || {};
+    if (user.id && user.id !== this.data.userId) {
+      this.setData({ userId: user.id });
+    }
+  },
+
+  copyUserId() {
+    const { userId } = this.data;
+    if (!userId) {
+      wx.showToast({ title: '暂无用户 ID', icon: 'none' });
+      return;
+    }
+    wx.setClipboardData({
+      data: userId,
+      success: () => wx.showToast({ title: 'ID 已复制', icon: 'none' }),
+    });
   },
 
   async loadDefaultAddress() {

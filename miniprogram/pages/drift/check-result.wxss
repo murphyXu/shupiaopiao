@@ -59,16 +59,50 @@
   font-size: 26rpx;
 }
 
-.subscribe-btn {
+.optional-notify-card {
   margin-top: 24rpx;
+  text-align: left;
+}
+
+.optional-notify-title {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #15211B;
+  margin-bottom: 16rpx;
+}
+
+.subscribe-btn {
+  margin-top: 0;
 }
 
 .subscribe-hint {
   font-size: 22rpx;
   margin-top: 12rpx;
-  margin-bottom: 8rpx;
+}
+
+.optional-notify-divider {
+  margin: 24rpx 0;
+  border-top: 1rpx dashed #dce8e0;
+}
+
+.oa-milestone-label {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #15211B;
+}
+
+.oa-milestone-desc {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.oa-tip-dismiss {
+  margin-top: 16rpx;
+  color: #8a988f;
+  font-size: 24rpx;
 }
 
 .btn-primary {
-  margin-top: 16rpx;
+  margin-top: 24rpx;
 }

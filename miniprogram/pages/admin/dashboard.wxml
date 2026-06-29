@@ -17,6 +17,31 @@
       <view class="tool-btn secondary {{rebuilding ? 'disabled' : ''}}" bindtap="rebuildMetrics">{{rebuilding ? '重算中…' : '重算昨日'}}</view>
     </view>
 
+    <view class="section-title">
+      今日实时
+      <text class="section-hint">实时</text>
+      <text wx:if="{{todayLive.refreshedAtText}}" class="section-day">更新于 {{todayLive.refreshedAtText}}</text>
+    </view>
+    <view wx:if="{{todayLiveLoading && !todayLive}}" class="live-loading">刷新中…</view>
+    <block wx:elif="{{todayLive}}">
+      <view class="cards">
+        <view class="card"><text class="num">{{todayLive.dau}}</text><text class="label">日活</text></view>
+        <view class="card"><text class="num">{{todayLive.newUsers}}</text><text class="label">新增用户</text></view>
+        <view class="card"><text class="num">{{todayLive.driftPublished}}</text><text class="label">上漂</text></view>
+        <view class="card"><text class="num">{{todayLive.driftClaimed}}</text><text class="label">被接漂</text></view>
+        <view class="card"><text class="num">{{todayLive.driftShipped}}</text><text class="label">已寄出</text></view>
+        <view class="card"><text class="num">{{todayLive.driftDone}}</text><text class="label">完成漂流</text></view>
+      </view>
+      <view class="week today-live-extra">
+        <view class="week-row"><text>积分发行 / 消耗</text><text class="week-val">{{todayLive.coinIssued}} / {{todayLive.coinConsumed}}</text></view>
+        <view class="week-row"><text>接口调用 / 错误率</text><text class="week-val">{{todayLive.apiCalls}} · {{todayLive.errorRateText}}</text></view>
+        <view wx:if="{{todayLive.driftCancelled || todayLive.driftDisputed}}" class="week-row">
+          <text>异常</text>
+          <text class="week-val abnormal">取消 {{todayLive.driftCancelled}} · 纠纷 {{todayLive.driftDisputed}}</text>
+        </view>
+      </view>
+    </block>
+
     <view class="section-title">昨日概览<text wx:if="{{overview.today.day}}" class="section-day">（{{overview.today.day}}）</text></view>
     <view class="cards">
       <view class="card"><text class="num">{{overview.today.dau}}</text><text class="label">日活</text></view>
@@ -105,6 +130,6 @@
       </view>
     </view>
 
-    <view class="tip">数据每日 00:30 自动聚合；events 明细保留 90 天；下拉可刷新</view>
+    <view class="tip">数据每日 00:30 自动聚合；今日实时每次进入刷新；events 明细保留 90 天；下拉可刷新</view>
   </block>
 </view>

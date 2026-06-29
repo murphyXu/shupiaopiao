@@ -1,26 +1,37 @@
 const api = require('../../utils/api');
+const {
+  markSubscribeDialogTriggered,
+  tryShowMilestonePrompt,
+  trackOaEvent,
+} = require('../../utils/officialAccountPrompt');
+
+const GIVEN_LIST_URL = '/pages/drift/given?status=IN_POOL';
 
 Page({
   data: {
     passed: false,
     coinValue: 0,
+    publishReward: 0,
     checks: [],
     reasons: [],
-    continueScan: false,
     sessionCount: 0,
+    showContinueScan: false,
+    showOaMilestone: false,
   },
 
   onLoad(options) {
     this.driftId = options.driftId;
     this.setData({
       passed: options.passed === 'true',
-      continueScan: options.continueScan === '1',
       sessionCount: Number(options.sessionCount) || 0,
+      showContinueScan: options.source === 'scan',
     });
     api.getDriftCheck(options.driftId).then((res) => {
+      const publishReward = Math.max(Number(res.publishReward) || 0, 0);
       this.setData({
         passed: res.passed,
         coinValue: res.coinValue,
+        publishReward,
         checks: [
           { name: 'ISBN 合规校验通过' },
           { name: '图像识别：封面一致、真实书籍' },
@@ -28,7 +39,14 @@ Page({
         ],
         reasons: res.reasons || [],
       });
-    });
+    }).finally(() => this.refreshOaMilestone());
+  },
+
+  refreshOaMilestone() {
+    if (this._oaMilestoneReady) return;
+    this._oaMilestoneReady = true;
+    const showOaMilestone = tryShowMilestonePrompt('publish', { passed: this.data.passed });
+    this.setData({ showOaMilestone });
   },
 
   appeal() {
@@ -45,30 +63,38 @@ Page({
     });
   },
 
+  goGivenList() {
+    wx.redirectTo({ url: GIVEN_LIST_URL });
+  },
+
   continueScanPublish() {
     wx.redirectTo({
-      url: `/pages/drift/scan-publish?sessionCount=${this.data.sessionCount}`,
+      url: `/pages/drift/scan-publish?sessionCount=${this.data.sessionCount}&autoScan=1`,
     });
   },
 
-  goPoolFromScan() {
-    wx.switchTab({ url: '/pages/pool/index' });
-  },
-
   goNext() {
-    if (this.data.continueScan && this.data.passed) {
-      this.continueScanPublish();
+    if (this.data.passed) {
+      this.goGivenList();
       return;
     }
-    if (this.data.passed) {
-      wx.switchTab({ url: '/pages/pool/index' });
-    } else {
-      wx.navigateBack();
-    }
+    wx.navigateBack();
+  },
+
+  dismissOaMilestone() {
+    trackOaEvent('oa_milestone_dismiss', 'publish');
+    this.setData({ showOaMilestone: false });
+  },
+
+  onOaFollow() {
+    trackOaEvent('oa_follow_click', 'publish');
+    this.setData({ showOaMilestone: false });
   },
 
   async enableSubscribeNotify() {
     if (!this.driftId) return;
+    markSubscribeDialogTriggered();
+    this.setData({ showOaMilestone: false });
     try {
       const { subscribeDriftNotifications } = require('../../utils/subscribe');
       const res = await subscribeDriftNotifications(this.driftId);

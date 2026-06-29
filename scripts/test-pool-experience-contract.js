@@ -79,8 +79,20 @@ assert.ok(publishJs.includes('toggleBookSelection') && publishJs.includes('shelf
 assert.ok(publishWxml.includes('选择要赠出的书') && publishWxml.includes('toggleBookSelection'), 'publish page should render a shelf-book picker');
 
 assert.ok(appJson.pages.includes('pages/drift/guide'), 'drift guide page should be registered');
-assert.ok(poolWxml.includes('漂流广场') && poolWxml.includes('玩法介绍') && poolWxml.includes('bindtap="goGuide"'), 'pool header should expose drift guide sign beside title');
-assert.ok(poolWxss.includes('justify-content: flex-start') && poolWxss.includes('guide-entry') && poolWxss.includes('rotate(-2deg)'), 'pool guide entry should sit next to title as a signboard');
+assert.ok(
+  poolWxml.includes('漂流广场')
+    && poolWxml.includes('玩法介绍 ›')
+    && poolWxml.includes('pool-title-row')
+    && poolWxml.includes('bindtap="goGuide"'),
+  'pool header should expose drift guide as text link beside slogan on the title row',
+);
+assert.ok(
+  poolWxss.includes('pool-title-row')
+    && poolWxss.includes('guide-entry')
+    && poolWxss.includes('color: #0C7A4B')
+    && !poolWxss.includes('rotate(-2deg)'),
+  'pool guide entry should be a brand-green text link on the title row',
+);
 assert.ok(poolJs.includes('goGuide()') && poolJs.includes('/pages/drift/guide'), 'pool page should navigate to drift guide');
 assert.ok(poolJs.includes('onShareAppMessage') && poolJs.includes('/pages/pool/index'), 'pool page should expose share path');
 assert.ok(poolJs.includes('onCoverError'), 'pool list should recover failed cover loads');
@@ -90,8 +102,18 @@ assert.ok(read('miniprogram/utils/coverRefresh.js').includes("'books.cacheRemote
 assert.ok(guideWxml.includes('让一本书，去遇见下一个人') && guideWxml.includes('少一点负担，多一本好书'), 'guide should use emotional and receiver-value copy');
 assert.ok(guideWxml.includes('闲置变成被需要') && guideWxml.includes('分享被看见'), 'guide should state giver emotional value');
 assert.ok(guideWxml.includes('把书放入漂流池') && guideWxml.includes('等待有缘人申请接漂') && guideWxml.includes('完成一次温柔传递'), 'guide should explain the three-step flow');
-assert.ok(guideWxml.includes('公益积分') && guideWxml.includes('发货前可取消') && guideWxml.includes('完成后结算'), 'guide should include soft rule explanation');
+assert.ok(guideWxml.includes('公益积分') && guideWxml.includes('发货前可取消') && guideWxml.includes('完成结算'), 'guide should include soft rule explanation');
 assert.ok(guideJs.includes('goPool()') && guideJs.includes('wx.switchTab') && guideWxml.includes('去看看正在漂流的书'), 'guide should provide a pool call-to-action');
 assert.ok(guideWxss.includes('.hero-card') && guideWxss.includes('.step-card'), 'guide should include clear visual structure');
+assert.ok(
+  poolWxml.includes('<page-container')
+    && poolWxml.includes('z-index="10050"')
+    && poolWxml.includes('filterFootPadding'),
+  'pool more-filter drawer should sit above tab bar with adaptive foot padding',
+);
+assert.ok(
+  poolJs.includes('measureMoreFilterLayout'),
+  'pool page should measure filter layout for all device sizes',
+);
 
 console.log('pool experience contract ok');

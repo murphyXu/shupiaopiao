@@ -1,12 +1,77 @@
 .page { padding: 24rpx; }
 .row { display: flex; gap: 20rpx; align-items: center; }
 .address-card { min-height: 100rpx; }
-.wx-address-btn { margin: -8rpx 0 24rpx; }
+.address-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 12rpx;
+}
+.address-head .label {
+  margin-bottom: 0;
+}
+.address-action {
+  flex-shrink: 0;
+  color: #0C7A4B;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.address-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #15211B;
+}
+.address-detail {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
 .balance { display: flex; justify-content: space-between; align-items: center; }
 
-.shipping-hint {
-  margin-top: 12rpx;
-  color: #46564e;
+.claim-summary .label {
+  margin-bottom: 8rpx;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx dashed #eef2ef;
+  font-size: 26rpx;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-row .sk {
+  color: #7b8a82;
+  flex-shrink: 0;
+}
+
+.summary-row .sv {
+  color: #15211B;
+  font-weight: 700;
+  text-align: right;
+}
+
+.summary-row .sv.hl {
+  color: #0C7A4B;
+}
+
+.shipping-hint-card {
+  margin-bottom: 24rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  background: #f0f9ff;
+  border: 1rpx solid #bae6fd;
+  font-size: 24rpx;
+  color: #0369a1;
   line-height: 1.5;
 }
 

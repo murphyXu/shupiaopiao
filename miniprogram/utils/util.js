@@ -7,11 +7,7 @@ const CATEGORIES = [
 const BOOK_CLASSES = [
   { key: 'child', label: '童书' },
   { key: 'literature', label: '文学' },
-  { key: 'social', label: '社科' },
   { key: 'business', label: '经管' },
-  { key: 'science', label: '科普' },
-  { key: 'life', label: '生活' },
-  { key: 'art', label: '艺术' },
   { key: 'other', label: '其他' },
 ];
 
@@ -25,11 +21,7 @@ const POOL_CATEGORIES = [
   { key: 'all', label: '全部' },
   { key: 'children', label: '童书' },
   { key: 'literature', label: '文学' },
-  { key: 'social', label: '社科' },
   { key: 'business', label: '经管' },
-  { key: 'science', label: '科普' },
-  { key: 'art', label: '艺术' },
-  { key: 'life', label: '生活' },
   { key: 'other', label: '其他' },
 ];
 

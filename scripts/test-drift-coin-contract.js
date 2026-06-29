@@ -25,8 +25,10 @@ assert.ok(dbLib.includes('INVITE_LIFETIME_CAP = 10'), 'invite reward should have
 assert.ok(!dbLib.includes('INVITE_DAILY_CAP'), 'invite reward should not have a daily cap');
 assert.ok(dbLib.includes("type: 'invite_reward'"), 'invite reward should be recorded as a distinct public-points source');
 assert.ok(driftHandler.includes('publishRewardCap') && driftHandler.includes('publishRewardCount'), 'publish reward should be capped per user');
+assert.ok(driftHandler.includes('awardedTimes >= config.publishRewardCap'), 'publish reward cap should count reward times not points');
+assert.ok(driftHandler.includes('publishRewardCount: _.inc(1)'), 'publish reward count should increment once per granted reward');
 assert.ok(driftHandler.includes('publishRewardAmount') && driftHandler.includes('publishRewardCredited') && driftHandler.includes('publishRewardOffset'), 'publish reward should persist rollback metadata');
-assert.ok(driftHandler.includes('revokePublishReward') && driftHandler.includes("type: 'publish_reward_revoke'"), 'cancelled drifts should revoke granted publish reward');
+assert.ok(driftHandler.includes('removeOrderFromBundle') && driftHandler.includes('bundleId: \'\''), 'cancelled orders should detach and clear bundle metadata');
 
 assert.ok(authHandler.includes('inviterId') && apiRoutes.includes('auth.login') && apiRoutes.includes('data, openid'), 'login should pass inviterId to auth handler');
 assert.ok(miniApi.includes('login: (inviterId') && loginJs.includes('pendingInviterId'), 'client login should send pending inviterId');

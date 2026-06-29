@@ -42,6 +42,7 @@ function createDb(rows) {
     'https://static.tanshuapi.com/a.jpg',
   );
   assert.strictEqual(isAllowedCoverUrl('https://static.tanshuapi.com/a.jpg'), true);
+  assert.strictEqual(isAllowedCoverUrl('https://booklibimg.kfzimg.com/data/book_lib_img_v2/isbn/1/a/a.jpg'), true);
   assert.strictEqual(isAllowedCoverUrl('https://example.com/a.jpg'), false);
   assert.strictEqual(cloudCoverPath('9787559855022', 'https://static.tanshuapi.com/a.png'), 'book-covers/9787559855022.png');
   assert.strictEqual(isSupportedContentType('image/jpeg; charset=binary'), true);

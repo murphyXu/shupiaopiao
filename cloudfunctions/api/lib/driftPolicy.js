@@ -2,6 +2,8 @@ const BUNDLE_MERGE_WINDOW_HOURS = 48;
 const BUNDLE_MAX_ORDERS = 5;
 const LIGHTWEIGHT_COIN_THRESHOLD = 3;
 const LIGHTWEIGHT_PRICE_THRESHOLD = 20;
+const SHIP_DEADLINE_HOURS = 72;
+const AUTO_COMPLETE_DAYS = 10;
 
 const PUBLISH_RATE_LIMIT_STATUSES = ['PENDING_REVIEW', 'IN_POOL', 'CLAIMED', 'COMPLETED'];
 
@@ -32,9 +34,14 @@ function policyForStage(stage = 'cold') {
   return { ...(STAGES[stage] || STAGES.cold) };
 }
 
-function calculateCoinValue(listPrice, condition) {
+function calculateCoinValue(listPrice, condition, medianPrice) {
+  const median = Math.max(Number(medianPrice) || 0, 0);
+  const factor = CONDITION_FACTORS[condition] || 0.8;
+  if (median > 0) {
+    return Math.max(Math.round(median * factor), 0);
+  }
   const price = Math.max(Number(listPrice) || 0, 0);
-  return Math.max(Math.round(price * (CONDITION_FACTORS[condition] || 0.8) * 0.2), 0);
+  return Math.max(Math.round(price * factor * 0.2), 0);
 }
 
 function resolveRequestedCoinValue(systemCoinValue, requested) {
@@ -59,6 +66,16 @@ function addHours(iso, hours) {
 
 function addDays(iso, days) {
   return addHours(iso, days * 24);
+}
+
+function shipDeadlineAt(baseIso) {
+  if (!baseIso) return '';
+  return addHours(baseIso, SHIP_DEADLINE_HOURS);
+}
+
+function autoCompleteAt(baseIso) {
+  if (!baseIso) return '';
+  return addDays(baseIso, AUTO_COMPLETE_DAYS);
 }
 
 function cancelCreditChange(role) {
@@ -94,6 +111,8 @@ module.exports = {
   BUNDLE_MAX_ORDERS,
   LIGHTWEIGHT_COIN_THRESHOLD,
   LIGHTWEIGHT_PRICE_THRESHOLD,
+  SHIP_DEADLINE_HOURS,
+  AUTO_COMPLETE_DAYS,
   PUBLISH_RATE_LIMIT_STATUSES,
   STAGES,
   SHELF_CAPACITY_PER_COIN,
@@ -104,6 +123,8 @@ module.exports = {
   availableCoin,
   addHours,
   addDays,
+  shipDeadlineAt,
+  autoCompleteAt,
   isLightweightBook,
   cancelCreditChange,
   applyPendingPenalty,

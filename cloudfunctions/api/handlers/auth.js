@@ -7,7 +7,7 @@ const MAX_SHELF_NAME_LENGTH = 12;
 function shelfNameFromNickname(nickname) {
   const base = String(nickname || '').trim();
   if (!base) return '我的书架';
-  return `${base}书架`.slice(0, MAX_SHELF_NAME_LENGTH);
+  return `${base}的书架`.slice(0, MAX_SHELF_NAME_LENGTH);
 }
 
 async function login(openid, data = {}) {

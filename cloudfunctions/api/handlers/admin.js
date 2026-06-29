@@ -1,6 +1,6 @@
 const { ok, fail } = require('../lib/utils');
 const { db, _ } = require('../lib/db');
-const { dayStr, dayRange } = require('../lib/metricsAggregator');
+const { dayStr, dayRange, computeDayMetrics } = require('../lib/metricsAggregator');
 
 function adminOpenids() {
   return String(process.env.ADMIN_OPENIDS || '')
@@ -199,6 +199,31 @@ async function fetchCumulativeStats() {
     claimRate,
     doneRate,
   };
+}
+
+/**
+ * 今日实时指标（查库，不入 daily_metrics）
+ */
+async function todayLive(openid, data = {}) {
+  if (!requireAdmin(openid)) return denyInfo(openid);
+  const day = dayStr(new Date());
+  const metrics = await computeDayMetrics(day, { includeRetention: false });
+  return ok({
+    day,
+    refreshedAt: metrics.generatedAt,
+    dau: metrics.dau || 0,
+    newUsers: metrics.newUsers || 0,
+    driftPublished: metrics.driftPublished || 0,
+    driftClaimed: metrics.driftClaimed || 0,
+    driftShipped: metrics.driftShipped || 0,
+    driftDone: metrics.driftDone || 0,
+    driftCancelled: metrics.driftCancelled || 0,
+    driftDisputed: metrics.driftDisputed || 0,
+    coinIssued: metrics.coinIssued || 0,
+    coinConsumed: metrics.coinConsumed || 0,
+    errorRate: metrics.errorRate || 0,
+    apiCalls: metrics.apiCalls || 0,
+  });
 }
 
 /**
@@ -516,5 +541,5 @@ async function rebuild(openid, data = {}) {
 }
 
 module.exports = {
-  overview, trend, funnel, conclusion, exportMetrics, rebuild, events, ledger, isAdmin,
+  overview, todayLive, trend, funnel, conclusion, exportMetrics, rebuild, events, ledger, isAdmin, requireAdmin,
 };

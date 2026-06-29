@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>书漂漂 · 高保真改版设计稿</title>
+  <style>
+    :root {
+      --green: #2FBE77;
+      --green-deep: #159E63;
+      --green-ink: #0C7A4B;
+      --mint: #EAFBF2;
+      --bg: #F4F8F5;
+      --surface: #FFFFFF;
+      --ink: #15211B;
+      --ink-2: #52605A;
+      --ink-3: #8A988F;
+      --line: #E7EEE9;
+      --neutral: #F0F3F1;
+      --warning: #FFF6E6;
+      --warning-ink: #9A5A00;
+      --danger: #E85D5D;
+      --shadow: 0 16px 48px rgba(21, 158, 99, 0.08);
+      --soft-shadow: 0 10px 28px rgba(21, 158, 99, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 6%, rgba(47, 190, 119, 0.16), transparent 26%),
+        radial-gradient(circle at 86% 16%, rgba(123, 226, 168, 0.18), transparent 24%),
+        #EDF4EF;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "SF Pro SC", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .cover {
+      padding: 48px 56px 20px;
+    }
+
+    .cover h1 {
+      margin: 0 0 10px;
+      font-size: 42px;
+      line-height: 1.15;
+      letter-spacing: -0.8px;
+    }
+
+    .cover p {
+      margin: 0;
+      max-width: 920px;
+      color: var(--ink-2);
+      font-size: 17px;
+      line-height: 1.75;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .meta span {
+      padding: 8px 14px;
+      border: 1px solid rgba(47, 190, 119, 0.18);
+      border-radius: 999px;
+      color: var(--green-ink);
+      background: rgba(255, 255, 255, 0.72);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .section-title {
+      margin: 30px 56px 18px;
+      font-size: 24px;
+      line-height: 1.3;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(320px, 390px));
+      gap: 32px;
+      align-items: start;
+      padding: 0 56px 56px;
+    }
+
+    .phone-wrap {
+      display: grid;
+      gap: 12px;
+    }
+
+    .screen-caption {
+      padding-left: 12px;
+      color: var(--ink-2);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .phone {
+      position: relative;
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      border: 10px solid #101614;
+      border-radius: 44px;
+      background: var(--bg);
+      box-shadow: 0 22px 70px rgba(13, 40, 26, 0.22);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      z-index: 8;
+      top: 9px;
+      left: 50%;
+      width: 116px;
+      height: 28px;
+      border-radius: 0 0 18px 18px;
+      transform: translateX(-50%);
+      background: #101614;
+    }
+
+    .status {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 42px;
+      padding: 0 24px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .status .icons {
+      letter-spacing: 1px;
+    }
+
+    .app {
+      height: calc(100% - 42px);
+      overflow: hidden;
+      padding: 2px 22px 26px;
+    }
+
+    .scroll {
+      height: 100%;
+      overflow: hidden;
+      padding-bottom: 110px;
+    }
+
+    .header {
+      margin-bottom: 14px;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title {
+      font-size: 30px;
+      line-height: 1.15;
+      font-weight: 850;
+      letter-spacing: -0.6px;
+    }
+
+    .subtitle {
+      margin-top: 7px;
+      color: var(--ink-2);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .link-pill,
+    .soft-pill,
+    .green-pill,
+    .warning-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .link-pill {
+      color: var(--ink-2);
+      background: var(--neutral);
+      border: 1px solid var(--line);
+    }
+
+    .soft-pill {
+      color: var(--green-ink);
+      background: var(--mint);
+    }
+
+    .green-pill {
+      color: #fff;
+      background: var(--green);
+    }
+
+    .warning-pill {
+      color: var(--warning-ink);
+      background: var(--warning);
+    }
+
+    .hero-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid rgba(47, 190, 119, 0.18);
+      border-radius: 24px;
+      background: linear-gradient(135deg, #FFFFFF, #EAFBF2);
+      box-shadow: var(--soft-shadow);
+    }
+
+    .hero-label {
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .hero-number {
+      margin-top: 1px;
+      color: var(--green-ink);
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 900;
+    }
+
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      height: 46px;
+      margin: 14px 0 12px;
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      color: var(--ink-3);
+      background: #fff;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .tabs,
+    .mini-tabs {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      flex: 0 0 auto;
+      height: 32px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--ink-2);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 30px;
+    }
+
+    .tab.active {
+      color: #fff;
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 13px;
+    }
+
+    .book-card {
+      min-width: 0;
+      padding: 11px;
+      border: 1px solid #EEF3EF;
+      border-radius: 23px;
+      background: #fff;
+      box-shadow: var(--soft-shadow);
+    }
+
+    .cover-img {
+      position: relative;
+      display: grid;
+      place-items: center;
+      height: 160px;
+      overflow: hidden;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #FFE8C8, #8EDBB1);
+    }
+
+    .cover-img.blue {
+      background: linear-gradient(135deg, #DDEAFF, #88C4FF);
+    }
+
+    .cover-img.yellow {
+      background: linear-gradient(135deg, #FFF0A8, #FFB0A6);
+    }
+
+    .cover-img.purple {
+      background: linear-gradient(135deg, #E8D7FF, #9CC2FF);
+    }
+
+    .book-shape {
+      width: 74px;
+      height: 108px;
+      border-radius: 8px 14px 14px 8px;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 12px 24px rgba(36, 66, 49, 0.18);
+    }
+
+    .book-name {
+      margin-top: 10px;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 850;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .book-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .book-action {
+      height: 34px;
+      margin-top: 10px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--green);
+      font-size: 13px;
+      font-weight: 850;
+      line-height: 34px;
+      text-align: center;
+    }
+
+    .fab {
+      position: absolute;
+      z-index: 4;
+      left: 50%;
+      bottom: 78px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 43px;
+      padding: 0 18px;
+      border: 2px solid var(--green);
+      border-radius: 999px;
+      color: var(--green-ink);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 12px 28px rgba(47, 190, 119, 0.18);
+      transform: translateX(-50%);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .tabbar {
+      position: absolute;
+      z-index: 3;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      height: 70px;
+      padding-top: 9px;
+      border-top: 1px solid rgba(238, 243, 239, 0.95);
+      background: rgba(255, 255, 255, 0.93);
+      backdrop-filter: blur(16px);
+    }
+
+    .tabbar-item {
+      display: grid;
+      justify-items: center;
+      align-content: start;
+      gap: 3px;
+      color: #B3C0B8;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .tabbar-item .doticon {
+      width: 23px;
+      height: 23px;
+      border-radius: 9px;
+      background: currentColor;
+      opacity: 0.55;
+    }
+
+    .tabbar-item.active {
+      color: var(--green);
+    }
+
+    .detail-cover {
+      display: grid;
+      place-items: center;
+      height: 242px;
+      margin-bottom: 14px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, #DDEAFF, #8EDBB1);
+      box-shadow: var(--shadow);
+    }
+
+    .detail-book {
+      width: 120px;
+      height: 176px;
+      border-radius: 12px 22px 22px 12px;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 20px 44px rgba(36, 66, 49, 0.22);
+    }
+
+    .card {
+      margin-bottom: 13px;
+      padding: 16px;
+      border: 1px solid #EEF3EF;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: var(--soft-shadow);
+    }
+
+    .card.warning {
+      border-color: #FFE7B8;
+      color: var(--warning-ink);
+      background: var(--warning);
+      box-shadow: none;
+    }
+
+    .card-title {
+      margin-bottom: 9px;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .large-title {
+      font-size: 22px;
+      line-height: 1.2;
+      font-weight: 900;
+      letter-spacing: -0.2px;
+    }
+
+    .muted {
+      color: var(--ink-3);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .rule-list {
+      display: grid;
+      gap: 8px;
+      color: var(--ink-2);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .rule-list div::before {
+      content: "✓";
+      display: inline-grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      margin-right: 7px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--green);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .same-books {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .thumb {
+      flex: 0 0 auto;
+      width: 54px;
+      height: 72px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #FFE8C8, #8EDBB1);
+    }
+
+    .row-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .row-title {
+      overflow: hidden;
+      font-size: 14px;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bottom-actions {
+      position: absolute;
+      z-index: 4;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: grid;
+      grid-template-columns: 104px 1fr;
+      gap: 10px;
+      padding: 12px 22px 26px;
+      border-top: 1px solid rgba(238, 243, 239, 0.95);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(16px);
+    }
+
+    .button {
+      display: grid;
+      place-items: center;
+      min-height: 48px;
+      border-radius: 18px;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .button.primary {
+      color: #fff;
+      background: var(--green);
+      box-shadow: 0 12px 28px rgba(47, 190, 119, 0.28);
+    }
+
+    .button.deep {
+      color: #fff;
+      background: var(--green-ink);
+      box-shadow: 0 12px 28px rgba(12, 122, 75, 0.26);
+    }
+
+    .button.ghost {
+      color: var(--green-ink);
+      border: 1.5px solid var(--green);
+      background: #fff;
+    }
+
+    .button.disabled {
+      color: var(--ink-3);
+      background: var(--neutral);
+      box-shadow: none;
+    }
+
+    .address-card {
+      display: grid;
+      gap: 10px;
+    }
+
+    .address-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid #F0F4F1;
+      color: var(--ink-2);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .summary-row:last-child {
+      border-bottom: 0;
+    }
+
+    .summary-row b {
+      color: var(--ink);
+    }
+
+    .stepper {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin: 4px 0 14px;
+    }
+
+    .step {
+      position: relative;
+      padding: 9px 6px;
+      border-radius: 14px;
+      color: var(--ink-3);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .step.active {
+      color: #fff;
+      background: var(--green);
+    }
+
+    .select-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .select-item {
+      display: grid;
+      grid-template-columns: 22px 48px 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .check {
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid var(--line);
+      border-radius: 50%;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .select-item.selected {
+      border-color: rgba(47, 190, 119, 0.6);
+      background: #FAFFFC;
+    }
+
+    .select-item.selected .check {
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      height: 34px;
+      padding: 0 13px;
+      border-radius: 999px;
+      color: var(--ink-2);
+      background: var(--neutral);
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 34px;
+    }
+
+    .chip.active {
+      color: #fff;
+      background: var(--green);
+    }
+
+    .coin-box {
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .round-btn {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: var(--green-ink);
+      background: var(--mint);
+      font-size: 22px;
+      font-weight: 850;
+    }
+
+    .coin-value {
+      display: grid;
+      place-items: center;
+      height: 46px;
+      border-radius: 18px;
+      color: var(--green-ink);
+      background: var(--mint);
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .shelf-filter {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 13px;
+    }
+
+    .shelf-tab {
+      padding: 9px 0;
+      border-radius: 14px;
+      color: var(--ink-2);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .shelf-tab.active {
+      color: #fff;
+      background: var(--green);
+    }
+
+    .shelf-action {
+      height: 30px;
+      margin-top: 9px;
+      border-radius: 999px;
+      color: var(--green-ink);
+      background: var(--mint);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 30px;
+      text-align: center;
+    }
+
+    .mine-user {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-bottom: 13px;
+      padding: 15px;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: var(--soft-shadow);
+    }
+
+    .avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7BE2A8, #2FBE77);
+    }
+
+    .stat-pair {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 13px;
+    }
+
+    .stat-card {
+      padding: 16px;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: var(--soft-shadow);
+    }
+
+    .stat-num {
+      color: var(--green-ink);
+      font-size: 28px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .stat-label {
+      margin-top: 5px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .todo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+
+    .todo {
+      padding: 12px 6px;
+      border-radius: 18px;
+      background: var(--mint);
+      color: var(--green-ink);
+      text-align: center;
+    }
+
+    .todo b {
+      display: block;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .todo span {
+      display: block;
+      margin-top: 5px;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .menu-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid #F0F4F1;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .menu-row:last-child {
+      border-bottom: 0;
+    }
+
+    .order-card {
+      padding: 15px;
+      border: 1px solid #EEF3EF;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: var(--soft-shadow);
+    }
+
+    .order-card + .order-card {
+      margin-top: 12px;
+    }
+
+    .order-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .next-step {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border-radius: 16px;
+      color: var(--green-ink);
+      background: var(--mint);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .order-actions {
+      display: grid;
+      grid-template-columns: 1fr 92px;
+      gap: 9px;
+    }
+
+    .wallet-hero {
+      margin-bottom: 14px;
+      padding: 24px;
+      border-radius: 28px;
+      color: #fff;
+      background: linear-gradient(135deg, #34C77B, #159E63);
+      box-shadow: 0 20px 48px rgba(21, 158, 99, 0.28);
+    }
+
+    .wallet-num {
+      margin-top: 5px;
+      font-size: 56px;
+      line-height: 1;
+      font-weight: 950;
+    }
+
+    .wallet-sub {
+      margin-top: 7px;
+      opacity: 0.88;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tx {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid #F0F4F1;
+    }
+
+    .tx:last-child {
+      border-bottom: 0;
+    }
+
+    .tx-title {
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .tx-amount {
+      color: var(--green-ink);
+      font-size: 14px;
+      font-weight: 950;
+      text-align: right;
+    }
+
+    .logic {
+      max-width: 1320px;
+      margin: 0 56px 70px;
+      padding: 28px;
+      border: 1px solid rgba(47, 190, 119, 0.16);
+      border-radius: 32px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--shadow);
+    }
+
+    .logic h2 {
+      margin: 0 0 14px;
+      font-size: 24px;
+    }
+
+    .logic-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .logic-card {
+      padding: 18px;
+      border: 1px solid #EEF3EF;
+      border-radius: 22px;
+      background: #fff;
+    }
+
+    .logic-card h3 {
+      margin: 0 0 10px;
+      color: var(--green-ink);
+      font-size: 16px;
+    }
+
+    .logic-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--ink-2);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1500px) {
+      .board {
+        grid-template-columns: repeat(3, minmax(320px, 390px));
+      }
+    }
+
+    @media (max-width: 1120px) {
+      .board {
+        grid-template-columns: repeat(2, minmax(320px, 390px));
+      }
+
+      .logic-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .cover,
+      .board {
+        padding-right: 20px;
+        padding-left: 20px;
+      }
+
+      .section-title,
+      .logic {
+        margin-right: 20px;
+        margin-left: 20px;
+      }
+
+      .board {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="cover">
+    <h1>书漂漂 · 高保真改版设计稿</h1>
+    <p>这套稿件用于评审改版方向，不修改小程序源码。设计目标是让用户快速理解“送书得公益积分、接书先占用公益积分、运费到付”，同时强化待办处理和上漂供给转化。</p>
+    <div class="meta">
+      <span>品牌绿：主行动 + 公益积分</span>
+      <span>每屏一个主 CTA</span>
+      <span>规避价格化 / 交易化文案</span>
+      <span>高保真 HTML，可直接浏览评审</span>
+    </div>
+  </header>
+
+  <h2 class="section-title">关键页面设计稿</h2>
+  <main class="board">
+    <section class="phone-wrap">
+      <div class="screen-caption">1. 漂流广场 · 首屏转化</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll">
+            <div class="header">
+              <div class="topline">
+                <div class="title">漂流广场</div>
+                <div class="link-pill">玩法介绍</div>
+              </div>
+              <div class="subtitle">闲置书送出去，好书漂回来</div>
+              <div class="hero-card">
+                <div>
+                  <div class="hero-label">可用公益积分</div>
+                  <div class="hero-number">12</div>
+                </div>
+                <div class="soft-pill">怎样获得积分</div>
+              </div>
+            </div>
+            <div class="search">⌕ 搜索书名 / 作者 / ISBN</div>
+            <div class="tabs">
+              <div class="tab active">推荐</div>
+              <div class="tab">童书绘本</div>
+              <div class="tab">文学</div>
+              <div class="tab">更多筛选</div>
+            </div>
+            <div class="grid">
+              <div class="book-card">
+                <div class="cover-img"><div class="book-shape"></div></div>
+                <div class="book-name">彩虹色的花</div>
+                <div class="book-meta"><span class="soft-pill">6 积分</span><span class="link-pill">绘本</span></div>
+                <div class="book-action">申请接漂</div>
+              </div>
+              <div class="book-card">
+                <div class="cover-img blue"><div class="book-shape"></div></div>
+                <div class="book-name">小王子</div>
+                <div class="book-meta"><span class="soft-pill">8 积分</span><span class="link-pill">文学</span></div>
+                <div class="book-action">申请接漂</div>
+              </div>
+              <div class="book-card">
+                <div class="cover-img yellow"><div class="book-shape"></div></div>
+                <div class="book-name">窗边的小豆豆</div>
+                <div class="book-meta"><span class="soft-pill">5 积分</span><span class="link-pill">童书</span></div>
+                <div class="book-action">申请接漂</div>
+              </div>
+              <div class="book-card">
+                <div class="cover-img purple"><div class="book-shape"></div></div>
+                <div class="book-name">苏菲的世界</div>
+                <div class="book-meta"><span class="soft-pill">10 积分</span><span class="link-pill">社科</span></div>
+                <div class="book-action">申请接漂</div>
+              </div>
+            </div>
+          </div>
+          <div class="fab">＋ 上漂赠书</div>
+          <div class="tabbar">
+            <div class="tabbar-item active"><div class="doticon"></div><span>漂流</span></div>
+            <div class="tabbar-item"><div class="doticon"></div><span>书架</span></div>
+            <div class="tabbar-item"><div class="doticon"></div><span>我的</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="screen-caption">2. 漂流详情 · 申请前解释清楚</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll">
+            <div class="detail-cover"><div class="detail-book"></div></div>
+            <div class="card">
+              <div class="large-title">彩虹色的花</div>
+              <div class="muted">麦克·格雷涅茨</div>
+              <div class="book-meta" style="justify-content:flex-start;margin-top:12px;">
+                <span class="soft-pill">流转积分 6</span>
+                <span class="link-pill">品相良好</span>
+                <span class="warning-pill">轻量</span>
+              </div>
+              <div class="muted" style="margin-top:10px;">从 上海 寄出 · 快递到付</div>
+            </div>
+            <div class="card">
+              <div class="card-title">接漂前知道</div>
+              <div class="rule-list">
+                <div>申请成功后会先占用 6 公益积分</div>
+                <div>运费为快递到付，收件时向快递员支付</div>
+                <div>确认收货后完成本次公益积分记录</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">内容介绍</div>
+              <div class="muted">关于分享与生命的绘本。适合亲子共读，画面明亮，文字简洁。</div>
+            </div>
+            <div class="card">
+              <div class="card-title">同一赠书方还有 3 本</div>
+              <div class="muted" style="margin-bottom:10px;">一起申请通常只需一次到付运费</div>
+              <div class="same-books">
+                <div class="row"><div class="thumb"></div><div class="row-main"><div class="row-title">好饿的毛毛虫</div><div class="muted">流转积分 5</div></div><span>›</span></div>
+                <div class="row"><div class="thumb" style="background:linear-gradient(135deg,#DDEAFF,#88C4FF);"></div><div class="row-main"><div class="row-title">猜猜我有多爱你</div><div class="muted">流转积分 6</div></div><span>›</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row">
+                <div class="avatar" style="width:44px;height:44px;"></div>
+                <div><div class="row-title">匿名书友</div><div class="muted">信用积分 100 · 寄出地：上海</div></div>
+              </div>
+            </div>
+            <div class="muted" style="text-align:center;padding:4px 0 20px;">举报这本书</div>
+          </div>
+          <div class="bottom-actions">
+            <div class="button ghost">☆ 想要</div>
+            <div class="button primary">申请接漂</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="screen-caption">3. 申请接漂 · 确认摘要</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll">
+            <div class="header">
+              <div class="title">申请接漂</div>
+              <div class="subtitle">确认地址、公益积分占用和到付说明</div>
+            </div>
+            <div class="card row">
+              <div class="thumb" style="width:64px;height:86px;background:linear-gradient(135deg,#FFE8C8,#8EDBB1);"></div>
+              <div class="row-main">
+                <div class="row-title">彩虹色的花</div>
+                <div class="book-meta" style="justify-content:flex-start;margin-top:8px;"><span class="soft-pill">流转积分 6</span><span class="warning-pill">轻量</span></div>
+              </div>
+            </div>
+            <div class="card address-card">
+              <div class="card-title">收货地址</div>
+              <div>
+                <div class="row-title">张三 138****8888</div>
+                <div class="muted">上海市 徐汇区 漕河泾街道 88 号</div>
+              </div>
+              <div class="address-actions">
+                <div class="button ghost" style="min-height:38px;font-size:13px;">更换地址</div>
+                <div class="button ghost" style="min-height:38px;font-size:13px;">读取微信地址</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">本次申请摘要</div>
+              <div class="summary-row"><span>将占用公益积分</span><b>6</b></div>
+              <div class="summary-row"><span>运费方式</span><b>快递到付</b></div>
+              <div class="summary-row"><span>寄出参考地</span><b>上海</b></div>
+              <div class="summary-row"><span>同时未收货</span><b>最多 5 单</b></div>
+            </div>
+            <div class="card warning">
+              <div class="card-title">到付说明</div>
+              <div style="font-size:13px;line-height:1.5;font-weight:750;">平台不收取物流费用。赠书方寄出到付件，你在收件时向快递员支付运费。</div>
+            </div>
+          </div>
+          <div class="bottom-actions" style="grid-template-columns:1fr;">
+            <div class="button deep">确认申请接漂</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="screen-caption">4. 上漂赠书 · 步骤化表单</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll">
+            <div class="header">
+              <div class="title">上漂赠书</div>
+              <div class="subtitle">选择书籍并设置品相，提交后进入漂流池</div>
+            </div>
+            <div class="stepper">
+              <div class="step active">1 选书</div>
+              <div class="step active">2 品相</div>
+              <div class="step active">3 积分</div>
+              <div class="step">4 确认</div>
+            </div>
+            <div class="card">
+              <div class="card-title">选择要送出的书</div>
+              <div class="select-list">
+                <div class="select-item selected">
+                  <div class="check">✓</div><div class="thumb" style="width:48px;height:64px;"></div>
+                  <div><div class="row-title">彩虹色的花</div><div class="muted">绘本 · 默认书架</div></div>
+                </div>
+                <div class="select-item">
+                  <div class="check"></div><div class="thumb" style="width:48px;height:64px;background:linear-gradient(135deg,#DDEAFF,#88C4FF);"></div>
+                  <div><div class="row-title">小王子</div><div class="muted">文学 · 卧室书架</div></div>
+                </div>
+              </div>
+              <div class="muted" style="margin-top:10px;">也可以继续选择多本一起上漂</div>
+            </div>
+            <div class="card">
+              <div class="card-title">描述品相</div>
+              <div class="chips">
+                <div class="chip">几乎全新</div>
+                <div class="chip active">良好</div>
+                <div class="chip">明显使用痕迹</div>
+                <div class="chip">有折角</div>
+                <div class="chip">有笔记</div>
+                <div class="chip">有脏污</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">公益积分</div>
+              <div class="muted">系统按图书定价和品相给出建议积分</div>
+              <div class="coin-box">
+                <div class="round-btn">−</div>
+                <div class="coin-value">6 积分</div>
+                <div class="round-btn">＋</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">漂流设置</div>
+              <div class="chips">
+                <div class="chip active">匿名漂流</div>
+                <div class="chip">昵称漂流</div>
+              </div>
+              <div class="muted" style="margin-top:10px;">寄出参考地：上海（供接漂方参考到付运费）</div>
+            </div>
+          </div>
+          <div class="bottom-actions" style="grid-template-columns:1fr;">
+            <div class="button primary">提交上漂</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="screen-caption">5. 我的书架 · 供给入口增强</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll">
+            <div class="header">
+              <div class="topline">
+                <div class="title">我的书架</div>
+                <div class="link-pill">编辑名称</div>
+              </div>
+              <div class="subtitle">剩余可收藏 23 本 · 兑换额度 ›</div>
+            </div>
+            <div class="search">⌕ 搜索书名、作者、ISBN</div>
+            <div class="shelf-filter">
+              <div class="shelf-tab active">全部</div>
+              <div class="shelf-tab">可上漂</div>
+              <div class="shelf-tab">已上漂</div>
+              <div class="shelf-tab">想读</div>
+            </div>
+            <div class="grid">
+              <div class="book-card">
+                <div class="cover-img"><div class="book-shape"></div></div>
+                <div class="book-name">彩虹色的花</div>
+                <div class="muted">麦克·格雷涅茨 · 未读</div>
+                <div class="shelf-action">上漂这本</div>
+              </div>
+              <div class="book-card">
+                <div class="cover-img blue"><div class="book-shape"></div></div>
+                <div class="book-name">小王子</div>
+                <div class="muted">圣埃克苏佩里 · 读过</div>
+                <div class="shelf-action">上漂这本</div>
+              </div>
+              <div class="book-card">
+                <div class="cover-img yellow"><div class="book-shape"></div></div>
+                <div class="book-name">好饿的毛毛虫</div>
+                <div class="muted">艾瑞·卡尔 · 在漂流</div>
+                <div class="shelf-action" style="color:var(--ink-2);background:var(--neutral);">查看漂流</div>
+              </div>
+              <div class="book-card">
+                <div class="cover-img purple"><div class="book-shape"></div></div>
+                <div class="book-name">苏菲的世界</div>
+                <div class="muted">乔斯坦·贾德 · 未读</div>
+                <div class="shelf-action">上漂这本</div>
+              </div>
+            </div>
+          </div>
+          <div class="fab">＋ 添加书籍</div>
+          <div class="tabbar">
+            <div class="tabbar-item"><div class="doticon"></div><span>漂流</span></div>
+            <div class="tabbar-item active"><div class="doticon"></div><span>书架</span></div>
+            <div class="tabbar-item"><div class="doticon"></div><span>我的</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="screen-caption">6. 我的 · 待办优先</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll">
+            <div class="mine-user">
+              <div class="avatar"></div>
+              <div class="row-main">
+                <div class="row-title" style="font-size:18px;">书漂用户</div>
+                <div class="muted">编辑资料 ›</div>
+              </div>
+            </div>
+            <div class="stat-pair">
+              <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">公益积分</div></div>
+              <div class="stat-card"><div class="stat-num">100</div><div class="stat-label">信用积分</div></div>
+            </div>
+            <div class="card">
+              <div class="card-title">待处理</div>
+              <div class="todo-grid">
+                <div class="todo"><b>2</b><span>待发货</span></div>
+                <div class="todo"><b>1</b><span>待确认</span></div>
+                <div class="todo"><b>1</b><span>待评价</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">漂流记录</div>
+              <div class="menu-row"><span>我送出的书</span><span>›</span></div>
+              <div class="menu-row"><span>我接到的书</span><span>›</span></div>
+            </div>
+            <div class="card">
+              <div class="card-title">积分与规则</div>
+              <div class="menu-row"><span>公益积分明细</span><span>›</span></div>
+              <div class="menu-row"><span>信用积分明细</span><span>›</span></div>
+              <div class="menu-row"><span>隐私政策 / 设置</span><span>›</span></div>
+            </div>
+            <div class="card">
+              <div class="topline">
+                <div>
+                  <div class="card-title" style="margin-bottom:4px;">邀请书友一起漂书</div>
+                  <div class="muted">让闲置书被更多人读到</div>
+                </div>
+                <div class="green-pill">邀请</div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tabbar-item"><div class="doticon"></div><span>漂流</span></div>
+            <div class="tabbar-item"><div class="doticon"></div><span>书架</span></div>
+            <div class="tabbar-item active"><div class="doticon"></div><span>我的</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="screen-caption">7. 我送出的书 · 下一步明确</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll" style="padding-bottom:30px;">
+            <div class="header">
+              <div class="title">我送出的书</div>
+              <div class="subtitle">优先处理待发货和即将到期的漂流</div>
+            </div>
+            <div class="tabs">
+              <div class="tab active">待我发货 2</div>
+              <div class="tab">运输中</div>
+              <div class="tab">已完成</div>
+            </div>
+            <div class="order-card">
+              <div class="order-head"><span class="green-pill">待我发货</span><span class="warning-pill">剩 2 天</span></div>
+              <div class="row">
+                <div class="thumb"></div>
+                <div class="row-main"><div class="row-title">彩虹色的花</div><div class="muted">领书方：匿名书友 · 上海</div></div>
+              </div>
+              <div class="next-step">下一步：请寄出到付件并填写运单号</div>
+              <div class="order-actions">
+                <div class="button primary" style="min-height:42px;">去发货</div>
+                <div class="button ghost" style="min-height:42px;color:var(--danger);border-color:#FFD9D9;">取消</div>
+              </div>
+            </div>
+            <div class="order-card">
+              <div class="order-head"><span class="green-pill">待我发货</span><span class="link-pill">合并 3 本</span></div>
+              <div class="row">
+                <div class="thumb" style="background:linear-gradient(135deg,#DDEAFF,#88C4FF);"></div>
+                <div class="row-main"><div class="row-title">好饿的毛毛虫等 3 本</div><div class="muted">同一收件地址 · 凑单到付</div></div>
+              </div>
+              <div class="next-step">下一步：合并寄出后一次填写运单</div>
+              <div class="order-actions">
+                <div class="button primary" style="min-height:42px;">去发货</div>
+                <div class="button ghost" style="min-height:42px;color:var(--danger);border-color:#FFD9D9;">取消</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phone-wrap">
+      <div class="screen-caption">8. 公益积分明细 · 概念解释</div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span class="icons">5G ▰</span></div>
+        <div class="app">
+          <div class="scroll" style="padding-bottom:30px;">
+            <div class="wallet-hero">
+              <div class="topline">
+                <div style="font-size:14px;font-weight:850;">可用公益积分</div>
+                <div class="link-pill" style="background:rgba(255,255,255,.22);color:#fff;border-color:rgba(255,255,255,.28);">获得积分</div>
+              </div>
+              <div class="wallet-num">12</div>
+              <div class="wallet-sub">占用中 6 · 累计记录 38</div>
+            </div>
+            <div class="card">
+              <div class="card-title">公益积分怎么用</div>
+              <div class="rule-list">
+                <div>接漂时先占用公益积分</div>
+                <div>收货完成后记录扣除</div>
+                <div>上漂完成后记录增加</div>
+              </div>
+            </div>
+            <div class="tabs">
+              <div class="tab active">全部</div>
+              <div class="tab">增加</div>
+              <div class="tab">占用</div>
+              <div class="tab">释放</div>
+            </div>
+            <div class="card">
+              <div class="card-title">明细</div>
+              <div class="tx">
+                <div><div class="tx-title">完成赠书记录</div><div class="muted">今天 14:20</div></div>
+                <div><div class="tx-amount">+6</div><div class="muted">累计 38</div></div>
+              </div>
+              <div class="tx">
+                <div><div class="tx-title">接漂占用</div><div class="muted">昨天 19:12</div></div>
+                <div><div class="tx-amount" style="color:var(--warning-ink);">占用 +6</div><div class="muted">可用 12</div></div>
+              </div>
+              <div class="tx">
+                <div><div class="tx-title">取消接漂释放占用</div><div class="muted">6 月 25 日</div></div>
+                <div><div class="tx-amount">释放 5</div><div class="muted">可用 18</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="logic">
+    <h2>非 UI / 交互层面的逻辑改动清单</h2>
+    <div class="logic-grid">
+      <div class="logic-card">
+        <h3>列表与筛选逻辑</h3>
+        <ul>
+          <li>漂流广场默认从“三种筛选模式”改为“推荐 + 高频类目”，复杂筛选收进面板。</li>
+          <li>新增“推荐”排序策略：可优先同城/近距离、有封面、可接漂、信用良好、轻量书。</li>
+          <li>保留原有品类、积分、品相筛选，但入口和状态管理需要调整。</li>
+        </ul>
+      </div>
+      <div class="logic-card">
+        <h3>接漂申请逻辑</h3>
+        <ul>
+          <li>申请页需要聚合展示地址、可用公益积分、占用积分、寄出地、未收货上限。</li>
+          <li>确认按钮状态需要依赖地址是否存在、公益积分是否足够、是否触达 5 单上限。</li>
+          <li>积分不足时建议从“直接失败”前移为“主按钮降级 + 引导获得积分 / 加入想要”。</li>
+        </ul>
+      </div>
+      <div class="logic-card">
+        <h3>上漂发布逻辑</h3>
+        <ul>
+          <li>发布页需要步骤状态：选书、品相、积分、确认，但可继续单页提交。</li>
+          <li>定价缺失应在选择阶段阻断或强提示，不建议提交时静默自动取消。</li>
+          <li>书架卡片直达上漂时，需要携带 shelfBookId 并预选对应书籍。</li>
+        </ul>
+      </div>
+      <div class="logic-card">
+        <h3>书架供给逻辑</h3>
+        <ul>
+          <li>书架新增“可上漂 / 已上漂”视图，需要使用 canPublishDrift、漂流状态做筛选。</li>
+          <li>书卡按钮根据状态切换：上漂这本、查看漂流、不可上漂原因。</li>
+          <li>容量不足时添加书籍入口先提示兑换额度，不进入无效添加流程。</li>
+        </ul>
+      </div>
+      <div class="logic-card">
+        <h3>我的与订单逻辑</h3>
+        <ul>
+          <li>我的页待办模块需要按状态聚合并支持点击直达订单列表对应状态。</li>
+          <li>订单卡新增 nextStep 文案字段，按赠出方/接漂方视角计算下一步。</li>
+          <li>合并发货订单要显示 orderCount、同一收件地址、合并发货入口。</li>
+        </ul>
+      </div>
+      <div class="logic-card">
+        <h3>积分明细逻辑</h3>
+        <ul>
+          <li>“总记录值”文案改为“累计记录”，展示逻辑仍来自现有 balance。</li>
+          <li>交易流水增加分类视图：全部、增加、占用、释放、扣除。</li>
+          <li>流水描述需要统一为公益积分语义，继续避免钱包、余额、购买式表达。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

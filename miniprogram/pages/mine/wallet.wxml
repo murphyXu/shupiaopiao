@@ -5,7 +5,15 @@
       <view class="wallet-earn-action" bindtap="showEarnPointGuide">获得积分</view>
     </view>
     <view class="hero-num">{{available}}</view>
-    <view class="hero-muted">占用中 {{frozen}} · 总记录值 {{balance}}</view>
+    <view class="hero-muted">占用中 {{frozen}} · 累计记录 {{balance}}</view>
+    <view class="hero-formula">可用 = 累计记录 − 占用中</view>
+  </view>
+
+  <view class="card howto-card">
+    <view class="howto-title">公益积分怎么用</view>
+    <view class="howto-line">接漂时先占用</view>
+    <view class="howto-line">确认收货后记录扣除</view>
+    <view class="howto-line">上漂完成后记录增加</view>
   </view>
 
   <view wx:for="{{transactions}}" wx:key="id" class="card tx-item">
@@ -15,7 +23,7 @@
         <view class="muted time">{{item.createdAt}}</view>
       </view>
       <view>
-        <view class="amount {{item.balanceDelta > 0 ? 'plus' : (item.balanceDelta < 0 ? 'minus' : 'neutral')}}">余额 {{item.balanceAfter}}</view>
+        <view class="amount {{item.balanceDelta > 0 ? 'plus' : (item.balanceDelta < 0 ? 'minus' : 'neutral')}}">剩余 {{item.balanceAfter}}</view>
         <view wx:if="{{item.balanceDelta}}" class="muted">变动 {{item.balanceDelta > 0 ? '+' : ''}}{{item.balanceDelta}}</view>
         <view wx:if="{{item.frozenDelta}}" class="muted">占用 {{item.frozenDelta > 0 ? '+' : ''}}{{item.frozenDelta}}</view>
       </view>

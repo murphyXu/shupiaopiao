@@ -1,7 +1,9 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "漂流广场",
+  "navigationBarTitleText": "书漂漂",
+  "onReachBottomDistance": 80,
   "usingComponents": {
+    "custom-nav-bar": "/components/custom-nav-bar/index",
     "earn-point-guide-modal": "/components/earn-point-guide-modal/index"
   }
 }

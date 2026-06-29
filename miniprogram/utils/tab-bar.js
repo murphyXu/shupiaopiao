@@ -7,18 +7,26 @@ function setTabBarIndex(index) {
   }
 }
 
-function applyTabBarBadge(badge) {
+function applyTabBarData(patch) {
   const pages = getCurrentPages();
   for (let i = pages.length - 1; i >= 0; i -= 1) {
     const page = pages[i];
     if (typeof page.getTabBar !== 'function') continue;
     const tabBar = page.getTabBar();
     if (tabBar) {
-      tabBar.setData({ mineBadge: badge });
+      tabBar.setData(patch);
       return true;
     }
   }
   return false;
+}
+
+function setTabBarHidden(hidden) {
+  return applyTabBarData({ hidden: !!hidden });
+}
+
+function applyTabBarBadge(badge) {
+  return applyTabBarData({ mineBadge: badge });
 }
 
 /** 刷新「我的」Tab 待发货角标（仅角标，无横幅） */
@@ -39,5 +47,6 @@ function refreshTabBarPendingShip() {
 
 module.exports = {
   setTabBarIndex,
+  setTabBarHidden,
   refreshTabBarPendingShip,
 };

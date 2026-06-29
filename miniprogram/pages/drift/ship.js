@@ -9,6 +9,11 @@ const {
 } = require('../../utils/shipping');
 const { EXPRESS_MINI_PROGRAMS, openExpressMiniProgram } = require('../../utils/expressApps');
 const { validateTrackingNo } = require('../../utils/trackingNo');
+const {
+  buildCancelSuccessTitle,
+  cancelCreditDelta,
+  promptCancelConfirm,
+} = require('../../utils/pointFeedback');
 
 const EXPRESS_SHEET_ALERT = '收件信息已复制，选快递后粘贴地址';
 
@@ -177,20 +182,22 @@ Page({
     }
   },
 
-  cancel() {
-    wx.showModal({
+  async cancel() {
+    const firstOrder = this.data.isBundle
+      ? ((this.data.bundleDetail && this.data.bundleDetail.orders) || [])[0]
+      : null;
+    const orderId = firstOrder ? firstOrder.id : this.orderId;
+    const order = firstOrder || (this.data.detail && this.data.detail.order) || {};
+    const confirmed = await promptCancelConfirm({
       title: '取消漂流',
-      content: '发货前取消将释放接漂方占用积分，并记录信用积分变化。是否继续？',
-      success: async (res) => {
-        if (!res.confirm) return;
-        const firstOrder = this.data.isBundle
-          ? ((this.data.bundleDetail && this.data.bundleDetail.orders) || [])[0]
-          : null;
-        const orderId = firstOrder ? firstOrder.id : this.orderId;
-        await api.cancelOrder(orderId, '取消漂流');
-        wx.navigateBack();
-      },
+      role: 'GIVER',
+      coinValue: order.coinValue,
+      creditDelta: cancelCreditDelta('GIVER'),
     });
+    if (!confirmed) return;
+    await api.cancelOrder(orderId, '取消漂流');
+    wx.showToast({ title: buildCancelSuccessTitle(), icon: 'none' });
+    wx.navigateBack();
   },
 
   async submit() {
@@ -211,7 +218,7 @@ Page({
         });
         const firstOrder = ((this.data.bundleDetail && this.data.bundleDetail.orders) || [])[0];
         if (firstOrder && firstOrder.id) {
-          wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${firstOrder.id}&role=given` });
+          wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${firstOrder.id}&role=given&milestone=ship` });
         } else {
           wx.navigateBack();
         }
@@ -221,7 +228,7 @@ Page({
         expressCompany,
         trackingNo: check.normalized,
       });
-      wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${this.orderId}&role=given` });
+      wx.redirectTo({ url: `/pages/drift/order-detail?orderId=${this.orderId}&role=given&milestone=ship` });
     } finally {
       this.setData({ submitting: false });
     }

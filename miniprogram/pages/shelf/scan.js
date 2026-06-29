@@ -12,23 +12,20 @@ function inferBookClass(book = {}) {
   const byLabel = {
     童书: 'child',
     文学: 'literature',
-    社科: 'social',
+    社科: 'literature',
     经管: 'business',
-    科普: 'science',
-    生活: 'life',
-    艺术: 'art',
+    科普: 'business',
+    生活: 'other',
+    艺术: 'literature',
     其他: 'other',
   };
   if (byLabel[label]) return byLabel[label];
   const text = [book.category, book.ageRange, book.title, book.summary, book.publisher].filter(Boolean).join(' ');
   if (/^I28/i.test(book.sourceClc || book.category || '')) return 'child';
-  if (/童书|绘本|儿童|亲子|童话|叶罗丽|萝卜回来了|0-3|3-6|6-9|9-12/.test(text)) return 'child';
-  if (/经管|商业|管理|创业|金融|理财/.test(text)) return 'business';
-  if (/科普|科学|自然|技术|计算机/.test(text)) return 'science';
-  if (/社科|社会|历史|心理|哲学|传记/.test(text)) return 'social';
-  if (/艺术|设计|摄影|音乐/.test(text)) return 'art';
-  if (/生活|旅行|美食|家居/.test(text)) return 'life';
-  if (/文学|小说|诗|散文|名著/.test(text)) return 'literature';
+  if (/^I712/i.test(book.sourceClc || book.category || '')) return 'child';
+  if (/童书|绘本|儿童|亲子|童话|叶罗丽|萝卜回来了|0-3|3-6|6-9|9-12|海底\d*层|10000层|100层|一万层|岩井俊雄/.test(text)) return 'child';
+  if (/经管|商业|管理|创业|金融|理财|科普|科学|技术|计算机/.test(text)) return 'business';
+  if (/社科|社会|历史|心理|哲学|传记|艺术|设计|摄影|音乐|文学|小说|诗|散文|名著/.test(text)) return 'literature';
   return 'other';
 }
 
@@ -157,12 +154,13 @@ Page({
       return true;
     } catch (e) {
       console.error(e);
-      const message = e.message || '';
+      const message = e.message || '加入书架失败';
       if (this.data.continuousScan && /已在书架/.test(message)) {
         this.setData({ batchMessage: '这本已在书架，继续扫下一本' });
         setTimeout(() => this.doScan(), 700);
         return false;
       }
+      wx.showToast({ title: message, icon: 'none' });
       return false;
     }
   },
@@ -173,7 +171,9 @@ Page({
 
   goPublish() {
     if (!this.data.book) return;
-    wx.navigateTo({ url: `/pages/drift/publish?bookId=${this.data.book.id}` });
+    const query = [`bookId=${this.data.book.id}`];
+    if (this.data.shelfId) query.push(`shelfBookId=${this.data.shelfId}`);
+    wx.navigateTo({ url: `/pages/drift/publish?${query.join('&')}` });
   },
 
   manualAdd() {

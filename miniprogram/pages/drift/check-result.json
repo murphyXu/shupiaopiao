@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "检测结果" }
+{
+  "navigationBarTitleText": "检测结果",
+  "usingComponents": {
+    "official-account-follow-block": "/components/official-account-follow-block/index"
+  }
+}

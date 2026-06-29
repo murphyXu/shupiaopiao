@@ -5,12 +5,19 @@ const {
 const { resolveByIsbn } = require('../lib/bookLookup');
 const { cleanBookTitle } = require('../lib/bookLookupPolicy');
 const { normalizeIsbn } = require('../lib/bookCatalog');
+const { attachMedianPrices } = require('../lib/pricingCache');
 const { normalizeBookCategory, resolveShelfCategory, resolveShelfBookClass } = require('../lib/bookCategory');
 const { assertSafeTextFields } = require('../lib/contentSecurity');
 const { availableCoin, SHELF_CAPACITY_PER_COIN } = require('../lib/driftPolicy');
 const { CONDITION_LABELS } = require('../lib/pricing');
 const { formatDisplayBook } = require('../lib/bookCover');
 const { cacheBooksForList } = require('../lib/listCoverCache');
+const { countShelfCapacityUsage } = require('../lib/shelfCapacity');
+const {
+  getShelfDashboardForUser,
+  invalidateShelfDashboardCache,
+  refreshShelfDashboardCache,
+} = require('../lib/shelfDashboard');
 
 const READING_STATUS_LABELS = {
   reading: '在读',
@@ -21,29 +28,37 @@ const READING_STATUS_LABELS = {
 const BOOK_CLASS_LABELS = {
   child: '童书',
   literature: '文学',
-  social: '社科',
   business: '经管',
-  science: '科普',
-  life: '生活',
-  art: '艺术',
   other: '其他',
 };
 
+const LEGACY_BOOK_CLASS_TO_PUBLIC = {
+  children: 'child',
+  social: 'literature',
+  science: 'business',
+  art: 'literature',
+  life: 'other',
+};
+
 const DEFAULT_LOCATION = { key: 'shelf_1', name: '默认书架 1' };
-const SHELF_PURPOSE_DRIFT_QUICK = 'drift_quick';
 
-function normalizeShelfPurpose(value) {
-  return value === SHELF_PURPOSE_DRIFT_QUICK ? SHELF_PURPOSE_DRIFT_QUICK : 'normal';
+const BOOK_CLASS_FILTER_MAP = {
+  child: 'child',
+  literature: 'literature',
+  business: 'business',
+  other: 'other',
+  童书: 'child',
+  文学: 'literature',
+  经管: 'business',
+  其他: 'other',
+};
+
+function resolveBookClassFilter(value = '') {
+  const key = String(value || '').trim();
+  if (!key || key === 'all') return '';
+  return BOOK_CLASS_FILTER_MAP[key] || '';
 }
 
-function isQuickShelfRow(row = {}) {
-  return normalizeShelfPurpose(row.purpose) === SHELF_PURPOSE_DRIFT_QUICK;
-}
-
-function filterShelfRowsForList(rows = [], data = {}) {
-  if (data.includeQuick) return rows;
-  return rows.filter((row) => !isQuickShelfRow(row));
-}
 const ACTIVE_SHELF_DRIFT_STATUSES = ['PENDING_REVIEW', 'IN_POOL', 'CLAIMED'];
 const CLAIMED_SHELF_DRIFT_STATUSES = ['CLAIMED'];
 const CANCELABLE_SHELF_DRIFT_STATUSES = ['PENDING_REVIEW', 'IN_POOL'];
@@ -57,6 +72,12 @@ function getShelfLimit(user = {}) {
   return Math.max(Number(user.shelfLimit) || DEFAULT_SHELF_LIMIT, DEFAULT_SHELF_LIMIT);
 }
 
+function transactionDocData(snap) {
+  const data = snap && snap.data;
+  if (Array.isArray(data)) return data[0] || null;
+  return data || null;
+}
+
 function parseListPrice(value) {
   const match = String(value || '').replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
   return match ? Number(match[1]) : 0;
@@ -68,8 +89,7 @@ function formatPriceTotal(value) {
 }
 
 async function getShelfUsage(userId) {
-  const { total } = await db.collection('shelf_books').where({ userId }).count();
-  return total;
+  return countShelfCapacityUsage(db, userId);
 }
 
 async function ensureShelfCapacity(user) {
@@ -91,10 +111,15 @@ function inferBookClass(book = {}, legacyCategory = '') {
   return resolveShelfBookClass(book);
 }
 
+function normalizeBookClass(value, fallback = 'other') {
+  const key = LEGACY_BOOK_CLASS_TO_PUBLIC[value] || value || fallback;
+  return BOOK_CLASS_LABELS[key] ? key : fallback;
+}
+
 function normalizeShelfMeta(row = {}, book = {}, data = {}) {
   const readingStatus = normalizeReadingStatus(data.readingStatus || row.readingStatus, data.category || row.category);
   const resolvedBookClass = resolveShelfBookClass(book);
-  const bookClass = data.bookClass || row.bookClass || resolvedBookClass || 'other';
+  const bookClass = normalizeBookClass(data.bookClass || row.bookClass, resolvedBookClass || 'other');
   const shelfLocationKey = data.shelfLocationKey || row.shelfLocationKey || DEFAULT_LOCATION.key;
   const shelfLocationName = String(data.shelfLocationName || row.shelfLocationName || DEFAULT_LOCATION.name).trim() || DEFAULT_LOCATION.name;
   return {
@@ -127,7 +152,7 @@ function formatActiveDrift(drift) {
   };
 }
 
-function formatShelfBook(row, book, activeDrift = null) {
+function formatShelfBook(row, book, activeDrift = null, driftedOut = false) {
   const resolvedCategory = resolveShelfCategory(book);
   const meta = normalizeShelfMeta(row, book);
   const sourceCategory = resolvedCategory.label || meta.bookClassLabel || '未分类';
@@ -155,6 +180,7 @@ function formatShelfBook(row, book, activeDrift = null) {
     createdAt: row.createdAt,
     activeDrift: formatActiveDrift(activeDrift),
     canPublishDrift: !activeDrift,
+    driftedOut: !!driftedOut,
     book: formattedBook,
   };
 }
@@ -173,6 +199,16 @@ async function activeDriftsByShelfBook(userId, shelfBookIds = []) {
     if (!map[drift.shelfBookId]) map[drift.shelfBookId] = drift;
   });
   return map;
+}
+
+async function shelfDriftContext(userId, shelfBookIds = []) {
+  const ids = shelfBookIds.filter(Boolean);
+  if (!ids.length) return { activeDrifts: {}, completedIds: new Set() };
+  const [activeDrifts, completedIds] = await Promise.all([
+    activeDriftsByShelfBook(userId, ids),
+    completedDriftShelfIds(userId, ids),
+  ]);
+  return { activeDrifts, completedIds };
 }
 
 async function completedDriftShelfIds(userId, shelfBookIds = []) {
@@ -208,17 +244,12 @@ async function filterCountableShelfRows(userId, rows = []) {
 }
 
 async function enrichBookPrices(bookList = []) {
-  const isbns = bookList.map((book) => normalizeIsbn(book.isbn)).filter(Boolean);
+  const isbns = [...new Set(bookList.map((book) => normalizeIsbn(book.isbn)).filter(Boolean))];
   if (!isbns.length) return bookList;
   const { data: prices } = await db.collection('pricing_cache').where({ isbn: db.command.in(isbns) }).get();
   const priceMap = {};
   prices.forEach((item) => { priceMap[item.isbn] = item; });
-  return bookList.map((book) => {
-    if (book.listPrice) return book;
-    const cached = priceMap[normalizeIsbn(book.isbn)];
-    if (!cached || !cached.medianPrice) return book;
-    return { ...book, listPrice: `¥${cached.medianPrice}`, listPriceSource: 'pricing_cache' };
-  });
+  return attachMedianPrices(bookList, priceMap);
 }
 
 async function booksByIdsWithPrices(bookIds = []) {
@@ -252,6 +283,19 @@ async function buildCollectionStats(userId, allShelfRows = []) {
   };
 }
 
+async function dashboardSummaryFromRows(user, allShelfRows = []) {
+  const stats = await buildCollectionStats(user._id, allShelfRows);
+  const shelfLimit = getShelfLimit(user);
+  const capacityUsed = await getShelfUsage(user._id);
+  return {
+    totalBooks: stats.totalBooks,
+    totalValue: stats.totalValue,
+    totalListPrice: stats.totalListPrice,
+    shelfLimit,
+    remainingCapacity: Math.max(shelfLimit - capacityUsed, 0),
+  };
+}
+
 async function healStaleBookClassification(rows = [], books = {}) {
   const shelfPatches = [];
   const bookPatches = [];
@@ -259,17 +303,21 @@ async function healStaleBookClassification(rows = [], books = {}) {
     const book = books[row.bookId];
     if (!book) return;
     const resolved = resolveShelfCategory(book);
-    const hasShelfClass = !!(row.bookClass && BOOK_CLASS_LABELS[row.bookClass]);
+    const normalizedRowClass = normalizeBookClass(row.bookClass, '');
+    const hasShelfClass = !!(normalizedRowClass && BOOK_CLASS_LABELS[normalizedRowClass]);
     if (!row.bookClassManual) {
       if (!hasShelfClass && row.bookClass !== resolved.key) {
         shelfPatches.push({ id: row._id, bookClass: resolved.key });
         row.bookClass = resolved.key;
       } else if (!hasShelfClass) {
         row.bookClass = resolved.key;
+      } else if (row.bookClass !== normalizedRowClass) {
+        shelfPatches.push({ id: row._id, bookClass: normalizedRowClass });
+        row.bookClass = normalizedRowClass;
       }
     }
     const targetLabel = (row.bookClassManual || hasShelfClass)
-      ? (BOOK_CLASS_LABELS[row.bookClass] || resolved.label)
+      ? (BOOK_CLASS_LABELS[normalizeBookClass(row.bookClass, resolved.key)] || resolved.label)
       : resolved.label;
     if (book._id && book.category !== targetLabel) {
       bookPatches.push({ id: book._id, category: targetLabel });
@@ -290,15 +338,55 @@ async function healStaleBookClassification(rows = [], books = {}) {
 async function list(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
-  const category = data.category;
-  const page = Number(data.page) || 1;
-  const size = Math.min(Number(data.size) || 200, 500);
-  const { data: allRows } = await db.collection('shelf_books').where({ userId: user._id }).orderBy('createdAt', 'desc').limit(500).get();
-  const visibleRows = filterShelfRowsForList(allRows, data);
-  const rows = (category && category !== 'all')
-    ? visibleRows.filter((row) => normalizeReadingStatus(row.readingStatus, row.category) === category)
-    : visibleRows;
-  const pageRows = rows.slice((page - 1) * size, page * size);
+  const includeDashboard = data.includeDashboard === true;
+  const page = Math.max(Number(data.page) || 1, 1);
+  const size = Math.min(Number(data.size) || 30, 100);
+  const readingStatus = data.readingStatus || data.category;
+  const bookClass = resolveBookClassFilter(data.bookClass || data.bookClassChip);
+  const shelfLocationName = String(data.shelfLocationName || '').trim();
+  const keyword = String(data.searchKeyword || '').trim().toLowerCase();
+
+  const where = { userId: user._id };
+  if (readingStatus && readingStatus !== 'all') {
+    where.readingStatus = normalizeReadingStatus(readingStatus);
+  }
+  if (bookClass) where.bookClass = bookClass;
+  if (shelfLocationName && shelfLocationName !== 'all') where.shelfLocationName = shelfLocationName;
+
+  let rows = [];
+  let total = 0;
+  if (keyword) {
+    const { data: allRows } = await db.collection('shelf_books').where(where).orderBy('createdAt', 'desc').limit(500).get();
+    const books = allRows.length
+      ? await booksByIdsWithPrices(allRows.map((row) => row.bookId))
+      : {};
+    rows = allRows.filter((row) => {
+      const book = books[row.bookId];
+      if (!book) return false;
+      const text = [
+        book.title,
+        book.rawTitle,
+        book.author,
+        book.isbn,
+        book.publisher,
+        row.shelfLocationName,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return text.includes(keyword);
+    });
+    total = rows.length;
+    rows = rows.slice((page - 1) * size, page * size);
+  } else {
+    const { total: rowTotal } = await db.collection('shelf_books').where(where).count();
+    total = rowTotal || 0;
+    const { data: pageRows } = await db.collection('shelf_books').where(where)
+      .orderBy('createdAt', 'desc')
+      .skip((page - 1) * size)
+      .limit(size)
+      .get();
+    rows = pageRows || [];
+  }
+
+  const pageRows = rows;
   const bookIds = pageRows.map((r) => r.bookId);
   const books = {};
   if (bookIds.length) {
@@ -306,16 +394,65 @@ async function list(openid, data) {
     const pricedBooks = await enrichBookPrices(bookList);
     const rawMap = {};
     pricedBooks.forEach((b) => { rawMap[b._id] = b; });
-    const cachedMap = await cacheBooksForList(db, rawMap, 12);
-    Object.keys(cachedMap).forEach((id) => { books[id] = cachedMap[id]; });
+    cacheBooksForList(db, rawMap, 12).catch((err) => console.warn('[shelf.list] cover cache skipped', err.message || err));
+    Object.keys(rawMap).forEach((id) => { books[id] = rawMap[id]; });
   }
-  await healStaleBookClassification(pageRows, books);
-  const activeDrifts = await activeDriftsByShelfBook(user._id, pageRows.map((r) => r._id));
-  return ok({
-    list: pageRows.filter((r) => books[r.bookId]).map((r) => formatShelfBook(r, books[r.bookId], activeDrifts[r._id])),
-    total: rows.length,
+  const shelfBookIds = pageRows.map((row) => row._id);
+  const { activeDrifts, completedIds } = await shelfDriftContext(user._id, shelfBookIds);
+  const payload = {
+    list: pageRows.filter((r) => books[r.bookId]).map((r) => formatShelfBook(
+      r,
+      books[r.bookId],
+      activeDrifts[r._id],
+      completedIds.has(r._id),
+    )),
+    total,
     page,
     size,
+    hasMore: page * size < total,
+  };
+  if (includeDashboard) payload.dashboard = await getShelfDashboardForUser(user);
+  return ok(payload);
+}
+
+async function detail(openid, data) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  const id = String(data.id || '').trim();
+  if (!id) return fail(400, '缺少书架记录');
+  const { data: row } = await db.collection('shelf_books').doc(id).get();
+  if (!row || row.userId !== user._id) return fail(404, '书架记录不存在');
+  const books = await booksByIdsWithPrices([row.bookId]);
+  const book = books[row.bookId];
+  if (!book) return fail(404, '图书不存在');
+  const { activeDrifts, completedIds } = await shelfDriftContext(user._id, [id]);
+  return ok(formatShelfBook(row, book, activeDrifts[id], completedIds.has(id)));
+}
+
+async function publishCandidates(openid, data) {
+  const user = await requireUser(openid);
+  if (!user) return fail(401, '未登录');
+  const page = Math.max(Number(data.page) || 1, 1);
+  const size = Math.min(Number(data.size) || 50, 100);
+  const { total: rowTotal } = await db.collection('shelf_books').where({ userId: user._id }).count();
+  const { data: pageRows } = await db.collection('shelf_books').where({ userId: user._id })
+    .orderBy('createdAt', 'desc')
+    .skip((page - 1) * size)
+    .limit(size)
+    .get();
+  const bookIds = pageRows.map((row) => row.bookId).filter(Boolean);
+  const books = bookIds.length ? await booksByIdsWithPrices(bookIds) : {};
+  const shelfBookIds = pageRows.map((row) => row._id);
+  const { activeDrifts } = await shelfDriftContext(user._id, shelfBookIds);
+  const list = pageRows
+    .filter((row) => books[row.bookId] && !activeDrifts[row._id])
+    .map((row) => formatShelfBook(row, books[row.bookId], null, false));
+  return ok({
+    list,
+    total: rowTotal || 0,
+    page,
+    size,
+    hasMore: page * size < (rowTotal || 0),
   });
 }
 
@@ -330,7 +467,6 @@ async function add(openid, data) {
   await assertSafeTextFields(openid, {
     shelfLocationName: data.shelfLocationName,
   });
-  const purpose = normalizeShelfPurpose(data.purpose);
   let bookId = data.bookId;
   if (!bookId && data.isbn) {
     const book = await resolveByIsbn(db, data.isbn);
@@ -341,7 +477,7 @@ async function add(openid, data) {
 
   const existingRow = await findShelfRowByBookId(user._id, bookId);
   if (existingRow) {
-    if (purpose === SHELF_PURPOSE_DRIFT_QUICK) {
+    if (data.fromScanPublish) {
       const book = await getBookById(bookId);
       return ok(formatShelfBook(existingRow, book));
     }
@@ -352,7 +488,7 @@ async function add(openid, data) {
   if (capacityError) return capacityError;
 
   const book = await getBookById(bookId);
-  const quickDefaults = purpose === SHELF_PURPOSE_DRIFT_QUICK
+  const scanPublishDefaults = data.fromScanPublish
     ? {
       readingStatus: 'read',
       category: 'read',
@@ -360,13 +496,13 @@ async function add(openid, data) {
       shelfLocationName: DEFAULT_LOCATION.name,
     }
     : {};
-  const meta = normalizeShelfMeta({}, book, { ...quickDefaults, ...data });
+  const meta = normalizeShelfMeta({}, book, { ...scanPublishDefaults, ...data });
   const id = uid();
   await db.collection('shelf_books').doc(id).set({
     data: {
       userId: user._id,
       bookId,
-      purpose,
+      purpose: 'normal',
       category: meta.readingStatus,
       readingStatus: meta.readingStatus,
       bookClass: meta.bookClass,
@@ -378,9 +514,8 @@ async function add(openid, data) {
       createdAt: nowIso(),
     },
   });
-  if (purpose !== SHELF_PURPOSE_DRIFT_QUICK) {
-    await settleInviteReward(user, 'shelf_add');
-  }
+  await settleInviteReward(user, 'shelf_add');
+  invalidateShelfDashboardCache(user._id);
   const { data: row } = await db.collection('shelf_books').doc(id).get();
   return ok(formatShelfBook(row, book));
 }
@@ -405,6 +540,7 @@ async function findOrCreateManualBook(data) {
   if (existing.length) return existing[0];
 
   const id = uid();
+  const bookClass = normalizeBookClass(data.bookClass, 'other');
   const doc = {
     isbn: isbn || `manual-${id.slice(0, 8)}`,
     isbn10: '',
@@ -418,7 +554,7 @@ async function findOrCreateManualBook(data) {
     coverRemote: '',
     coverSource: '',
     summary: '',
-    category: BOOK_CLASS_LABELS[data.bookClass] || '图书',
+    category: BOOK_CLASS_LABELS[bookClass] || '图书',
     ageRange: '',
     source: 'manual',
     sourceId: '',
@@ -466,6 +602,7 @@ async function manualAdd(openid, data) {
     },
   });
   await settleInviteReward(user, 'shelf_manual_add');
+  invalidateShelfDashboardCache(user._id);
   const { data: row } = await db.collection('shelf_books').doc(id).get();
   return ok(formatShelfBook(row, book));
 }
@@ -504,7 +641,8 @@ async function update(openid, data) {
   if (!Object.keys(patch).length) return fail(400, '没有可更新的书架信息');
   await db.collection('shelf_books').doc(data.id).update({ data: patch });
   const { data: updated } = await db.collection('shelf_books').doc(data.id).get();
-  return ok(formatShelfBook(updated, book));
+  const { activeDrifts, completedIds } = await shelfDriftContext(user._id, [data.id]);
+  return ok(formatShelfBook(updated, book, activeDrifts[data.id], completedIds.has(data.id)));
 }
 
 async function remove(openid, data) {
@@ -513,24 +651,15 @@ async function remove(openid, data) {
   const { data: row } = await db.collection('shelf_books').doc(data.id).get();
   if (!row || row.userId !== user._id) return fail(404, '书架记录不存在');
   await db.collection('shelf_books').doc(data.id).remove();
+  invalidateShelfDashboardCache(user._id);
   return ok(null);
 }
 
 async function dashboard(openid) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
-  const { data: allShelf } = await db.collection('shelf_books').where({ userId: user._id }).get();
-  const managedShelf = filterShelfRowsForList(allShelf, {});
-  const stats = await buildCollectionStats(user._id, managedShelf);
-  const capacityStats = await buildCollectionStats(user._id, allShelf);
-  const shelfLimit = getShelfLimit(user);
-  return ok({
-    totalBooks: stats.totalBooks,
-    totalValue: stats.totalValue,
-    totalListPrice: stats.totalListPrice,
-    shelfLimit,
-    remainingCapacity: Math.max(shelfLimit - capacityStats.occupiedSlots, 0),
-  });
+  const summary = await getShelfDashboardForUser(user);
+  return ok(summary || await refreshShelfDashboardCache(user._id));
 }
 
 async function redeemCapacity(openid, data) {
@@ -541,30 +670,51 @@ async function redeemCapacity(openid, data) {
     return fail(400, `兑换数量须为 ${SHELF_CAPACITY_PER_COIN} 本的整数倍`);
   }
   const coinCost = capacity / SHELF_CAPACITY_PER_COIN;
-  if (availableCoin(user) < coinCost) return fail(400, '可用公益积分不足，暂不能兑换书架额度');
-
-  const nextLimit = getShelfLimit(user) + capacity;
-  await db.collection('users').doc(user._id).update({
-    data: {
-      coinBalance: db.command.inc(-coinCost),
-      shelfLimit: nextLimit,
-    },
-  });
-  await db.collection('coin_transactions').doc(uid()).set({
-    data: {
-      userId: user._id,
-      amount: -coinCost,
-      type: 'shelf_capacity_redeem',
-      refId: '',
-      description: `兑换书架容量 +${capacity} 本`,
-      createdAt: nowIso(),
-    },
-  });
+  let result = null;
+  try {
+    await db.runTransaction(async (transaction) => {
+      const userSnap = await transaction.collection('users').doc(user._id).get();
+      const freshUser = transactionDocData(userSnap);
+      if (!freshUser || !freshUser._id) throw new Error('USER_NOT_FOUND');
+      if (availableCoin(freshUser) < coinCost) throw new Error('INSUFFICIENT_COINS');
+      const nextLimit = getShelfLimit(freshUser) + capacity;
+      const nextBalance = (Number(freshUser.coinBalance) || 0) - coinCost;
+      await transaction.collection('users').doc(freshUser._id).update({
+        data: {
+          coinBalance: db.command.inc(-coinCost),
+          shelfLimit: nextLimit,
+        },
+      });
+      await transaction.collection('coin_transactions').doc(uid()).set({
+        data: {
+          userId: freshUser._id,
+          amount: -coinCost,
+          balanceDelta: -coinCost,
+          frozenDelta: 0,
+          type: 'shelf_capacity_redeem',
+          refId: '',
+          description: `兑换书架容量 +${capacity} 本`,
+          createdAt: nowIso(),
+        },
+      });
+      result = {
+        balance: nextBalance,
+        shelfLimit: nextLimit,
+      };
+    });
+  } catch (err) {
+    if (err.message === 'INSUFFICIENT_COINS') return fail(400, '可用公益积分不足');
+    if (err.message === 'USER_NOT_FOUND') return fail(404, '用户不存在，请重新登录');
+    throw err;
+  }
+  if (!result) return fail(500, '兑换失败，请稍后重试');
+  invalidateShelfDashboardCache(user._id);
   const used = await getShelfUsage(user._id);
   return ok({
-    balance: (Number(user.coinBalance) || 0) - coinCost,
-    shelfLimit: nextLimit,
-    remainingCapacity: Math.max(nextLimit - used, 0),
+    balance: result.balance,
+    shelfLimit: result.shelfLimit,
+    remainingCapacity: Math.max(result.shelfLimit - used, 0),
+    pointEffects: { coinSpent: coinCost },
   });
 }
 
@@ -581,10 +731,18 @@ async function publicList(data) {
     const pricedBooks = await enrichBookPrices(bookList);
     const rawMap = {};
     pricedBooks.forEach((book) => { rawMap[book._id] = book; });
-    const cachedMap = await cacheBooksForList(db, rawMap, 12);
+    cacheBooksForList(db, rawMap, 12).catch((err) => console.warn('[shelf.public] cover cache skipped', err.message || err));
+    const cachedMap = rawMap;
     Object.keys(cachedMap).forEach((id) => { books[id] = cachedMap[id]; });
   }
-  const list = rows.filter((row) => books[row.bookId]).map((row) => formatShelfBook(row, books[row.bookId]));
+  const shelfBookIds = rows.map((row) => row._id);
+  const { activeDrifts, completedIds } = await shelfDriftContext(userId, shelfBookIds);
+  const list = rows.filter((row) => books[row.bookId]).map((row) => formatShelfBook(
+    row,
+    books[row.bookId],
+    activeDrifts[row._id],
+    completedIds.has(row._id),
+  ));
   const pricedBooks = await enrichBookPrices(Object.values(books));
   const pricedMap = {};
   pricedBooks.forEach((book) => { pricedMap[book._id] = book; });
@@ -612,5 +770,5 @@ async function publicList(data) {
 }
 
 module.exports = {
-  list, add, manualAdd, update, remove, dashboard, redeemCapacity, publicList,
+  list, detail, publishCandidates, add, manualAdd, update, remove, dashboard, redeemCapacity, publicList,
 };

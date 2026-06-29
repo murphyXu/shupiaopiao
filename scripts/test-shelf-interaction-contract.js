@@ -16,10 +16,11 @@ const publishJs = read('miniprogram/pages/drift/publish.js');
 const booksHandler = read('cloudfunctions/api/handlers/books.js');
 const apiRoutes = read('cloudfunctions/api/index.js');
 
-assert.ok(/\.capacity-line\s*{[^}]*white-space:\s*nowrap/.test(shelfWxss), 'capacity text should stay on one line');
-assert.ok(/\.capacity-line\s*{[^}]*text-overflow:\s*ellipsis/.test(shelfWxss), 'capacity text should ellipsize on narrow screens');
-assert.ok(/\.capacity-line\s*{[^}]*overflow:\s*hidden/.test(shelfWxss), 'capacity text should stay within the row');
-assert.ok(shelfWxml.includes('class="page-sub capacity-line"'), 'capacity text should use no-wrap capacity line');
+assert.ok(/\.capacity-stats\s*{[^}]*white-space:\s*nowrap/.test(shelfWxss), 'capacity text should stay on one line');
+assert.ok(/\.capacity-stats\s*{[^}]*text-overflow:\s*ellipsis/.test(shelfWxss), 'capacity text should ellipsize on narrow screens');
+assert.ok(/\.capacity-stats\s*{[^}]*overflow:\s*hidden/.test(shelfWxss), 'capacity text should stay within the row');
+assert.ok(shelfWxml.includes('class="capacity-stats page-sub"'), 'capacity text should use shelf stats row');
+assert.ok(!/\.quota-action\s*{[^}]*margin-left:\s*auto/.test(shelfWxss), 'quota action should stay beside stats instead of far-right alignment');
 assert.ok(/\.quota-action\s*{[^}]*height:\s*56rpx/.test(shelfWxss), 'quota action should be larger and easier to tap');
 
 assert.ok(appJson.includes('pages/shelf/redeem-capacity'), 'redeem capacity page should be registered');
@@ -45,10 +46,7 @@ assert.ok(shelfJs.includes('searchKeyword') && shelfJs.includes('onShelfSearchIn
 assert.ok(shelfWxml.includes('shelf-search') && shelfWxml.includes('bindinput="onShelfSearchInput"'), 'shelf should render local search input');
 assert.ok(shelfJs.includes('matchesShelfSearch') && shelfJs.includes('book.isbn') && shelfJs.includes('book.publisher'), 'shelf local search should match title author isbn publisher');
 assert.ok(shelfWxml.includes('没找到这本在架书'), 'shelf search empty state should explain no in-shelf match');
-
-assert.ok(shelfWxml.includes('grid-book-card series-card') && shelfWxml.includes('series-count-badge'), 'series entry should use normal book card style and show count on cover');
-assert.ok(!shelfWxml.includes('series-wrap entry-full'), 'series entry should not be a full-width custom card');
-assert.ok(shelfJs.includes('pickSeriesCover') && shelfJs.includes('hasRealCover'), 'series entry should pick a real child cover when available');
+assert.ok(shelfWxml.includes('wx:for="{{books}}"') && !shelfWxml.includes('series-card'), 'shelf should render books as flat grid without series grouping');
 
 assert.ok(shelfJs.includes('BACK_TOP_BOOK_THRESHOLD') && shelfJs.includes('onPageScroll') && shelfJs.includes('scrollToTop'), 'shelf should expose back-to-top behavior after many books');
 assert.ok(shelfWxml.includes('back-top-entry') && shelfWxss.includes('.back-top-entry'), 'shelf should render fixed back-to-top entry');

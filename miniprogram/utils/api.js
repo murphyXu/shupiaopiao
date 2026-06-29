@@ -226,6 +226,16 @@ function call(action, data = {}, options = {}) {
     }).then(async (res) => {
       const result = res.result || {};
       if (result.code === 0) {
+        if (options.deferCoverEnrichment) {
+          const immediate = normalizeBooksDeep(result.data);
+          resolve(immediate);
+          enrichData(action, result.data)
+            .then((enriched) => {
+              if (typeof options.onEnriched === 'function') options.onEnriched(enriched);
+            })
+            .catch((err) => console.warn('[api] deferred cover enrichment skipped', action, err));
+          return;
+        }
         resolve(await enrichData(action, result.data));
       } else if (result.code === 401) {
         wx.removeStorageSync('userInfo');
@@ -307,20 +317,22 @@ module.exports = {
   searchBooks: (keyword, page = 1) => call('books.search', { keyword, page }),
   updateBookCover: (isbn, cover) => call('books.updateCover', { isbn, cover }),
   updateBookMetadata: (shelfBookId, data) => call('books.updateMetadata', { shelfBookId, ...data }),
-  getShelfBooks: (category) => call('shelf.list', { category }),
+  getShelfBooks: (category, params = {}, options = {}) => call('shelf.list', { category, ...params }, options),
+  getShelfBookDetail: (id) => call('shelf.detail', { id }),
+  getPublishCandidates: (params = {}, options = {}) => call('shelf.publishCandidates', params, options),
   addShelfBook: (data) => call('shelf.add', data),
   manualAddShelfBook: (data) => call('shelf.manualAdd', data),
   updateShelfBook: (id, data) => call('shelf.update', { id, ...data }),
   deleteShelfBook: (id) => call('shelf.delete', { id }),
   getDashboard: () => call('shelf.dashboard'),
-  redeemShelfCapacity: (count = 1) => call('shelf.redeemCapacity', { count }),
+  redeemShelfCapacity: (count = 1, options = {}) => call('shelf.redeemCapacity', { count }, options),
   getSharedShelf: (userId) => call('shelf.public', { userId }),
   createReport: (data) => call('report.create', data),
   estimatePrice: (isbn, condition) => call('pricing.estimate', { isbn, condition }),
   publishDrift: (data) => call('drift.publish', data),
   getDriftCheck: (driftId) => call('drift.check', { driftId }),
   appealDrift: (driftId, reason) => call('drift.appeal', { driftId, reason }),
-  getPoolList: (params) => call('pool.list', params),
+  getPoolList: (params, options = {}) => call('pool.list', params, options),
   getPoolStats: () => call('pool.stats'),
   getPoolDetail: (id) => call('pool.detail', { id }),
   togglePoolWant: (driftId) => call('pool.want', { driftId }),

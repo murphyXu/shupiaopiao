@@ -19,12 +19,23 @@ function pct(v) {
   return `${Math.round((Number(v) || 0) * 100)}%`;
 }
 
+function formatRefreshTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 Page({
   behaviors: [safeAreaBehavior],
   data: {
     loading: true,
     denied: false,
     rebuilding: false,
+    todayLiveLoading: false,
+    todayLive: null,
     overview: null,
     funnel: null,
     conclusions: [],
@@ -41,8 +52,25 @@ Page({
     this.loadAll();
   },
 
+  onShow() {
+    if (!this.data.denied) this.loadTodayLive();
+  },
+
   onPullDownRefresh() {
-    this.loadAll().finally(() => wx.stopPullDownRefresh());
+    Promise.all([this.loadAll(), this.loadTodayLive()])
+      .finally(() => wx.stopPullDownRefresh());
+  },
+
+  loadTodayLive() {
+    this.setData({ todayLiveLoading: true });
+    return api.call('admin.todayLive', {}, { showError: false }).then((todayLive) => {
+      this.setData({
+        todayLiveLoading: false,
+        todayLive: this.decorateTodayLive(todayLive),
+      });
+    }).catch(() => {
+      this.setData({ todayLiveLoading: false });
+    });
   },
 
   loadAll() {
@@ -53,10 +81,12 @@ Page({
       api.call('admin.funnel', { days: 7 }, { showError: false }),
       api.call('admin.conclusion', {}, { showError: false }),
       api.call('admin.trend', { days: trendDays }, { showError: false }),
-    ]).then(([overview, funnel, conclusion, trend]) => {
+      api.call('admin.todayLive', {}, { showError: false }),
+    ]).then(([overview, funnel, conclusion, trend, todayLive]) => {
       this.setData({
         loading: false,
         overview: this.decorateOverview(overview),
+        todayLive: this.decorateTodayLive(todayLive),
         funnel: this.decorateFunnel(funnel),
         conclusions: (conclusion && conclusion.conclusions) || [],
         trend: this.buildTrend(trend, this.data.trendMetric),
@@ -107,6 +137,15 @@ Page({
         }).finally(() => this.setData({ rebuilding: false }));
       },
     });
+  },
+
+  decorateTodayLive(todayLive) {
+    if (!todayLive) return null;
+    return {
+      ...todayLive,
+      refreshedAtText: formatRefreshTime(todayLive.refreshedAt),
+      errorRateText: pct(todayLive.errorRate),
+    };
   },
 
   decorateOverview(overview) {

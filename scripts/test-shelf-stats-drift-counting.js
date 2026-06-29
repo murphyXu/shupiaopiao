@@ -1,6 +1,7 @@
 const assert = require('assert');
 
 const shelfPath = require.resolve('../cloudfunctions/api/handlers/shelf');
+const shelfCapacityPath = require.resolve('../cloudfunctions/api/lib/shelfCapacity');
 const dbPath = require.resolve('../cloudfunctions/api/lib/db');
 const utilsPath = require.resolve('../cloudfunctions/api/lib/utils');
 const lookupPath = require.resolve('../cloudfunctions/api/lib/bookLookup');
@@ -9,6 +10,7 @@ const securityPath = require.resolve('../cloudfunctions/api/lib/contentSecurity'
 const categoryPath = require.resolve('../cloudfunctions/api/lib/bookCategory');
 
 delete require.cache[shelfPath];
+delete require.cache[shelfCapacityPath];
 require.cache[utilsPath] = {
   id: utilsPath,
   filename: utilsPath,
@@ -54,6 +56,7 @@ const shelfRows = [
   { _id: 'shelf-claimed', userId: 'user-1', bookId: 'book-claimed', createdAt: '2026-06-23T10:02:00.000Z' },
   { _id: 'shelf-completed', userId: 'user-1', bookId: 'book-completed', createdAt: '2026-06-23T10:03:00.000Z' },
   { _id: 'shelf-plain', userId: 'user-1', bookId: 'book-plain', createdAt: '2026-06-23T10:04:00.000Z' },
+  { _id: 'shelf-quick', userId: 'user-1', bookId: 'book-pool', purpose: 'drift_quick', createdAt: '2026-06-23T10:05:00.000Z' },
 ];
 
 const books = {
@@ -74,12 +77,14 @@ const driftRows = [
 const command = {
   in: (value) => ({ __op: 'in', value }),
   inc: (value) => ({ __op: 'inc', value }),
+  neq: (value) => ({ __op: 'neq', value }),
 };
 
 function matches(row, query = {}) {
   return Object.keys(query).every((key) => {
     const expected = query[key];
     if (expected && expected.__op === 'in') return expected.value.includes(row[key]);
+    if (expected && expected.__op === 'neq') return row[key] !== expected.value;
     return row[key] === expected;
   });
 }
@@ -96,6 +101,10 @@ function collection(name) {
     },
     limit() {
       return this;
+    },
+    async count() {
+      if (name === 'shelf_books') return { total: shelfRows.filter((row) => matches(row, query)).length };
+      return { total: 0 };
     },
     async get() {
       if (name === 'shelf_books') return { data: shelfRows.filter((row) => matches(row, query)).map((row) => ({ ...row })) };
@@ -141,9 +150,9 @@ require.cache[dbPath] = {
   const shelf = require('../cloudfunctions/api/handlers/shelf');
   const result = await shelf.dashboard('openid-user-1');
   assert.strictEqual(result.code, 0);
-  assert.strictEqual(result.data.totalBooks, 3);
-  assert.strictEqual(result.data.totalListPrice, 80);
-  assert.strictEqual(result.data.totalValue, 80);
-  assert.strictEqual(result.data.remainingCapacity, 95);
+  assert.strictEqual(result.data.totalBooks, 4);
+  assert.strictEqual(result.data.totalListPrice, 100);
+  assert.strictEqual(result.data.totalValue, 100);
+  assert.strictEqual(result.data.remainingCapacity, 94);
   console.log('shelf stats drift counting ok');
 })();

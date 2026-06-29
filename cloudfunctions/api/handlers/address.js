@@ -20,14 +20,18 @@ async function list(openid) {
   return ok({ list: data.map(formatAddress) });
 }
 
+async function unsetOtherDefaultAddresses(userId, keepId = '') {
+  const { data: existing } = await db.collection('addresses').where({ userId }).get();
+  await Promise.all(existing
+    .filter((item) => item._id !== keepId && item.isDefault)
+    .map((item) => db.collection('addresses').doc(item._id).update({ data: { isDefault: false } })));
+}
+
 async function add(openid, data) {
   const user = await requireUser(openid);
   if (!user) return fail(401, '未登录');
   if (data.isDefault) {
-    const { data: existing } = await db.collection('addresses').where({ userId: user._id }).get();
-    for (const a of existing) {
-      await db.collection('addresses').doc(a._id).update({ data: { isDefault: false } });
-    }
+    await unsetOtherDefaultAddresses(user._id);
   }
   const id = uid();
   await db.collection('addresses').add({
@@ -52,10 +56,7 @@ async function update(openid, data) {
   const { data: row } = await db.collection('addresses').doc(data.id).get();
   if (!row || row.userId !== user._id) return fail(404, '地址不存在');
   if (data.isDefault) {
-    const { data: existing } = await db.collection('addresses').where({ userId: user._id }).get();
-    for (const a of existing) {
-      if (a._id !== data.id) await db.collection('addresses').doc(a._id).update({ data: { isDefault: false } });
-    }
+    await unsetOtherDefaultAddresses(user._id, data.id);
   }
   const patch = {};
   ['name', 'phone', 'region', 'detail', 'isDefault'].forEach((k) => {

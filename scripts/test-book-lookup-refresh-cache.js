@@ -98,18 +98,26 @@ function createCollection(initialRows) {
   const { resolveByIsbn } = require('../cloudfunctions/api/lib/bookLookup');
   const db = {
     collection(name) {
-      assert.strictEqual(name, 'books');
-      return createCollection(rows);
+      if (name === 'books') return createCollection(rows);
+      if (name === 'book_catalog') return createCollection([]);
+      if (name === 'pricing_cache') {
+        return {
+          doc() {
+            return { set: async () => {} };
+          },
+        };
+      }
+      throw new Error(`unexpected collection ${name}`);
     },
   };
 
   const book = await resolveByIsbn(db, '9787559677280');
   assert.strictEqual(refreshCalled, true);
   assert.strictEqual(book.listPrice, '88.00');
-  assert.strictEqual(book.category, '社科');
+  assert.strictEqual(book.category, '文学');
   assert.strictEqual(book.cover, 'cloud://env/book-covers/9787559677280.jpg');
   assert.strictEqual(rows[0].listPrice, '88.00');
-  assert.strictEqual(rows[0].category, '社科');
+  assert.strictEqual(rows[0].category, '文学');
 
   console.log('book lookup cache refresh ok');
 })();

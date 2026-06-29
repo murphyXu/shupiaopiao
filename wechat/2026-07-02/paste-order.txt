@@ -1,6 +1,0 @@
-1. 01-cover.png
-2. 02-week.png
-3. 03-need.png
-4. 04-pool.png
-5. 05-first.png
-6. 06-cta.png

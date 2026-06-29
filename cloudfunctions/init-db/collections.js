@@ -1,6 +1,7 @@
 /** 书漂漂云数据库集合（首次使用前须 createCollection） */
 const COLLECTIONS = [
   'books',
+  'book_catalog',
   'pricing_cache',
   'users',
   'shelf_books',
@@ -18,6 +19,7 @@ const COLLECTIONS = [
   'reports',
   'events',
   'daily_metrics',
+  'pool_feed_meta',
 ];
 
 function isAlreadyExists(err) {

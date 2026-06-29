@@ -7,6 +7,9 @@ const {
   normalizeShipRegion,
   parseShipRegionFromAddresses,
 } = require('../../utils/shipRegion');
+const { SET_COMPLETENESS_OPTIONS, detectSetBookRisk } = require('../../utils/setBookRisk');
+
+const GIVEN_LIST_URL = '/pages/drift/given?status=IN_POOL';
 
 function createConditionIssueOptions(selected = []) {
   return CONDITION_ISSUES.map((option) => ({
@@ -27,6 +30,11 @@ Page({
     conditions: CONDITIONS,
     conditionIssues: [],
     conditionIssueOptions: createConditionIssueOptions(),
+    setCompletenessOptions: SET_COMPLETENESS_OPTIONS,
+    setBookRisk: false,
+    setBookRiskReason: '',
+    setCompleteness: '',
+    setDescription: '',
     listPrice: 0,
     systemCoinValue: 0,
     coinValue: 0,
@@ -38,13 +46,19 @@ Page({
     shipRegionLabel: '',
     needsShipRegionPicker: false,
     sessionCount: 0,
+    continuousScan: false,
+    batchMessage: '',
   },
 
   onLoad(options = {}) {
     trackPageView('drift/scan-publish');
     this.setData({ sessionCount: Number(options.sessionCount) || 0 });
     this.loadShipRegion();
-    this.doScan();
+    if (options.isbn) {
+      this.prepareBook(decodeURIComponent(options.isbn));
+    } else if (options.autoScan === '1') {
+      this.doScan();
+    }
   },
 
   onShow() {
@@ -54,11 +68,11 @@ Page({
 
   async refreshBookPricing() {
     try {
-      const shelf = await api.getShelfBooks('all');
-      const item = (shelf.list || []).find((entry) => entry.id === this.data.shelfBookId);
+      const item = await api.getShelfBookDetail(this.data.shelfBookId);
       if (!item || !item.book) return;
       this.setData({
         book: item.book,
+        ...detectSetBookRisk(item.book),
         ...pricingState(item.book, this.data.condition, this.data.coinValue),
       });
     } catch (err) {
@@ -90,6 +104,29 @@ Page({
     });
   },
 
+  resetBookForm() {
+    this.setData({
+      book: null,
+      bookId: '',
+      shelfBookId: '',
+      lookupStatus: 'idle',
+      lookupError: '',
+      scannedIsbn: '',
+      conditionIssues: [],
+      conditionIssueOptions: createConditionIssueOptions(),
+      setBookRisk: false,
+      setBookRiskReason: '',
+      setCompleteness: '',
+      setDescription: '',
+      listPrice: 0,
+      systemCoinValue: 0,
+      coinValue: 0,
+      coinHint: '',
+      hasListPrice: false,
+      isAnonymous: true,
+    });
+  },
+
   async prepareBook(isbn) {
     const clean = String(isbn || '').replace(/[^0-9X]/gi, '');
     if (!clean) return;
@@ -102,6 +139,11 @@ Page({
       scannedIsbn: clean,
       conditionIssues: [],
       conditionIssueOptions: createConditionIssueOptions(),
+      setBookRisk: false,
+      setBookRiskReason: '',
+      setCompleteness: '',
+      setDescription: '',
+      batchMessage: '',
     });
     wx.showLoading({ title: '识别中' });
     try {
@@ -109,7 +151,7 @@ Page({
       track('book_lookup', { source: 'scan_publish', isbn: clean });
       const shelfItem = await api.addShelfBook({
         bookId: book.id,
-        purpose: 'drift_quick',
+        fromScanPublish: true,
         readingStatus: 'read',
         category: 'read',
       });
@@ -119,6 +161,7 @@ Page({
         shelfBookId: shelfItem.id,
         lookupStatus: 'found',
         isAnonymous: true,
+        ...detectSetBookRisk(book),
         ...pricingState(book, this.data.condition),
       });
     } catch (err) {
@@ -131,6 +174,38 @@ Page({
     } finally {
       wx.hideLoading();
     }
+  },
+
+  toggleContinuousScan() {
+    this.setData({
+      continuousScan: !this.data.continuousScan,
+      batchMessage: !this.data.continuousScan ? this.data.batchMessage : '',
+    });
+  },
+
+  goFinishGiven() {
+    wx.redirectTo({ url: GIVEN_LIST_URL });
+  },
+
+  selectSetCompleteness(e) {
+    this.setData({ setCompleteness: e.currentTarget.dataset.value || '' });
+  },
+
+  onSetDescription(e) {
+    this.setData({ setDescription: String(e.detail.value || '').slice(0, 60) });
+  },
+
+  validateSetConfirmation() {
+    if (!this.data.setBookRisk) return true;
+    if (!this.data.setCompleteness) {
+      wx.showToast({ title: '请确认赠出内容后再上漂', icon: 'none' });
+      return false;
+    }
+    if (this.data.setCompleteness === 'partial' && !String(this.data.setDescription || '').trim()) {
+      wx.showToast({ title: '请说明实际包含哪些册', icon: 'none' });
+      return false;
+    }
+    return true;
   },
 
   selectCondition(e) {
@@ -208,6 +283,25 @@ Page({
     });
   },
 
+  showPublishFailure(result = {}) {
+    const reasons = (result.reasons || []).map((item) => item.message).filter(Boolean);
+    wx.showModal({
+      title: '检测未通过',
+      content: reasons.length ? reasons.join('\n') : '请修改后重试',
+      showCancel: false,
+    });
+  },
+
+  continueBatchScan(sessionCount) {
+    this.setData({
+      sessionCount,
+      batchMessage: `已上漂，本次已连续 ${sessionCount} 本`,
+    });
+    wx.showToast({ title: '已上漂', icon: 'success' });
+    this.resetBookForm();
+    setTimeout(() => this.doScan(), 700);
+  },
+
   async submit() {
     if (this.data.submitting) return;
     if (!this.data.bookId || !this.data.shelfBookId) {
@@ -215,6 +309,7 @@ Page({
       return;
     }
     if (!this.validateCoinValue()) return;
+    if (!this.validateSetConfirmation()) return;
     if (this.data.coinValue === 0) {
       const confirmed = await this.confirmZeroCoinValue();
       if (!confirmed) return;
@@ -230,10 +325,20 @@ Page({
         isAnonymous: this.data.isAnonymous,
         coinValue: this.data.coinValue,
         shipRegion: this.data.shipRegion || undefined,
+        setCompleteness: this.data.setBookRisk ? this.data.setCompleteness : undefined,
+        setDescription: this.data.setBookRisk ? this.data.setDescription : undefined,
       });
       const sessionCount = this.data.sessionCount + 1;
+      if (this.data.continuousScan) {
+        if (result.passed) {
+          this.continueBatchScan(sessionCount);
+          return;
+        }
+        this.showPublishFailure(result);
+        return;
+      }
       wx.redirectTo({
-        url: `/pages/drift/check-result?driftId=${result.driftId}&passed=${result.passed}&status=${result.status || ''}&continueScan=1&sessionCount=${sessionCount}`,
+        url: `/pages/drift/check-result?driftId=${result.driftId}&passed=${result.passed}&status=${result.status || ''}&source=scan&sessionCount=${sessionCount}`,
       });
     } catch (e) {
       console.error(e);

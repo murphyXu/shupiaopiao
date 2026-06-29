@@ -1,106 +1,271 @@
-<view class="page">
-  <view wx:if="{{selectedCount > 0 && !batchMode && book}}" class="card row">
-    <image class="book-cover-sm" src="{{book.cover}}" mode="aspectFill" />
-    <view class="info">
-      <view class="title">{{book.title}}</view>
-      <view class="muted">{{book.author}}</view>
-    </view>
-    <view class="change-book" bindtap="continueAddBooks">再加一本</view>
-  </view>
-
-  <view wx:if="{{batchMode}}" class="card">
-    <view class="label">已选 {{selectedCount}} 本</view>
-    <view class="batch-selected-list">
-      <view wx:for="{{shelfBooks}}" wx:key="id" wx:if="{{item.selected}}" class="batch-selected-item">
-        <image class="picker-cover" src="{{item.book.cover}}" mode="aspectFit" />
-        <view class="picker-info">
-          <view class="picker-title">{{item.book.title}}</view>
-          <view wx:if="{{item.missingListPrice}}" class="picker-price-warning">定价缺失，提交时将自动取消勾选</view>
-          <view wx:else class="muted">系统建议 {{item.previewCoinValue}} 积分</view>
-          <view wx:if="{{item.needsMetaEdit}}" class="picker-edit-link" data-shelf-id="{{item.id}}" catchtap="goEditBookMeta">补录信息 ›</view>
-        </view>
+<view class="page publish-stepped">
+  <view class="stepper">
+    <block wx:for="{{publishSteps}}" wx:key="key">
+      <view
+        class="stp {{step === item.key ? 'on' : ''}} {{step > item.key ? 'done' : ''}}"
+        data-step="{{item.key}}"
+        bindtap="gotoStep"
+      >
+        <view class="stp-dot">{{step > item.key ? '✓' : item.key}}</view>
+        <view class="stp-label">{{item.label}}</view>
       </view>
-    </view>
-    <view class="change-book batch-clear" bindtap="clearSelectedBook">重新选择</view>
-  </view>
-
-  <view class="card">
-    <view class="label">选择要赠出的书（可多选）</view>
-    <view wx:if="{{loadingShelfBooks}}" class="muted">正在读取你的书架...</view>
-    <view wx:elif="{{shelfBooks.length}}" class="book-picker">
-      <view wx:for="{{shelfBooks}}" wx:key="id" class="book-option {{item.selected ? 'selected' : ''}}" data-shelf-id="{{item.id}}" bindtap="toggleBookSelection">
-        <view class="picker-check {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</view>
-        <image class="picker-cover" src="{{item.book.cover}}" mode="aspectFit" />
-        <view class="picker-info">
-          <view class="picker-title">{{item.book.title}}</view>
-          <view class="muted">{{item.book.author}}</view>
-          <view class="picker-meta">{{item.displayCategory || item.book.category || '未分类'}} · {{item.shelfLocationName || '默认书架'}}</view>
-          <view wx:if="{{item.missingListPrice}}" class="picker-price-warning">定价缺失，暂不能上漂</view>
-          <view wx:elif="{{item.needsMetaEdit}}" class="picker-meta-hint">部分信息缺失，建议补录</view>
-          <view wx:if="{{item.needsMetaEdit}}" class="picker-edit-link" data-shelf-id="{{item.id}}" catchtap="goEditBookMeta">补录信息 ›</view>
-        </view>
-      </view>
-    </view>
-    <view wx:else class="empty-box">
-      <view>书架里还没有可赠出的书</view>
-      <view class="btn-ghost small" bindtap="goAddBook">先添加书籍</view>
-    </view>
-    <view wx:if="{{selectedCount > 0}}" class="selection-note muted">已选 {{selectedCount}} 本，可继续点选添加</view>
-  </view>
-
-  <view class="card {{selectedCount === 0 ? 'disabled-card' : ''}}">
-    <view class="label">品相档位</view>
-    <view class="chips condition-chips">
-      <view wx:for="{{conditions}}" wx:key="key" class="chip {{condition === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectCondition">{{item.label}}</view>
-    </view>
-    <view class="sub-label">品相描述</view>
-    <view class="chips issue-chips">
-      <view wx:for="{{conditionIssueOptions}}" wx:key="key" class="chip {{item.selected ? 'active' : ''}}" data-key="{{item.key}}" bindtap="toggleConditionIssue">{{item.label}}</view>
-    </view>
-  </view>
-
-  <view class="card">
-    <view class="label">公益积分</view>
-    <view wx:if="{{batchMode && missingPriceSelectedCount > 0}}" class="price-warning">已选 {{missingPriceSelectedCount}} 本定价缺失，无法上漂。提交时会自动取消勾选，请点「补录信息」填写定价。</view>
-    <view wx:elif="{{batchMode}}" class="coin-hint">批量上漂将按每本书各自的系统建议积分提交，接漂方需占用对应公益积分。</view>
-    <block wx:elif="{{hasListPrice}}">
-      <view class="price-line">
-        <text>图书定价：¥{{listPrice}}</text>
-        <text>系统建议：{{systemCoinValue}} 积分</text>
-      </view>
-      <view class="coin-stepper-row">
-        <view class="coin-stepper-label">本次设定</view>
-        <view class="coin-stepper">
-          <button class="stepper-btn" bindtap="decreaseCoinValue" disabled="{{coinValue <= 0 || submitting}}">−</button>
-          <view class="coin-stepper-value">{{coinValue}} 积分</view>
-          <button class="stepper-btn" bindtap="increaseCoinValue" disabled="{{coinValue >= systemCoinValue || submitting}}">+</button>
-        </view>
-      </view>
+      <view wx:if="{{item.key < 4}}" class="stp-line {{step > item.key ? 'done' : ''}}"></view>
     </block>
-    <view wx:elif="{{selectedCount > 0 && !batchMode}}" class="price-warning">图书定价缺失，暂不能发起漂流。<text class="inline-link" bindtap="goEditBookMeta" data-shelf-id="{{shelfBookId}}">补录信息 ›</text></view>
-    <view wx:elif="{{selectedCount === 0}}" class="coin-hint muted">选择书籍后显示积分设定</view>
-    <view wx:if="{{!batchMode && selectedCount === 1}}" class="coin-hint">{{coinHint}}</view>
   </view>
 
-  <view class="card">
-    <view class="label">漂流身份</view>
-    <view class="identity-row">
-      <view class="identity-option {{!isAnonymous ? 'active' : ''}}" data-anonymous="0" bindtap="toggleAnonymous">
-        <view class="identity-title">昵称漂流</view>
-        <view class="identity-desc">领取方可看到你的昵称</view>
+  <view wx:if="{{step === 1}}" class="step-body">
+    <view wx:if="{{selectedCount > 0 && !batchMode && book}}" class="card row">
+      <image class="book-cover-sm" src="{{book.cover}}" mode="aspectFill" />
+      <view class="info">
+        <view class="title">{{book.title}}</view>
+        <view class="muted">{{book.author}}</view>
+        <view wx:if="{{pendingSetConfirmCount > 0}}" class="set-confirm-badge">需确认赠出内容 ↓</view>
       </view>
-      <view class="identity-option {{isAnonymous ? 'active' : ''}}" data-anonymous="1" bindtap="toggleAnonymous">
-        <view class="identity-title">匿名漂流</view>
-        <view class="identity-desc">对外显示为匿名书友</view>
+      <view class="change-book" bindtap="continueAddBooks">再加一本</view>
+    </view>
+
+    <view wx:if="{{batchMode}}" class="card">
+      <view class="label">已选 {{selectedCount}} 本</view>
+      <view class="batch-selected-list">
+        <view wx:for="{{shelfBooks}}" wx:key="id" wx:if="{{item.selected}}" class="batch-selected-item">
+          <image class="picker-cover" src="{{item.book.cover}}" mode="aspectFit" />
+          <view class="picker-info">
+            <view class="picker-title">{{item.book.title}}</view>
+            <view wx:if="{{item.needsSetConfirmation}}" class="set-confirm-badge">需确认赠出内容</view>
+            <view wx:if="{{item.missingListPrice}}" class="picker-price-warning">缺少定价，补录后才能上漂</view>
+            <view wx:elif="{{!item.needsSetConfirmation}}" class="muted">系统建议 {{item.previewCoinValue}} 积分</view>
+            <view wx:if="{{item.needsMetaEdit}}" class="picker-edit-link" data-shelf-id="{{item.id}}" catchtap="goEditBookMeta">补录信息 ›</view>
+          </view>
+        </view>
+      </view>
+      <view class="change-book batch-clear" bindtap="clearSelectedBook">重新选择</view>
+    </view>
+
+    <view
+      wx:if="{{selectedRiskItems.length}}"
+      id="set-confirm-section"
+      class="card set-confirm-card {{pendingSetConfirmCount > 0 ? 'attention' : ''}}"
+    >
+      <view class="set-confirm-header">
+        <view class="label">赠出内容确认</view>
+        <view wx:if="{{pendingSetConfirmCount > 0}}" class="set-confirm-pending">还有 {{pendingSetConfirmCount}} 本待确认</view>
+      </view>
+      <view class="muted">以下书籍可能是套装/多册书，请确认实际赠出的内容，避免接漂后误解。</view>
+      <view wx:for="{{selectedRiskItems}}" wx:key="id" class="set-confirm-item">
+        <view class="sub-label">{{item.title}}</view>
+        <view wx:if="{{item.setBookRiskReason}}" class="muted set-confirm-reason">{{item.setBookRiskReason}}</view>
+        <view class="chips issue-chips">
+          <view
+            wx:for="{{setCompletenessOptions}}"
+            wx:for-item="option"
+            wx:key="key"
+            class="chip {{item.setCompleteness === option.key ? 'active' : ''}}"
+            data-shelf-id="{{item.id}}"
+            data-value="{{option.key}}"
+            bindtap="selectSetCompleteness"
+          >{{option.label}}</view>
+        </view>
+        <input
+          wx:if="{{item.setCompleteness === 'partial'}}"
+          class="form-control"
+          maxlength="60"
+          placeholder="例如：仅第1、2册，不含第3册"
+          value="{{item.setDescription}}"
+          data-shelf-id="{{item.id}}"
+          bindinput="onSetDescription"
+        />
       </view>
     </view>
-    <view wx:if="{{shipRegionLabel}}" class="ship-region-note muted">寄出参考地：{{shipRegionLabel}}（供接漂方参考到付运费）</view>
-    <view wx:elif="{{needsShipRegionPicker}}" class="ship-region-picker">
-      <picker mode="region" bindchange="onShipRegionChange">
-        <view class="ship-region-line muted">寄出参考地：可选填写省/市，便于接漂方参考运费 ›</view>
-      </picker>
+
+    <view class="card">
+      <view class="label">选择要赠出的书（可多选）</view>
+      <view wx:if="{{loadingShelfBooks}}" class="muted">正在读取你的书架...</view>
+      <view wx:elif="{{shelfBooks.length}}" class="book-picker">
+        <view wx:for="{{shelfBooks}}" wx:key="id" class="book-option {{item.selected ? 'selected' : ''}}" data-shelf-id="{{item.id}}" bindtap="toggleBookSelection">
+          <view class="picker-check {{item.selected ? 'checked' : ''}}">{{item.selected ? '✓' : ''}}</view>
+          <image class="picker-cover" src="{{item.book.cover}}" mode="aspectFit" />
+          <view class="picker-info">
+            <view class="picker-title">{{item.book.title}}</view>
+            <view class="muted">{{item.book.author}}</view>
+            <view wx:if="{{item.selected && item.needsSetConfirmation}}" class="set-confirm-badge">需确认赠出内容</view>
+            <view class="picker-meta">{{item.displayCategory || item.book.category || '未分类'}} · {{item.shelfLocationName || '默认书架'}}</view>
+            <view wx:if="{{item.missingListPrice}}" class="picker-price-warning">定价缺失，暂不能上漂</view>
+            <view wx:elif="{{item.needsMetaEdit}}" class="picker-meta-hint">部分信息缺失，建议补录</view>
+            <view wx:if="{{item.needsMetaEdit}}" class="picker-edit-link" data-shelf-id="{{item.id}}" catchtap="goEditBookMeta">补录信息 ›</view>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty-box">
+        <view>书架里还没有可赠出的书</view>
+        <view class="btn-ghost small" bindtap="goAddBook">先添加书籍</view>
+      </view>
+      <view wx:if="{{selectedCount > 0}}" class="selection-note muted">已选 {{selectedCount}} 本，可继续点选添加</view>
     </view>
   </view>
 
-  <button class="btn-primary publish-submit" loading="{{submitting}}" disabled="{{submitting || selectedCount === 0}}" bindtap="submit">{{batchMode ? ('提交 ' + selectedCount + ' 本上漂') : '提交上漂'}}</button>
+  <view wx:if="{{step === 2}}" class="step-body">
+    <view wx:if="{{batchMode}}" class="batch-book-settings">
+      <view wx:for="{{batchSelectedItems}}" wx:key="id" class="card batch-book-card">
+        <view class="batch-book-head">
+          <image class="picker-cover" src="{{item.book.cover}}" mode="aspectFit" />
+          <view class="picker-info">
+            <view class="picker-title">{{item.book.title}}</view>
+            <view class="muted">{{item.book.author}}</view>
+          </view>
+        </view>
+        <view class="label">品相档位</view>
+        <view class="chips condition-chips">
+          <view
+            wx:for="{{conditions}}"
+            wx:for-item="option"
+            wx:key="key"
+            class="chip {{item.condition === option.key ? 'active' : ''}}"
+            data-shelf-id="{{item.id}}"
+            data-key="{{option.key}}"
+            bindtap="selectBookCondition"
+          >{{option.label}}</view>
+        </view>
+        <view class="sub-label">品相描述</view>
+        <view class="chips issue-chips">
+          <view
+            wx:for="{{item.conditionIssueOptions}}"
+            wx:for-item="issue"
+            wx:key="key"
+            class="chip {{issue.selected ? 'active' : ''}}"
+            data-shelf-id="{{item.id}}"
+            data-key="{{issue.key}}"
+            bindtap="toggleBookConditionIssue"
+          >{{issue.label}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="card">
+      <view class="label">品相档位</view>
+      <view class="chips condition-chips">
+        <view wx:for="{{conditions}}" wx:key="key" class="chip {{condition === item.key ? 'active' : ''}}" data-key="{{item.key}}" bindtap="selectCondition">{{item.label}}</view>
+      </view>
+      <view class="sub-label">品相描述</view>
+      <view class="chips issue-chips">
+        <view wx:for="{{conditionIssueOptions}}" wx:key="key" class="chip {{item.selected ? 'active' : ''}}" data-key="{{item.key}}" bindtap="toggleConditionIssue">{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{step === 3}}" class="step-body">
+    <view wx:if="{{batchMode}}" class="batch-book-settings">
+      <view wx:if="{{missingPriceSelectedCount > 0}}" class="card">
+        <view class="price-warning">已选 {{missingPriceSelectedCount}} 本缺少定价，补录后才能上漂。请点「补录信息」填写定价，或返回上一步取消勾选这些书。</view>
+      </view>
+      <view wx:for="{{batchSelectedItems}}" wx:key="id" class="card batch-book-card">
+        <view class="batch-book-head">
+          <image class="picker-cover" src="{{item.book.cover}}" mode="aspectFit" />
+          <view class="picker-info">
+            <view class="picker-title">{{item.book.title}}</view>
+            <view wx:if="{{item.missingListPrice}}" class="picker-price-warning">缺少定价，补录后才能上漂</view>
+            <view wx:if="{{item.needsMetaEdit}}" class="picker-edit-link" data-shelf-id="{{item.id}}" catchtap="goEditBookMeta">补录信息 ›</view>
+          </view>
+        </view>
+        <block wx:if="{{item.hasListPrice}}">
+          <view class="price-line">
+            <text>图书定价：¥{{item.listPrice}}</text>
+            <text>系统建议：{{item.systemCoinValue}} 积分</text>
+          </view>
+          <view class="coin-stepper-row">
+            <view class="coin-stepper-label">本次设定</view>
+            <view class="coin-stepper">
+              <button class="stepper-btn" data-shelf-id="{{item.id}}" bindtap="decreaseBookCoinValue" disabled="{{item.coinValue <= 0 || submitting}}">−</button>
+              <view class="coin-stepper-value">{{item.coinValue}} 积分</view>
+              <button class="stepper-btn" data-shelf-id="{{item.id}}" bindtap="increaseBookCoinValue" disabled="{{item.coinValue >= item.systemCoinValue || submitting}}">+</button>
+            </view>
+          </view>
+          <view class="coin-hint">{{item.coinHint}}</view>
+        </block>
+      </view>
+    </view>
+    <view wx:else class="card">
+      <view class="label">公益积分</view>
+      <block wx:if="{{hasListPrice}}">
+        <view class="price-line">
+          <text>图书定价：¥{{listPrice}}</text>
+          <text>系统建议：{{systemCoinValue}} 积分</text>
+        </view>
+        <view class="coin-stepper-row">
+          <view class="coin-stepper-label">本次设定</view>
+          <view class="coin-stepper">
+            <button class="stepper-btn" bindtap="decreaseCoinValue" disabled="{{coinValue <= 0 || submitting}}">−</button>
+            <view class="coin-stepper-value">{{coinValue}} 积分</view>
+            <button class="stepper-btn" bindtap="increaseCoinValue" disabled="{{coinValue >= systemCoinValue || submitting}}">+</button>
+          </view>
+        </view>
+      </block>
+      <view wx:elif="{{selectedCount > 0}}" class="price-warning">图书定价缺失，暂不能发起漂流。<text class="inline-link" bindtap="goEditBookMeta" data-shelf-id="{{shelfBookId}}">补录信息 ›</text></view>
+      <view wx:else class="coin-hint muted">选择书籍后显示积分设定</view>
+      <view wx:if="{{selectedCount === 1 && hasListPrice}}" class="coin-hint">{{coinHint}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{step === 4}}" class="step-body">
+    <view class="card">
+      <view class="label">漂流身份</view>
+      <view class="identity-row">
+        <view class="identity-option {{!isAnonymous ? 'active' : ''}}" data-anonymous="0" bindtap="toggleAnonymous">
+          <view class="identity-title">昵称漂流</view>
+          <view class="identity-desc">领取方可看到你的昵称</view>
+        </view>
+        <view class="identity-option {{isAnonymous ? 'active' : ''}}" data-anonymous="1" bindtap="toggleAnonymous">
+          <view class="identity-title">匿名漂流</view>
+          <view class="identity-desc">对外显示为匿名书友</view>
+        </view>
+      </view>
+      <view wx:if="{{shipRegionLabel}}" class="ship-region-note muted">寄出参考地：{{shipRegionLabel}}（供接漂方参考到付运费）</view>
+      <view wx:elif="{{needsShipRegionPicker}}" class="ship-region-picker">
+        <picker mode="region" bindchange="onShipRegionChange">
+          <view class="ship-region-line muted">寄出参考地：可选填写省/市，便于接漂方参考运费 ›</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">本次上漂摘要</view>
+      <view wx:if="{{!batchMode}}">
+        <view class="summary-row"><text class="sk">书籍</text><text class="sv">{{book.title}}</text></view>
+        <view class="summary-row">
+          <text class="sk">品相</text>
+          <block wx:for="{{conditions}}" wx:key="key">
+            <text wx:if="{{condition === item.key}}" class="sv">{{item.label}}{{conditionIssues.length ? '（已标注）' : ''}}</text>
+          </block>
+        </view>
+        <view class="summary-row"><text class="sk">设定公益积分</text><text class="sv hl">{{coinValue}}</text></view>
+        <view wx:if="{{selectedRiskItems.length === 1 && selectedRiskItems[0].setDisplayText}}" class="summary-row">
+          <text class="sk">赠出内容</text>
+          <text class="sv">{{selectedRiskItems[0].setDescription || selectedRiskItems[0].setDisplayText}}</text>
+        </view>
+      </view>
+      <view wx:else>
+        <view class="summary-row"><text class="sk">赠出数量</text><text class="sv">{{selectedCount}} 本</text></view>
+        <view wx:for="{{batchSelectedItems}}" wx:key="id" class="batch-summary-item">
+          <view class="summary-row">
+            <text class="sk">{{item.book.title}}</text>
+            <text class="sv hl">{{item.coinValue}} 积分</text>
+          </view>
+          <view class="summary-sub muted">{{item.conditionLabel}}{{item.conditionIssues.length ? ' · 已标注品相描述' : ''}}</view>
+          <view wx:if="{{item.setDisplayText}}" class="summary-sub muted">赠出内容：{{item.setDescription || item.setDisplayText}}</view>
+        </view>
+      </view>
+      <view class="summary-row"><text class="sk">漂流身份</text><text class="sv">{{isAnonymous ? '匿名漂流' : '昵称漂流'}}</text></view>
+      <view wx:if="{{shipRegionLabel}}" class="summary-row"><text class="sk">寄出参考地</text><text class="sv">{{shipRegionLabel}}</text></view>
+    </view>
+  </view>
+
+  <view class="step-nav">
+    <view wx:if="{{step > 1}}" class="step-nav-btn ghost" bindtap="goPrevStep">上一步</view>
+    <view wx:if="{{step < 4}}" class="step-nav-btn primary" bindtap="goNextStep">下一步</view>
+    <button
+      wx:if="{{step === 4}}"
+      class="step-nav-btn primary submit-btn"
+      loading="{{submitting}}"
+      disabled="{{submitting || selectedCount === 0}}"
+      bindtap="submit"
+    >{{batchMode ? ('提交 ' + selectedCount + ' 本上漂') : '提交上漂'}}</button>
+  </view>
 </view>

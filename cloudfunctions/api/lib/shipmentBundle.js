@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const { nowIso } = require('./utils');
 const { addHours } = require('./driftPolicy');
+const { resolveShipDeadline, isShipDeadlinePassed } = require('./driftMaintenance');
+const { autoCompleteAt } = require('./driftPolicy');
 const {
   BUNDLE_MERGE_WINDOW_HOURS,
   BUNDLE_MAX_ORDERS,
@@ -46,6 +48,20 @@ function pickMergeCandidate(bundles = [], nowIsoStr) {
   return bundles.find((bundle) => canMergeOpenBundle(bundle, nowIsoStr)) || null;
 }
 
+function isMissingTransactionDoc(err) {
+  const msg = (err && (err.message || err.errMsg || '')).toString();
+  return err && (err.errCode === -1 || msg.includes('does not exist') || msg.includes('not exist'));
+}
+
+async function transactionDocData(transaction, collectionName, docId) {
+  try {
+    const snap = await transaction.collection(collectionName).doc(docId).get();
+    return snap.data || null;
+  } catch (err) {
+    if (isMissingTransactionDoc(err)) return null;
+    throw err;
+  }
+}
 
 async function writeOrderBundleMeta(transaction, orderId, bundleId, bundleSeq) {
   await transaction.collection('drift_orders').doc(orderId).update({
@@ -56,8 +72,7 @@ async function writeOrderBundleMeta(transaction, orderId, bundleId, bundleSeq) {
 async function loadBundleAttachPlan(transaction, order, now = nowIso()) {
   const addressKey = computeAddressKey(order.addressSnapshot);
   const bundleDocId = openBundleDocId(order.giverId, order.receiverId, addressKey);
-  const bundleSnap = await transaction.collection('shipment_bundles').doc(bundleDocId).get();
-  const existing = bundleSnap.data || null;
+  const existing = await transactionDocData(transaction, 'shipment_bundles', bundleDocId);
   const candidate = existing
     ? pickMergeCandidate([{ ...existing, _id: bundleDocId }], now)
     : null;
@@ -119,8 +134,7 @@ async function attachOrderToBundle(transaction, order, _) {
 
 async function removeOrderFromBundle(transaction, order, _) {
   if (!order.bundleId) return;
-  const bundleSnap = await transaction.collection('shipment_bundles').doc(order.bundleId).get();
-  const bundle = bundleSnap.data;
+  const bundle = await transactionDocData(transaction, 'shipment_bundles', order.bundleId);
   if (!bundle) return;
   const remaining = (bundle.orderIds || []).filter((id) => id !== order._id);
   const now = nowIso();
@@ -137,15 +151,14 @@ async function removeOrderFromBundle(transaction, order, _) {
 
 async function loadBundleByRef(transaction, { bundleId, orderId }) {
   if (bundleId) {
-    const snap = await transaction.collection('shipment_bundles').doc(bundleId).get();
-    return snap.data ? { ...snap.data, _id: bundleId } : null;
+    const bundle = await transactionDocData(transaction, 'shipment_bundles', bundleId);
+    return bundle ? { ...bundle, _id: bundleId } : null;
   }
   if (orderId) {
-    const orderSnap = await transaction.collection('drift_orders').doc(orderId).get();
-    const order = orderSnap.data;
+    const order = await transactionDocData(transaction, 'drift_orders', orderId);
     if (!order || !order.bundleId) return null;
-    const bundleSnap = await transaction.collection('shipment_bundles').doc(order.bundleId).get();
-    return bundleSnap.data ? { ...bundleSnap.data, _id: order.bundleId } : null;
+    const bundle = await transactionDocData(transaction, 'shipment_bundles', order.bundleId);
+    return bundle ? { ...bundle, _id: order.bundleId } : null;
   }
   return null;
 }
@@ -169,14 +182,14 @@ async function shipBundlePendingOrders(transaction, {
     const orderSnap = await transaction.collection('drift_orders').doc(orderId).get();
     const order = orderSnap.data;
     if (!order || order.status !== 'PENDING_SHIP') continue;
-    if (order.shipDeadlineAt && order.shipDeadlineAt <= now) throw new Error('SHIP_DEADLINE_EXPIRED');
+    if (isShipDeadlinePassed(order, now)) throw new Error('SHIP_DEADLINE_EXPIRED');
     await transaction.collection('drift_orders').doc(orderId).update({
       data: {
         expressCompany,
         trackingNo,
         status: 'SHIPPED',
         shippedAt: now,
-        autoCompleteAt: require('./driftPolicy').addDays(now, 10),
+        autoCompleteAt: autoCompleteAt(now),
       },
     });
     await writeOrderEvent(transaction, { orderId, type: 'SHIPPED', actorId: giverId, createdAt: now });
@@ -198,7 +211,7 @@ async function shipBundlePendingOrders(transaction, {
 
 function earliestShipDeadline(orders = []) {
   const deadlines = orders
-    .map((order) => order.shipDeadlineAt)
+    .map((order) => resolveShipDeadline(order))
     .filter(Boolean)
     .sort();
   return deadlines[0] || '';

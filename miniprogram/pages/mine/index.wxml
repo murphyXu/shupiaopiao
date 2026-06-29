@@ -1,11 +1,12 @@
 <view class="page page-tab" style="padding-top: {{navPaddingTop}}px;">
-  <view class="user-row card-flat" bindtap="{{loggedIn ? '' : 'goLogin'}}">
+  <custom-nav-bar title="我的" />
+  <view class="user-row card-flat" bindtap="{{loggedIn ? 'goProfile' : 'goLogin'}}" hover-class="{{loggedIn ? 'user-row-hover' : ''}}">
     <image wx:if="{{loggedIn && user.avatar}}" class="user-avatar" src="{{user.avatar}}" mode="aspectFill" />
     <image wx:else class="avatar-placeholder" src="/assets/brand/logo.png" mode="aspectFit" />
     <view class="info">
       <view class="name-line">
         <view class="name">{{loggedIn ? (user.nickname || '书漂用户') : '未登录'}}</view>
-        <view wx:if="{{loggedIn}}" class="edit-profile" catchtap="goProfile">编辑资料</view>
+        <view wx:if="{{loggedIn}}" class="edit-profile">编辑资料</view>
         <view wx:else class="edit-profile guest-login-tag">去登录</view>
       </view>
     </view>
@@ -24,36 +25,64 @@
     </view>
   </view>
 
-  <view class="card menu-list">
-    <view class="menu-item" bindtap="goGiven">
-      <view class="menu-item-label">
-        <view>我的漂流（赠出）</view>
-        <view wx:if="{{!loggedIn}}" class="menu-sub">登录后查看赠出漂流</view>
+  <view class="card mine-menu-card">
+    <view class="mine-menu-title">漂流记录</view>
+    <view class="menu-list">
+      <view class="menu-item" bindtap="goGiven">
+        <view class="menu-item-label">
+          <view>我送出的书</view>
+          <view wx:if="{{!loggedIn}}" class="menu-sub">登录后查看送出的书</view>
+        </view>
+        <view class="menu-item-trail">
+          <view wx:if="{{loggedIn && givenBadges.length}}" class="todo-badges">
+            <view wx:for="{{givenBadges}}" wx:key="label" class="todo-badge">{{item.label}} {{item.count}}</view>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
       </view>
-      <view class="menu-item-trail">
-        <view wx:if="{{loggedIn && givenBadges.length}}" class="todo-badges">
-          <view wx:for="{{givenBadges}}" wx:key="label" class="todo-badge">{{item.label}} {{item.count}}</view>
+      <view class="menu-item" bindtap="goReceived">
+        <view class="menu-item-label">
+          <view>我接到的书</view>
+          <view wx:if="{{!loggedIn}}" class="menu-sub">登录后查看接到的书</view>
+        </view>
+        <view class="menu-item-trail">
+          <view wx:if="{{loggedIn && receivedBadges.length}}" class="todo-badges">
+            <view wx:for="{{receivedBadges}}" wx:key="label" class="todo-badge">{{item.label}} {{item.count}}</view>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
+      </view>
+      <view class="menu-item" bindtap="goWants">
+        <view class="menu-item-label">
+          <view>我想要的书</view>
+          <view wx:if="{{!loggedIn}}" class="menu-sub">登录后查看想要接漂的书</view>
         </view>
         <text class="menu-arrow">›</text>
       </view>
     </view>
-    <view class="menu-item" bindtap="goReceived">
-      <view class="menu-item-label">
-        <view>我的漂流（领取）</view>
-        <view wx:if="{{!loggedIn}}" class="menu-sub">登录后查看领取漂流</view>
-      </view>
-      <view class="menu-item-trail">
-        <view wx:if="{{loggedIn && receivedBadges.length}}" class="todo-badges">
-          <view wx:for="{{receivedBadges}}" wx:key="label" class="todo-badge">{{item.label}} {{item.count}}</view>
-        </view>
-        <text class="menu-arrow">›</text>
-      </view>
+  </view>
+
+  <view class="card mine-menu-card">
+    <view class="mine-menu-title">积分规则</view>
+    <view class="menu-list">
+      <view class="menu-item" bindtap="goWallet">公益积分明细<text class="menu-arrow">›</text></view>
+      <view class="menu-item" bindtap="goCredit">信用积分明细<text class="menu-arrow">›</text></view>
+      <view class="menu-item" bindtap="goSettings">隐私政策 / 设置<text class="menu-arrow">›</text></view>
     </view>
-    <view class="menu-item" bindtap="goWallet">公益积分明细<text class="menu-arrow">›</text></view>
-    <view class="menu-item" bindtap="goCredit">信用积分明细<text class="menu-arrow">›</text></view>
-    <view wx:if="{{loggedIn && user.isAdmin}}" class="menu-item" bindtap="goDisputes">申诉处理<text class="menu-arrow">›</text></view>
-    <view wx:if="{{loggedIn && user.isAdmin}}" class="menu-item" bindtap="goDashboard">数据看板<text class="menu-arrow">›</text></view>
-    <view class="menu-item" bindtap="goSettings">隐私政策 / 设置<text class="menu-arrow">›</text></view>
+  </view>
+
+  <view wx:if="{{loggedIn && user.isAdmin}}" class="card mine-menu-card">
+    <view class="menu-list">
+      <view class="menu-item" bindtap="goDisputes">申诉处理<text class="menu-arrow">›</text></view>
+      <view class="menu-item" bindtap="goDashboard">数据看板<text class="menu-arrow">›</text></view>
+    </view>
+  </view>
+
+  <view wx:if="{{showOaMineCard}}" class="card oa-mine-card">
+    <view class="oa-mine-item" hover-class="oa-mine-item-hover" bindtap="openOaProfile">
+      <view class="oa-mine-title">书漂漂公众号</view>
+      <text class="menu-arrow">›</text>
+    </view>
   </view>
 
   <view class="card invite-block">

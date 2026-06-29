@@ -21,11 +21,14 @@ assert.ok(
   mineWxml.includes('wx:if="{{loggedIn && user.avatar}}"') && !mineWxml.includes('/assets/icons/mine.png'),
   'mine page should show user avatar only after login when avatar is set',
 );
-assert.ok(mineWxml.includes('menu-list') && mineWxml.includes('我的漂流（赠出）'), 'mine page should keep menu visible for guests');
+assert.ok(mineWxml.includes('menu-list') && mineWxml.includes('我送出的书') && mineWxml.includes('我接到的书'), 'mine page should keep drift menu visible for guests');
 assert.ok(mineWxml.includes('隐私政策 / 设置'), 'mine page should keep settings accessible without login');
 
 assert.ok(loginWxml.includes('暂不登录') && loginJs.includes('skipLogin'), 'login page should expose skip login action');
-assert.ok(loginWxml.includes('login-back') && loginJs.includes('navigateBack'), 'login page should expose back navigation');
+assert.ok(
+  loginWxml.includes('custom-nav-bar') && loginWxml.includes('showBack') && loginJs.includes('navigateBack'),
+  'login page should expose back navigation via custom nav bar',
+);
 assert.ok(utilJs.includes("cancelText: '先看看'"), 'requireLogin modal should allow cancel without forcing login');
 
 console.log('mine guest state contract ok');

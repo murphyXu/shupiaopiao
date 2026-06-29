@@ -74,3 +74,10 @@
   font-size: 24rpx;
   color: #46564e;
 }
+
+.frozen-note {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  line-height: 1.45;
+  color: #b8860b;
+}

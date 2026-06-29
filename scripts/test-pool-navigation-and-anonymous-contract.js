@@ -23,12 +23,9 @@ const receivedWxml = read('miniprogram/pages/drift/received.wxml');
 const poolDetailWxml = read('miniprogram/pages/pool/detail.wxml');
 
 assert.ok(!poolWxml.includes('bindtap="goStatTarget"'), 'pool home should not expose stat-row navigation');
-assert.ok(poolJs.includes('/pages/drift/given') && poolJs.includes('/pages/drift/received'), 'pool page should still keep drift list routes available elsewhere');
-assert.ok(poolJs.includes('/pages/pool/wants'), 'pool page should still keep wanted books route available elsewhere');
-assert.ok(apiIndex.includes("'pool.list': (data, openid) => pool.list(data, openid)"), 'pool list route should pass openid for user-specific wanted state');
-assert.ok(poolHandler.includes("db.collection('drift_wants')") && poolHandler.includes('countWanted'), 'pool stats should count current-user wanted items, not the global pool count');
-assert.ok(poolHandler.includes('wantCount: 0') && !poolHandler.includes('const { total: wantCount }'), 'anonymous or unknown users should not receive a global want count');
-assert.ok(poolJs.includes("requireLogin('登录后可查看想要接漂的书')") && poolJs.includes('/pages/pool/wants'), 'want stat click should require login and open current-user wanted list');
+assert.ok(!poolWxml.includes('pool-user-metrics'), 'pool home should not render personal drift stat metrics');
+assert.ok(!poolJs.includes('goStatTarget'), 'pool home should not keep stat-row navigation handler');
+assert.ok(poolDetailWxml.includes('想要接漂') || poolDetailJs.includes('/pages/pool/wants'), 'wanted drift entry should stay on detail or wants page');
 
 assert.ok(
   poolWxml.includes('class="pool-search-box"')

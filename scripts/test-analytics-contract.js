@@ -46,6 +46,7 @@ assert.ok(initDbCollections.includes("'daily_metrics'"), 'init-db collections sh
 const indexJs = read('cloudfunctions/api/index.js');
 assert.ok(indexJs.includes("'analytics.track'"), 'route analytics.track registered');
 assert.ok(indexJs.includes("'admin.overview'"), 'route admin.overview registered');
+assert.ok(indexJs.includes("'admin.todayLive'"), 'route admin.todayLive registered');
 assert.ok(indexJs.includes("'admin.conclusion'"), 'route admin.conclusion registered');
 assert.ok(indexJs.includes("'admin.events'"), 'route admin.events registered');
 assert.ok(indexJs.includes("'admin.ledger'"), 'route admin.ledger registered');
@@ -59,7 +60,10 @@ assert.ok(indexJs.includes("action !== 'analytics.track'"), '避免对埋点上�
 const config = JSON.parse(read('cloudfunctions/api/config.json'));
 const hasScheduled = (config.triggers || []).some((t) => t.name === 'scheduledTasks' && t.type === 'timer');
 assert.ok(hasScheduled, 'config.json should declare single scheduledTasks timer');
-assert.strictEqual((config.triggers || []).length, 1, 'WeChat allows only one timer trigger per cloud function');
+const timerTriggers = (config.triggers || []).filter((t) => t.type === 'timer');
+assert.strictEqual(timerTriggers.length, 1, 'WeChat allows only one timer trigger per cloud function');
+const hasAdminHttp = (config.triggers || []).some((t) => t.name === 'adminHttp' && t.type === 'apigw');
+assert.ok(hasAdminHttp, 'config.json should declare adminHttp apigw trigger');
 
 // ---- 4. analytics 纯函数逻辑 ----
 const analytics = require('../cloudfunctions/api/lib/analytics');
@@ -83,7 +87,8 @@ assert.strictEqual(analytics.eventTypeForAction('shelf.redeemCapacity'), 'capaci
 
 const metricsAggregator = require('../cloudfunctions/api/lib/metricsAggregator');
 assert.ok(typeof metricsAggregator.purgeOldEvents === 'function', 'purgeOldEvents exported');
-assert.ok(metricsAggregator.aggregateOneDay.toString().includes('avgShipHours'), 'aggregate includes avgShipHours');
+assert.ok(typeof metricsAggregator.computeDayMetrics === 'function', 'computeDayMetrics exported');
+assert.ok(metricsAggregator.aggregateOneDay.toString().includes('computeDayMetrics'), 'aggregateOneDay uses computeDayMetrics');
 // ---- 5. admin 鉴权逻辑（隔离 isAdmin 不依赖 db）----
 process.env.ADMIN_OPENIDS = 'oABC123, oDEF456';
 const admin = require('../cloudfunctions/api/handlers/admin');
@@ -124,6 +129,8 @@ assert.ok(appJson.pages.includes('pages/admin/dashboard'), 'admin dashboard page
 assert.ok(appJson.pages.includes('pages/admin/logs'), 'admin logs page registered');
 
 const adminJs = read('cloudfunctions/api/handlers/admin.js');
+assert.ok(adminJs.includes('async function todayLive'), 'admin.todayLive handler present');
+assert.ok(adminJs.includes('computeDayMetrics'), 'todayLive uses computeDayMetrics');
 assert.ok(adminJs.includes('async function events'), 'admin.events handler present');
 assert.ok(adminJs.includes('async function ledger'), 'admin.ledger handler present');
 assert.ok(adminJs.includes('fetchCumulativeStats'), 'cumulative stats helper present');
@@ -136,6 +143,11 @@ assert.ok(adminJs.includes('avgShipHours'), 'conclusion references avgShipHours'
 assert.ok(adminJs.includes('纠纷率'), 'conclusion includes dispute rate rule');
 
 const dashboardWxml = read('miniprogram/pages/admin/dashboard.wxml');
+const dashboardJs = read('miniprogram/pages/admin/dashboard.js');
+assert.ok(dashboardWxml.includes('今日实时'), 'dashboard shows today live section');
+assert.ok(dashboardWxml.includes('被接漂'), 'today live includes claimed count');
+assert.ok(dashboardJs.includes('admin.todayLive'), 'dashboard calls admin.todayLive');
+assert.ok(dashboardJs.includes('onShow') && dashboardJs.includes('loadTodayLive'), 'dashboard refreshes today live on show');
 assert.ok(dashboardWxml.includes('累计概览'), 'dashboard shows cumulative section');
 assert.ok(dashboardWxml.includes('消耗构成'), 'dashboard shows consume breakdown');
 const logsPage = read('miniprogram/pages/admin/logs.js');

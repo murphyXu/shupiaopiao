@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>漂流广场书卡 · 轻标签方案对比</title>
+  <style>
+    :root {
+      --green: #2FBE77;
+      --green-dark: #0C7A4B;
+      --green-soft: #EAFBF2;
+      --text: #15211B;
+      --muted: #8a988f;
+      --pill-bg: #f2f5f3;
+      --pill-text: #9aa8a0;
+      --card-bg: #fff;
+      --card-border: #eef3ef;
+      --shadow: 0 6px 20px rgba(21, 158, 99, 0.06);
+      --radius-card: 18px;
+      --radius-cover: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #f4f7f5;
+      color: var(--text);
+      line-height: 1.45;
+      padding: 24px 16px 48px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .intro {
+      max-width: 920px;
+      color: #5d6d64;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    .intro strong { color: var(--green-dark); }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      max-width: 1200px;
+    }
+
+    .option {
+      background: #fff;
+      border-radius: 20px;
+      border: 1px solid #e8eeea;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .option-head {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid #f0f4f1;
+    }
+
+    .option-head h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .option-head .tag-rec {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .option-head p {
+      font-size: 13px;
+      color: #6d7d74;
+    }
+
+    .pros-cons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 10px 18px 14px;
+      font-size: 12px;
+      background: #fafcfb;
+      border-top: 1px solid #f0f4f1;
+    }
+
+    .pros-cons div { color: #5d6d64; }
+    .pros-cons b { color: var(--text); font-size: 11px; }
+
+    /* phone frame */
+    .phone {
+      margin: 16px auto;
+      width: 280px;
+      background: #f4f7f5;
+      border-radius: 28px;
+      padding: 12px 10px 16px;
+      border: 1px solid #dde5e0;
+    }
+
+    .phone-label {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    /* base card */
+    .book-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-card);
+      padding: 10px;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .cover-wrap {
+      position: relative;
+      height: 130px;
+      border-radius: var(--radius-cover);
+      overflow: hidden;
+      background: linear-gradient(145deg, #dff4e8, #c3ead4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cover-wrap.alt { background: linear-gradient(145deg, #dce9f8, #c5d8f0); }
+    .cover-wrap.alt2 { background: linear-gradient(145deg, #f8ecd8, #edd9b8); }
+
+    .cover-shape {
+      width: 56px;
+      height: 78px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.55);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .coin {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green-dark);
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pill {
+      font-size: 10px;
+      color: var(--pill-text);
+      background: var(--pill-bg);
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    /* shared tag styles */
+    .tag-claim {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--green-dark);
+      background: var(--green-soft);
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .tag-mine {
+      font-size: 10px;
+      font-weight: 600;
+      color: #7b8a82;
+      background: #f0f5f1;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    /* A: cover top-left */
+    .tag-a {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      z-index: 2;
+    }
+
+    /* B: cover bottom-right */
+    .tag-b {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      z-index: 2;
+    }
+
+    /* C: title row */
+  .title-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+      min-width: 0;
+    }
+
+    .title-row .title {
+      margin-top: 0;
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* D: meta row extra pill - default in meta */
+
+    /* E: card footer hint */
+    .footer-hint {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 2px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green-dark);
+    }
+
+  .footer-hint.muted-hint {
+      color: #7b8a82;
+      font-weight: 500;
+    }
+
+    /* F: left accent bar */
+    .book-card.accent-f {
+      border-left: 3px solid var(--green);
+      padding-left: 8px;
+    }
+
+    .accent-f .status-line {
+      margin-top: 6px;
+      font-size: 10px;
+      color: var(--green-dark);
+      font-weight: 600;
+    }
+
+    /* G: corner ribbon */
+    .ribbon-g {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 44px;
+      height: 44px;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .ribbon-g span {
+      position: absolute;
+      top: 8px;
+      right: -14px;
+      width: 56px;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--green);
+      transform: rotate(45deg);
+      padding: 2px 0;
+      box-shadow: 0 2px 6px rgba(47, 190, 119, 0.35);
+    }
+
+    .legend {
+      max-width: 920px;
+      margin-top: 32px;
+      padding: 16px 18px;
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid #e8eeea;
+      font-size: 13px;
+      color: #5d6d64;
+    }
+
+    .legend h3 { font-size: 15px; margin-bottom: 8px; color: var(--text); }
+    .legend ul { padding-left: 18px; }
+    .legend li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>漂流广场书卡 · 去掉按钮后的轻标签方案</h1>
+  <p class="intro">
+    原则：列表只做<strong>浏览与筛选</strong>，整张卡片可点进详情；轻标签表达状态，不用「申请接漂」这类强 CTA 文案。
+    每张示意含<strong>左：他人赠书</strong>、<strong>右：我的赠书</strong>两种状态。
+  </p>
+
+  <div class="options">
+    <!-- A -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 A · 封面角标<span class="tag-rec">推荐</span></h2>
+        <p>标签叠在封面上方，不占卡片正文高度；扫一眼能区分「可接 / 我的」。</p>
+      </div>
+      <div class="phone">
+        <div class="phone-label">双列书卡预览</div>
+        <div class="grid-2">
+          <div class="book-card">
+            <div class="cover-wrap">
+              <span class="tag-claim tag-a">可接漂</span>
+              <div class="cover-shape"></div>
+            </div>
+            <div class="title">彩虹色的花</div>
+            <div class="meta">
+              <span class="coin">6 公益积分</span>
+              <span class="pill">绘本</span>
+            </div>
+          </div>
+          <div class="book-card">
+            <div class="cover-wrap alt">
+              <span class="tag-mine tag-a">我的赠书</span>
+              <div class="cover-shape"></div>
+            </div>
+            <div class="title">小王子</div>
+            <div class="meta">
+              <span class="coin">8 公益积分</span>
+              <span class="pill">文学</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>视觉醒目但不像按钮；封面区信息密度高</div>
+        <div><b>注意</b><br>可能遮挡书封；角标需半透明或缩小</div>
+      </div>
+    </section>
+
+    <!-- B -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 B · 封面右下角</h2>
+        <p>与 A 同类，但标签贴底角，少挡书名区域，更像「状态贴纸」。</p>
+      </div>
+      <div class="phone">
+        <div class="phone-label">双列书卡预览</div>
+        <div class="grid-2">
+          <div class="book-card">
+            <div class="cover-wrap">
+              <span class="tag-claim tag-b">可接漂</span>
+              <div class="cover-shape"></div>
+            </div>
+            <div class="title">窗边的小豆豆</div>
+            <div class="meta">
+              <span class="coin">5 公益积分</span>
+              <span class="pill">童书</span>
+            </div>
+          </div>
+          <div class="book-card">
+            <div class="cover-wrap alt2">
+              <span class="tag-mine tag-b">我的赠书</span>
+              <div class="cover-shape"></div>
+            </div>
+            <div class="title">苏菲的世界</div>
+            <div class="meta">
+              <span class="coin">10 公益积分</span>
+              <span class="pill">社科</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>不挡封面主体；和电商「角标」习惯接近</div>
+        <div><b>注意</b><br>双列窄卡上标签略挤，字号宜 ≤20rpx</div>
+      </div>
+    </section>
+
+    <!-- C -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 C · 书名行尾标签</h2>
+        <p>标签与书名同一行，封面保持干净；适合重视书封展示的场景。</p>
+      </div>
+      <div class="phone">
+        <div class="phone-label">双列书卡预览</div>
+        <div class="grid-2">
+          <div class="book-card">
+            <div class="cover-wrap"><div class="cover-shape"></div></div>
+            <div class="title-row">
+              <div class="title">彩虹色的花</div>
+              <span class="tag-claim">可接漂</span>
+            </div>
+            <div class="meta">
+              <span class="coin">6 公益积分</span>
+              <span class="pill">绘本</span>
+            </div>
+          </div>
+          <div class="book-card">
+            <div class="cover-wrap alt"><div class="cover-shape"></div></div>
+            <div class="title-row">
+              <div class="title">小王子</div>
+              <span class="tag-mine">我的</span>
+            </div>
+            <div class="meta">
+              <span class="coin">8 公益积分</span>
+              <span class="pill">文学</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>不遮封面；层级清晰（书名 + 状态）</div>
+        <div><b>注意</b><br>长书名时标签易被挤没，需限制书名省略</div>
+      </div>
+    </section>
+
+    <!-- D -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 D · 信息行第三枚 pill</h2>
+        <p>复用现有 meta 行的 pill 体系，改动最小；标签与积分、分类同级。</p>
+      </div>
+      <div class="phone">
+        <div class="phone-label">双列书卡预览</div>
+        <div class="grid-2">
+          <div class="book-card">
+            <div class="cover-wrap"><div class="cover-shape"></div></div>
+            <div class="title">彩虹色的花</div>
+            <div class="meta">
+              <span class="coin">6 公益积分</span>
+              <span class="pill">绘本</span>
+              <span class="tag-claim">可接漂</span>
+            </div>
+          </div>
+          <div class="book-card">
+            <div class="cover-wrap alt"><div class="cover-shape"></div></div>
+            <div class="title">小王子</div>
+            <div class="meta">
+              <span class="coin">8 公益积分</span>
+              <span class="pill">文学</span>
+              <span class="tag-mine">我的</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>实现成本最低；风格与现有一致</div>
+        <div><b>注意</b><br>有套装标签时一行偏挤；状态感最弱</div>
+      </div>
+    </section>
+
+    <!-- E -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 E · 底部弱引导文案</h2>
+        <p>占用原按钮位置，但改为文字链风格（非按钮），暗示「可点进详情」。</p>
+      </div>
+      <div class="phone">
+        <div class="phone-label">双列书卡预览</div>
+        <div class="grid-2">
+          <div class="book-card">
+            <div class="cover-wrap"><div class="cover-shape"></div></div>
+            <div class="title">彩虹色的花</div>
+            <div class="meta">
+              <span class="coin">6 公益积分</span>
+              <span class="pill">绘本</span>
+            </div>
+            <div class="footer-hint">可接漂 ›</div>
+          </div>
+          <div class="book-card">
+            <div class="cover-wrap alt"><div class="cover-shape"></div></div>
+            <div class="title">小王子</div>
+            <div class="meta">
+              <span class="coin">8 公益积分</span>
+              <span class="pill">文学</span>
+            </div>
+            <div class="footer-hint muted-hint">我的赠书</div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>填补去掉按钮后的空白；仍有「往下滑」的节奏</div>
+        <div><b>注意</b><br>「›」易被误读为独立入口；权重仍偏高</div>
+      </div>
+    </section>
+
+    <!-- F -->
+    <section class="option">
+      <div class="option-head">
+        <h2>方案 F · 左侧色条 + 一行状态</h2>
+        <p>用细色条区分可接漂卡片，不用角标；偏编辑/信息流风格。</p>
+      </div>
+      <div class="phone">
+        <div class="phone-label">双列书卡预览</div>
+        <div class="grid-2">
+          <div class="book-card accent-f">
+            <div class="cover-wrap"><div class="cover-shape"></div></div>
+            <div class="title">彩虹色的花</div>
+            <div class="status-line">可接漂</div>
+            <div class="meta">
+              <span class="coin">6 公益积分</span>
+              <span class="pill">绘本</span>
+            </div>
+          </div>
+          <div class="book-card">
+            <div class="cover-wrap alt"><div class="cover-shape"></div></div>
+            <div class="title">小王子</div>
+            <div class="status-line" style="color:#7b8a82;font-weight:500;">我的赠书</div>
+            <div class="meta">
+              <span class="coin">8 公益积分</span>
+              <span class="pill">文学</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div><b>优点</b><br>不挡封面；列表扫视时有节奏感</div>
+        <div><b>注意</b><br>双列窄卡左边线不够显眼；风格偏工具感</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="legend">
+    <h3>文案与组合建议</h3>
+    <ul>
+      <li><strong>他人赠书</strong>：推荐「可接漂」（状态）或「待有缘人」（更弱、更暖），避免「申请接漂」。</li>
+      <li><strong>我的赠书</strong>：保持「我的赠书」或缩短为「我的」，用灰色 pill，与绿色可接漂区分。</li>
+      <li><strong>综合推荐</strong>：首选 <strong>A 封面左上角</strong> 或 <strong>C 书名行尾</strong>；若希望零布局改动用 <strong>D</strong>。</li>
+      <li><strong>不推荐</strong>：E 的「›」引导（仍像次级按钮）；封面丝带角标（太促销感）。</li>
+    </ul>
+  </div>
+</body>
+</html>
